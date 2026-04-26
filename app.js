@@ -1902,7 +1902,11 @@ function renderConnectionStatus() {
   connectionBadge.textContent = isSupabaseMode
     ? (supabaseClient ? "Connecte" : "Configuration requise")
     : isAppwriteMode
-      ? (appwriteAccount ? "Auth configuree" : "Configuration requise")
+      ? (state.connectionState === "fallback"
+          ? "Lecture locale"
+          : appwriteAccount
+            ? "Auth configuree"
+            : "Configuration requise")
       : t("local");
   syncMessage.textContent = isTwemUser()
     ? "Suivi partage en direct entre planning chantier, rendez-vous, remontees et rapports."
@@ -3102,10 +3106,10 @@ async function init() {
     try {
       await completeAppwriteMagicSession();
       await loadAppwriteSessionUser();
+      state.connectionState = "connected";
     } catch (error) {
-      connectionBadge.textContent = "Erreur";
+      state.connectionState = "fallback";
       console.error("Appwrite init error", error);
-      window.alert(`Connexion Appwrite incomplete: ${error.message}`);
     }
   }
 
