@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Txwem | Suivi chantier Brico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="brandEyebrow">Twem x Brico</p>
+        <h1 id="pageTitle">Suivi chantier magasin par magasin</h1>
+        <p class="intro" id="pageIntro">Une ligne par magasin, puis un detail depliant pour gerer les intervenants, les rendez-vous et les blocages.</p>
+      </div>
+      <div class="status-box">
+        <div>
+          <span class="mini-label" id="modeLabel">Mode</span>
+          <strong id="modeBadge">Chargement</strong>
+        </div>
+        <div>
+          <span class="mini-label" id="connectionLabel">Connexion</span>
+          <strong id="connectionBadge">Initialisation</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="workspace-shell">
+      <aside class="workspace-sidebar hidden-panel" id="workspaceSidebar">
+        <div class="workspace-sidebar-card">
+          <p class="eyebrow sidebar-eyebrow">Twem</p>
+          <h2 class="sidebar-title">Navigation</h2>
+          <div class="admin-tabs" id="adminTabs">
+            <button type="button" class="admin-tab is-active" id="adminPlanningButton" data-admin-tab="planning">Planning chantier</button>
+            <button type="button" class="admin-tab" data-admin-tab="contacts">Contacts</button>
+            <button type="button" class="admin-tab" data-admin-tab="visibility">Qui voit quoi</button>
+            <button type="button" class="admin-tab" data-admin-tab="reports">Rapports</button>
+            <button type="button" class="admin-tab" data-admin-tab="automations">Automatisations</button>
+            <button type="button" class="admin-tab" data-admin-tab="tools">Tools</button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="workspace-content">
+        <section class="workspace-view is-active" data-admin-panel="planning">
+          <section class="toolbar panel">
+            <label>
+              <span id="searchLabel">Recherche</span>
+              <input type="search" id="searchInput" placeholder="Ex: Anderlecht">
+            </label>
+            <label>
+              <span id="statusLabel">Statut</span>
+              <select id="statusFilter">
+                <option value="all">Tous</option>
+                <option value="planned">A commencer</option>
+                <option value="in_progress">En cours</option>
+                <option value="blocked">Bloque</option>
+                <option value="done">Termine</option>
+              </select>
+            </label>
+            <label>
+              <span id="ownerLabel">Responsable Twem</span>
+              <select id="ownerFilter">
+                <option value="all">Tous</option>
+              </select>
+            </label>
+            <label>
+              <span id="userViewLabel">Vue utilisateur</span>
+              <select id="activeUserSelect"></select>
+            </label>
+            <label>
+              <span id="languageLabel">Langue</span>
+              <select id="languageSelect">
+                <option value="fr">FR</option>
+                <option value="nl">NL</option>
+              </select>
+            </label>
+            <div class="toolbar-actions">
+              <button type="button" id="importButton">Import fichier</button>
+              <button type="button" id="reportButton">Creation / impression rapport</button>
+              <input type="file" id="importInput" hidden accept=".json,.csv">
+            </div>
+          </section>
+
+          <section class="summary-grid" id="summaryGrid"></section>
+
+          <section class="panel table-panel">
+            <div class="table-head">
+              <div>
+                <h2 id="planningTitle">Planning chantier</h2>
+                <p id="syncMessage">Clique sur `+` pour ouvrir la fiche du magasin.</p>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="project-table">
+                <thead>
+                  <tr>
+                    <th id="thDetail">Detail</th>
+                    <th id="thStore">Magasin</th>
+                    <th id="thTwem">Twem</th>
+                    <th id="thManager">Magasin</th>
+                    <th id="thPhone">Telephonie</th>
+                    <th id="thElectrician">Electricien</th>
+                    <th id="thAppointment">Rendez-vous</th>
+                    <th id="thStatus">Statut</th>
+                    <th id="thIssue">Probleme</th>
+                  </tr>
+                </thead>
+                <tbody id="projectTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel twem-workspace hidden-panel" id="twemWorkspace">
+          <div class="table-head">
+            <div>
+              <h2 id="adminTitle">Administration Twem</h2>
+              <p id="adminIntro">Ajouter des personnes, magasins et affectations.</p>
+            </div>
+          </div>
+
+          <div class="admin-content">
+            <section class="admin-panel is-active" data-admin-panel="contacts">
+              <div class="admin-grid contacts-grid">
+                <article class="admin-card person-admin-card">
+                  <h3 id="peopleTitle">Personnes</h3>
+                  <form id="personForm" class="auth-form">
+                    <div class="contacts-form-grid">
+                      <label>
+                        <span id="personNameLabel">Nom</span>
+                        <input type="text" id="personNameInput" placeholder="Ex: Emir">
+                      </label>
+                      <label>
+                        <span id="personPhoneLabel">Telephone</span>
+                        <input type="text" id="personPhoneInput" placeholder="Ex: 0470 00 00 00">
+                      </label>
+                      <label>
+                        <span id="personEmailLabel">Mail</span>
+                        <input type="email" id="personEmailInput" placeholder="Ex: emir@twem.be">
+                      </label>
+                      <label>
+                        <span id="personRoleLabel">Role</span>
+                        <select id="personRoleSelect">
+                          <option value="twem">Twem</option>
+                          <option value="magasin">Magasin</option>
+                          <option value="telephonie">Telephonie</option>
+                          <option value="electricien">Electricien</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span id="personLanguageLabel">Langue</span>
+                        <select id="personLanguageSelect">
+                          <option value="fr">FR</option>
+                          <option value="nl">NL</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span id="personStoreCodeLabel">Magasin lie</span>
+                        <select id="personStoreCodeInput"></select>
+                      </label>
+                    </div>
+                    <button type="submit" id="addPersonButton">Ajouter une personne</button>
+                  </form>
+
+                  <div class="role-manager">
+                    <div class="role-manager-head">
+                      <h4 id="rolesTitle">Roles</h4>
+                      <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
+                    </div>
+                    <form id="roleForm" class="tool-form">
+                      <input type="text" id="roleInput" placeholder="Ex: responsable secteur">
+                      <button type="submit" id="addRoleButton">Ajouter le role</button>
+                    </form>
+                    <div id="roleList" class="simple-list"></div>
+                  </div>
+                </article>
+
+                <article class="admin-card contact-directory-card">
+                  <div class="contact-directory-head">
+                    <div>
+                      <h3 id="contactListTitle">Liste des contacts</h3>
+                      <p id="contactListIntro">Recherche rapide et modification directe.</p>
+                    </div>
+                    <label class="contact-search">
+                      <span id="peopleSearchLabel">Recherche contact</span>
+                      <input type="text" id="peopleSearchInput" placeholder="Ex: Dupont">
+                    </label>
+                  </div>
+                  <div id="peopleList" class="simple-list contact-list"></div>
+                </article>
+              </div>
+
+              <article class="admin-card">
+                <h3 id="storeTitle">Magasins</h3>
+                <form id="storeForm" class="auth-form">
+                  <label>
+                    <span id="storeNameLabel">Nom magasin</span>
+                    <input type="text" id="storeNameInput" placeholder="Ex: Brico Charleroi">
+                  </label>
+                  <label>
+                    <span id="storeCityLabel">Ville</span>
+                    <input type="text" id="storeCityInput" placeholder="Ex: Charleroi">
+                  </label>
+                  <label>
+                    <span id="storeCodeLabel">Code</span>
+                    <input type="text" id="storeCodeInput" placeholder="Ex: BRI-005">
+                  </label>
+                  <label>
+                    <span id="storeOwnerLabel">Responsable Twem</span>
+                    <select id="storeOwnerSelect"></select>
+                  </label>
+                  <label>
+                    <span id="storeManagerLabel">Contact magasin</span>
+                    <input type="text" id="storeManagerInput" placeholder="Ex: Mme Leroy">
+                  </label>
+                  <button type="submit" id="addStoreButton">Ajouter un magasin</button>
+                </form>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="visibility">
+              <article class="admin-card">
+                <h3>Qui voit quoi</h3>
+                <p>Matrice Twem pour cadrer les droits par role avant consolidation. Visible uniquement pour Twem.</p>
+                <div class="visibility-grid">
+                  <div class="visibility-card">
+                    <h4>Twem</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Voit tout le planning chantier</div>
+                      <div class="placeholder-item">Modifie tous les blocs magasin</div>
+                      <div class="placeholder-item">Accede aux contacts, rapports, automatisations et tools</div>
+                    </div>
+                  </div>
+
+                  <div class="visibility-card">
+                    <h4>Magasin</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Voit uniquement son magasin</div>
+                      <div class="placeholder-item">Peut completer la configuration demandee au magasin</div>
+                      <div class="placeholder-item">Peut faire des remarques et confirmer ce qui fonctionne</div>
+                    </div>
+                  </div>
+
+                  <div class="visibility-card">
+                    <h4>Destiny / Telephonie</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Voit les magasins concernes</div>
+                      <div class="placeholder-item">Peut mettre a jour PM, ticket, pre-visite et fin d installation</div>
+                      <div class="placeholder-item">Peut laisser une remarque technique de chantier</div>
+                    </div>
+                  </div>
+
+                  <div class="visibility-card">
+                    <h4>IT</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Peut agir sur VLAN22, alarme, reseau et pre-requis techniques</div>
+                      <div class="placeholder-item">Voit les elements necessaires a la preparation</div>
+                      <div class="placeholder-item">Ne touche pas a l admin Twem</div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="admin-card">
+                <h3>Matrice par bloc</h3>
+                <p>Base de travail editable ensuite. On s en sert pour decider ce qui est visible, cache ou modifiable.</p>
+                <div class="table-wrap">
+                  <table class="posts-table visibility-table">
+                    <thead>
+                      <tr>
+                        <th>Bloc</th>
+                        <th>Twem</th>
+                        <th>Magasin</th>
+                        <th>Destiny</th>
+                        <th>IT</th>
+                        <th>Autres intervenants</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Identite magasin</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                      </tr>
+                      <tr>
+                        <td>Intervenants</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                      </tr>
+                      <tr>
+                        <td>Rendez-vous</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / repondre</td>
+                        <td>Voir / repondre</td>
+                        <td>Voir / repondre</td>
+                        <td>Voir / repondre</td>
+                      </tr>
+                      <tr>
+                        <td>Configuration demandee au magasin</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / completer</td>
+                        <td>Voir</td>
+                        <td>Cache</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Coordination Destiny</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Preparation externe / VLAN22 / alarme</td>
+                        <td>Voir / modifier</td>
+                        <td>Cache</td>
+                        <td>Voir</td>
+                        <td>Voir / modifier</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Configuration du reseau</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / completer</td>
+                        <td>Voir</td>
+                        <td>Voir / preparer</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Postes magasin</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / modifier si affecte</td>
+                      </tr>
+                      <tr>
+                        <td>Cloture / remarques finales</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / commenter</td>
+                        <td>Voir / cloturer</td>
+                        <td>Voir</td>
+                        <td>Voir / commenter</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="admin-card">
+                <h3>Derogations chantier</h3>
+                <p>Permet d ouvrir temporairement une zone a un intervenant sur un magasin precis.</p>
+                <form id="visibilityOverrideForm" class="visibility-override-form">
+                  <label>
+                    <span>Magasin</span>
+                    <select id="overrideStoreSelect"></select>
+                  </label>
+                  <label>
+                    <span>Intervenant</span>
+                    <select id="overridePersonSelect"></select>
+                  </label>
+                  <label>
+                    <span>Zone</span>
+                    <select id="overrideZoneSelect">
+                      <option value="appointments">Rendez-vous</option>
+                      <option value="project_prep">Preparation projet</option>
+                      <option value="configuration_request">Configuration magasin</option>
+                      <option value="destiny_coordination">Coordination Destiny</option>
+                      <option value="external_prep">Preparation externe / IT</option>
+                      <option value="network_config">Configuration reseau</option>
+                      <option value="store_posts">Postes magasin</option>
+                      <option value="closure">Cloture / remarques finales</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Droit</span>
+                    <select id="overrideLevelSelect">
+                      <option value="view">Voir</option>
+                      <option value="edit">Modifier</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Debut</span>
+                    <input type="date" id="overrideStartInput">
+                  </label>
+                  <label>
+                    <span>Fin</span>
+                    <input type="date" id="overrideEndInput">
+                  </label>
+                  <label class="full-row">
+                    <span>Raison</span>
+                    <input type="text" id="overrideReasonInput" placeholder="Ex: l electricien doit intervenir sur une zone IT">
+                  </label>
+                  <button type="submit">Ajouter la derogation</button>
+                </form>
+                <div id="visibilityOverrideList" class="simple-list"></div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="reports">
+              <div class="admin-grid">
+                <article class="admin-card">
+                  <h3 id="accessTitle">Liens de connexion</h3>
+                  <p id="accessIntro">Zone Twem pour envoyer un lien magique de connexion.</p>
+                  <div id="authState" class="auth-state">Session locale</div>
+                  <form id="authForm" class="auth-form">
+                    <label>
+                      <span id="emailLabel">Email destinataire</span>
+                      <input type="email" id="emailInput" placeholder="nom@twem.be">
+                    </label>
+                    <button type="submit" id="magicLinkButton">Envoyer le lien de connexion</button>
+                  </form>
+                  <button type="button" id="logoutButton" class="secondary-button">Reinitialiser la session locale</button>
+                </article>
+
+                <article class="admin-card">
+                  <h3 id="recentUpdatesTitle">Remontees du jour</h3>
+                  <p id="recentUpdatesIntro">Affichage du jour uniquement. Le tableau repart a zero chaque nuit, mais les rapports magasin gardent l historique complet.</p>
+                  <div id="activityList" class="activity-list"></div>
+                </article>
+              </div>
+
+              <article class="admin-card">
+                <h3 id="storeReportsTitle">Rapports par magasin</h3>
+                <p id="storeReportsIntro">Historique complet des remontees, replie par magasin pour garder la page lisible.</p>
+                <div id="reportArchiveList" class="report-archive-list"></div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="automations">
+              <article class="admin-card">
+                <h3>Automatisations</h3>
+                <p>Zone de preparation pour les mails automatiques, relances et notifications.</p>
+                <div class="placeholder-list">
+                  <div class="placeholder-item">Mail de lancement chantier</div>
+                  <div class="placeholder-item">Alerte nouvel evenement sur magasin</div>
+                  <div class="placeholder-item">Mail de cloture magasin</div>
+                </div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="tools">
+              <article class="admin-card">
+                <h3>Tools / programmation</h3>
+                <p>Petit espace pour noter une idee, un point a corriger, puis le cocher quand c est fait.</p>
+                <form id="toolForm" class="tool-form">
+                  <input type="text" id="toolInput" placeholder="Ex: lier les notifications par magasin">
+                  <button type="submit">Ajouter</button>
+                </form>
+                <div id="toolList" class="simple-list"></div>
+              </article>
+            </section>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    window.APP_CONFIG = Object.assign(
+      { mode: "demo", supabaseUrl: "", supabaseAnonKey: "", appwriteEndpoint: "", appwriteProjectId: "" },
+      window.APP_CONFIG || {}
+    );
+  </script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@17.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
