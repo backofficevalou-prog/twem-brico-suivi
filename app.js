@@ -1904,6 +1904,8 @@ function renderConnectionStatus() {
     : isAppwriteMode
       ? (state.connectionState === "fallback"
           ? "Lecture locale"
+          : state.connectionState === "ready"
+            ? "Pret a se connecter"
           : appwriteAccount
             ? "Auth configuree"
             : "Configuration requise")
@@ -2380,13 +2382,23 @@ async function loadAppwriteSessionUser() {
     return;
   }
 
-  const accountUser = await appwriteAccount.get();
-  const matchedPerson = state.people.find((person) =>
-    person.email && accountUser.email && person.email.toLowerCase() === accountUser.email.toLowerCase()
-  ) || state.people.find((person) => person.name === accountUser.name);
+  try {
+    const accountUser = await appwriteAccount.get();
+    const matchedPerson = state.people.find((person) =>
+      person.email && accountUser.email && person.email.toLowerCase() === accountUser.email.toLowerCase()
+    ) || state.people.find((person) => person.name === accountUser.name);
 
-  if (matchedPerson) {
-    state.activeUserName = matchedPerson.name;
+    if (matchedPerson) {
+      state.activeUserName = matchedPerson.name;
+    }
+    state.connectionState = "connected";
+  } catch (error) {
+    const code = Number(error?.code || error?.response?.code || 0);
+    if (code === 401) {
+      state.connectionState = "ready";
+      return;
+    }
+    throw error;
   }
 }
 
