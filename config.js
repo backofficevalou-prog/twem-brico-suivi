@@ -3,5 +3,5 @@ window.APP_CONFIG = {
   supabaseUrl: "",
   supabaseAnonKey: "",
   appwriteEndpoint: "https://fra.cloud.appwrite.io/v1",
-  appwriteProjectId: "69eddb91003da0f29bde"
+  appwriteProjectId: "69eb57e00020de70ed30"
 };
