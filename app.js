@@ -2336,6 +2336,7 @@ async function sendMagicLink(email) {
       return;
     }
 
+    await testAppwriteEndpointReachability();
     const redirectTo = window.location.href.split("?")[0];
     await appwriteAccount.createMagicURLToken(
       appwriteIdFactory.unique(),
@@ -2358,6 +2359,24 @@ async function sendMagicLink(email) {
   if (error) throw error;
 }
 
+async function testAppwriteEndpointReachability() {
+  if (!appConfig.appwriteEndpoint) {
+    return;
+  }
+
+  const response = await fetch(`${appConfig.appwriteEndpoint}/health/version`, {
+    method: "GET",
+    mode: "cors",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Health check HTTP ${response.status}`);
+  }
+
+  return response.json().catch(() => ({}));
+}
+
 function describeAppwriteError(error) {
   const code = error?.code || error?.response?.code;
   const type = error?.type || error?.response?.type;
@@ -2369,7 +2388,15 @@ function describeAppwriteError(error) {
       "Impossible de joindre Appwrite depuis le navigateur.",
       `Site ouvert: ${window.location.hostname}.`,
       `Endpoint: ${appConfig.appwriteEndpoint}.`,
-      "Verifie les Platforms Appwrite et teste aussi en navigation privee."
+      "Le navigateur bloque probablement la requete cross-origin ou une extension intercepte l appel."
+    ].join(" ");
+  }
+
+  if (message.startsWith("Health check HTTP")) {
+    return [
+      "Le navigateur atteint l endpoint Appwrite, mais le health check renvoie une erreur.",
+      message,
+      `Site ouvert: ${window.location.hostname}.`
     ].join(" ");
   }
 
