@@ -98,13 +98,55 @@ Le socle Appwrite branche maintenant:
 - creation de session a partir du lien de retour
 - reconnaissance de l utilisateur par email / nom dans les contacts locaux
 
-La base de donnees Appwrite n est pas encore branchee. Les donnees chantier restent actuellement dans l etat local du navigateur tant que les collections Appwrite ne sont pas migrees.
+La couche donnees Appwrite est maintenant preparee pour une structure simple:
 
-## Prochaine etape utile
+- Database ID: `twem_brico`
+- Collection ID: `stores`
+- Collection ID: `people`
+- Collection ID: `activities`
+- Collection ID: `settings`
 
-Pour passer d Appwrite auth au vrai outil partage, je te recommande ensuite:
+## Appwrite - attributs minimum
 
-1. Creer les collections Appwrite
-2. Brancher les magasins et les contacts sur Appwrite
-3. Brancher les rendez-vous et les remontees
-4. Ajouter les notifications email et les roles stricts
+### `stores`
+
+- `code` : string
+- `name` : string
+- `city` : string
+- `owner_name` : string
+- `manager_name` : string
+- `status` : string
+- `health` : string
+- `updated_at` : string
+- `payload_json` : string long
+
+### `people`
+
+- `name` : string
+- `role` : string
+- `phone` : string
+- `email` : string
+- `store_code` : string
+- `language` : string
+- `payload_json` : string long
+
+### `activities`
+
+- `store_name` : string
+- `result` : string
+- `comment` : string
+- `confirmed_by` : string
+- `created_at` : string
+- `payload_json` : string long
+
+### `settings`
+
+- `role_options_json` : string long
+- `tool_items_json` : string long
+- `access_overrides_json` : string long
+
+## Permissions Appwrite conseillees pour demarrer
+
+- collections accessibles aux utilisateurs connectes
+- lecture / creation / mise a jour / suppression autorisees pour les utilisateurs connectes
+- le filtrage metier fin reste gere dans l application

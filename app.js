@@ -310,7 +310,18 @@ const statusLabels = {
 };
 
 const storageKey = "twem-brico-dashboard-v6";
-const appConfig = window.APP_CONFIG || { mode: "demo", supabaseUrl: "", supabaseAnonKey: "", appwriteEndpoint: "", appwriteProjectId: "" };
+const appConfig = window.APP_CONFIG || {
+  mode: "demo",
+  supabaseUrl: "",
+  supabaseAnonKey: "",
+  appwriteEndpoint: "",
+  appwriteProjectId: "",
+  appwriteDatabaseId: "twem_brico",
+  appwriteStoresCollectionId: "stores",
+  appwritePeopleCollectionId: "people",
+  appwriteActivitiesCollectionId: "activities",
+  appwriteSettingsCollectionId: "settings"
+};
 const appMode = appConfig.mode || "demo";
 const isSupabaseMode = appMode === "supabase";
 const isAppwriteMode = appMode === "appwrite";
@@ -323,8 +334,26 @@ const appwriteClient = isAppwriteMode && window.Appwrite?.Client && appConfig.ap
 const appwriteAccount = appwriteClient && window.Appwrite?.Account
   ? new window.Appwrite.Account(appwriteClient)
   : null;
+const appwriteDatabases = appwriteClient && window.Appwrite?.Databases
+  ? new window.Appwrite.Databases(appwriteClient)
+  : null;
+const appwriteQuery = window.Appwrite?.Query || null;
 const appwriteIdFactory = window.Appwrite?.ID || null;
+const appwriteDatabaseId = appConfig.appwriteDatabaseId || "twem_brico";
+const appwriteStoresCollectionId = appConfig.appwriteStoresCollectionId || "stores";
+const appwritePeopleCollectionId = appConfig.appwritePeopleCollectionId || "people";
+const appwriteActivitiesCollectionId = appConfig.appwriteActivitiesCollectionId || "activities";
+const appwriteSettingsCollectionId = appConfig.appwriteSettingsCollectionId || "settings";
+const hasAppwriteDataConfig = Boolean(
+  appwriteDatabases
+  && appwriteDatabaseId
+  && appwriteStoresCollectionId
+  && appwritePeopleCollectionId
+  && appwriteActivitiesCollectionId
+  && appwriteSettingsCollectionId
+);
 let realtimeChannel = null;
+let appwriteRealtimeUnsubscribe = null;
 
 const state = {
   mode: "demo",
@@ -403,6 +432,176 @@ const visibilityOverrideList = document.querySelector("#visibilityOverrideList")
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function hasRemoteData() {
+  return isSupabaseMode || hasAppwriteDataConfig;
+}
+
+function safeDocumentId(prefix, value) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24);
+  return `${prefix}-${normalized || "item"}`.slice(0, 36);
+}
+
+function parseJsonField(value, fallback) {
+  if (!value) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function buildAppwriteStoreDocument(store) {
+  return {
+    code: store.code,
+    name: store.name,
+    city: store.city || "",
+    owner_name: store.owner || "",
+    manager_name: store.manager || "",
+    status: store.status || "planned",
+    health: store.health || "",
+    updated_at: store.updatedAt || new Date().toISOString(),
+    payload_json: JSON.stringify(store)
+  };
+}
+
+function normalizeAppwriteStore(document) {
+  const payload = parseJsonField(document.payload_json, null);
+  if (payload && typeof payload === "object") {
+    return {
+      ...payload,
+      id: payload.id ?? Date.now(),
+      code: payload.code || document.code,
+      name: payload.name || document.name,
+      city: payload.city || document.city || "",
+      owner: payload.owner || document.owner_name || "",
+      manager: payload.manager || document.manager_name || "",
+      status: payload.status || document.status || "planned",
+      health: payload.health || document.health || "",
+      updatedAt: payload.updatedAt || document.updated_at || new Date().toISOString()
+    };
+  }
+
+  return mapStoreRowToState({
+    id: document.$id,
+    code: document.code,
+    name: document.name,
+    city: document.city,
+    owner_name: document.owner_name,
+    manager_name: document.manager_name,
+    status: document.status,
+    health: document.health,
+    updated_at: document.updated_at
+  });
+}
+
+function buildAppwritePersonDocument(person) {
+  return {
+    name: person.name || "",
+    role: person.role || "magasin",
+    phone: person.phone || "",
+    email: person.email || "",
+    store_code: person.storeCode || "",
+    language: person.language || "fr",
+    payload_json: JSON.stringify(person)
+  };
+}
+
+function normalizeAppwritePerson(document) {
+  const payload = parseJsonField(document.payload_json, null);
+  const base = {
+    id: document.$id,
+    name: document.name || "",
+    role: document.role || "magasin",
+    phone: document.phone || "",
+    email: document.email || "",
+    storeCode: document.store_code || "",
+    language: document.language || "fr"
+  };
+  return payload && typeof payload === "object"
+    ? { ...base, ...payload, id: payload.id || document.$id }
+    : base;
+}
+
+function buildAppwriteActivityDocument(activity) {
+  return {
+    store_name: activity.storeName || "",
+    result: activity.result || "ok",
+    comment: activity.comment || "",
+    confirmed_by: activity.confirmedBy || "",
+    created_at: activity.createdAt || new Date().toISOString(),
+    payload_json: JSON.stringify(activity)
+  };
+}
+
+function normalizeAppwriteActivity(document) {
+  const payload = parseJsonField(document.payload_json, null);
+  const base = {
+    id: document.$id,
+    storeName: document.store_name || "",
+    result: document.result || "ok",
+    comment: document.comment || "",
+    confirmedBy: document.confirmed_by || "",
+    createdAt: document.created_at || new Date().toISOString()
+  };
+  return payload && typeof payload === "object"
+    ? { ...base, ...payload, id: payload.id || document.$id }
+    : base;
+}
+
+function buildAppwriteSettingsDocument() {
+  return {
+    role_options_json: JSON.stringify(state.roleOptions || []),
+    tool_items_json: JSON.stringify(state.toolItems || []),
+    access_overrides_json: JSON.stringify(state.accessOverrides || [])
+  };
+}
+
+async function listAllAppwriteDocuments(collectionId, queries = []) {
+  if (!appwriteDatabases) {
+    return [];
+  }
+
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const queryBatch = [...queries];
+    if (appwriteQuery) {
+      queryBatch.push(appwriteQuery.limit(100));
+      queryBatch.push(appwriteQuery.offset(offset));
+    }
+    const response = await appwriteDatabases.listDocuments(appwriteDatabaseId, collectionId, queryBatch);
+    all.push(...response.documents);
+    if (response.documents.length < 100) {
+      break;
+    }
+    offset += response.documents.length;
+  }
+  return all;
+}
+
+async function upsertAppwriteDocument(collectionId, documentId, data) {
+  if (!appwriteDatabases) {
+    return null;
+  }
+
+  try {
+    return await appwriteDatabases.updateDocument(appwriteDatabaseId, collectionId, documentId, data);
+  } catch (error) {
+    const code = Number(error?.code || error?.response?.code || 0);
+    if (code !== 404) {
+      throw error;
+    }
+    return appwriteDatabases.createDocument(appwriteDatabaseId, collectionId, documentId, data);
+  }
 }
 
 function localUiState() {
@@ -1831,7 +2030,7 @@ function renderPeopleList() {
         state.activeUserName = state.people[0]?.name || "";
       }
 
-      if (isSupabaseMode) {
+      if (hasRemoteData()) {
         await deletePersonFromRemote(personId);
         await loadRemoteState();
       }
@@ -1887,8 +2086,8 @@ function renderRoleList() {
         return;
       }
       state.roleOptions = state.roleOptions.filter((entry) => entry !== role);
-      if (isSupabaseMode) {
-        await syncRoleOptionsToRemote();
+      if (hasRemoteData()) {
+        await syncSettingsToRemote();
         await loadRemoteState();
       }
       saveState();
@@ -1970,13 +2169,16 @@ function renderToolList() {
   });
 
   toolList.querySelectorAll("[data-tool-toggle]").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
+    checkbox.addEventListener("change", async () => {
       const id = checkbox.getAttribute("data-tool-toggle");
       const item = state.toolItems.find((entry) => entry.id === id);
       if (!item) {
         return;
       }
       item.done = checkbox.checked;
+      if (hasRemoteData()) {
+        await syncSettingsToRemote();
+      }
       saveState();
     });
   });
@@ -2054,9 +2256,12 @@ function renderVisibilityOverrides() {
   });
 
   visibilityOverrideList.querySelectorAll("[data-override-remove]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const id = button.getAttribute("data-override-remove");
       state.accessOverrides = state.accessOverrides.filter((entry) => entry.id !== id);
+      if (hasRemoteData()) {
+        await syncSettingsToRemote();
+      }
       saveState();
       renderVisibilityOverrides();
     });
@@ -2128,204 +2333,344 @@ function handleNetworkConfirm(event) {
 }
 
 async function loadRemoteState() {
-  if (!supabaseClient) {
+  if (supabaseClient) {
+    const [
+      storesResult,
+      stepsResult,
+      appointmentsResult,
+      activitiesResult,
+      contactsResult,
+      rolesResult
+    ] = await Promise.all([
+      supabaseClient.from("stores").select("*").order("code"),
+      supabaseClient.from("store_steps").select("*"),
+      supabaseClient.from("appointments").select("*").order("scheduled_at"),
+      supabaseClient.from("confirmations").select("*").order("created_at", { ascending: false }),
+      supabaseClient.from("contacts").select("*").order("name"),
+      supabaseClient.from("roles").select("*").order("name")
+    ]);
+
+    if (storesResult.error) throw storesResult.error;
+    if (stepsResult.error) throw stepsResult.error;
+    if (appointmentsResult.error) throw appointmentsResult.error;
+    if (activitiesResult.error) throw activitiesResult.error;
+    if (contactsResult.error) throw contactsResult.error;
+    if (rolesResult.error) throw rolesResult.error;
+
+    const stepsByStore = new Map();
+    stepsResult.data.forEach((step) => {
+      const list = stepsByStore.get(step.store_id) || [];
+      list.push(step);
+      stepsByStore.set(step.store_id, list);
+    });
+
+    const appointmentsByStore = new Map();
+    appointmentsResult.data.forEach((appointment) => {
+      const list = appointmentsByStore.get(appointment.store_id) || [];
+      list.push(appointment);
+      appointmentsByStore.set(appointment.store_id, list);
+    });
+
+    state.stores = storesResult.data.map((storeRow) => mapStoreRowToState(
+      storeRow,
+      stepsByStore.get(storeRow.id) || [],
+      appointmentsByStore.get(storeRow.id) || []
+    ));
+
+    state.activities = activitiesResult.data.map((activity) => ({
+      id: String(activity.id),
+      storeName: activity.store_name,
+      result: activity.result,
+      comment: activity.comment || "",
+      confirmedBy: activity.confirmed_by || "",
+      createdAt: activity.created_at
+    }));
+
+    state.people = contactsResult.data.map(normalizeRemotePerson);
+    state.roleOptions = [
+      ...new Set([...defaultRoleOptions, ...rolesResult.data.map((role) => role.name)])
+    ];
+
+    const { data: authData } = await supabaseClient.auth.getSession();
+    const sessionPerson = roleValueFromSession(authData.session);
+    if (sessionPerson) {
+      state.activeUserName = sessionPerson.name;
+    } else if (!state.people.some((person) => person.name === state.activeUserName)) {
+      state.activeUserName = state.people.find((person) => person.role === "twem")?.name || state.people[0]?.name || "";
+    }
+
+    saveState();
+    return;
+  }
+
+  if (!hasAppwriteDataConfig) {
     return;
   }
 
   const [
-    storesResult,
-    stepsResult,
-    appointmentsResult,
-    activitiesResult,
-    contactsResult,
-    rolesResult
+    storeDocuments,
+    peopleDocuments,
+    activityDocuments,
+    settingsDocuments
   ] = await Promise.all([
-    supabaseClient.from("stores").select("*").order("code"),
-    supabaseClient.from("store_steps").select("*"),
-    supabaseClient.from("appointments").select("*").order("scheduled_at"),
-    supabaseClient.from("confirmations").select("*").order("created_at", { ascending: false }),
-    supabaseClient.from("contacts").select("*").order("name"),
-    supabaseClient.from("roles").select("*").order("name")
+    listAllAppwriteDocuments(appwriteStoresCollectionId, appwriteQuery ? [appwriteQuery.orderAsc("code")] : []),
+    listAllAppwriteDocuments(appwritePeopleCollectionId, appwriteQuery ? [appwriteQuery.orderAsc("name")] : []),
+    listAllAppwriteDocuments(appwriteActivitiesCollectionId, appwriteQuery ? [appwriteQuery.orderDesc("created_at")] : []),
+    listAllAppwriteDocuments(appwriteSettingsCollectionId)
   ]);
 
-  if (storesResult.error) throw storesResult.error;
-  if (stepsResult.error) throw stepsResult.error;
-  if (appointmentsResult.error) throw appointmentsResult.error;
-  if (activitiesResult.error) throw activitiesResult.error;
-  if (contactsResult.error) throw contactsResult.error;
-  if (rolesResult.error) throw rolesResult.error;
+  state.stores = storeDocuments.map(normalizeAppwriteStore);
+  state.activities = activityDocuments.map(normalizeAppwriteActivity);
+  state.people = peopleDocuments.map(normalizeAppwritePerson);
 
-  const stepsByStore = new Map();
-  stepsResult.data.forEach((step) => {
-    const list = stepsByStore.get(step.store_id) || [];
-    list.push(step);
-    stepsByStore.set(step.store_id, list);
-  });
+  const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
+  if (settingsDocument) {
+    state.roleOptions = [
+      ...new Set([
+        ...defaultRoleOptions,
+        ...parseJsonField(settingsDocument.role_options_json, [])
+      ])
+    ];
+    state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
+    state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
+  } else {
+    state.roleOptions = [...defaultRoleOptions];
+    state.toolItems = [];
+    state.accessOverrides = [];
+  }
 
-  const appointmentsByStore = new Map();
-  appointmentsResult.data.forEach((appointment) => {
-    const list = appointmentsByStore.get(appointment.store_id) || [];
-    list.push(appointment);
-    appointmentsByStore.set(appointment.store_id, list);
-  });
-
-  state.stores = storesResult.data.map((storeRow) => mapStoreRowToState(
-    storeRow,
-    stepsByStore.get(storeRow.id) || [],
-    appointmentsByStore.get(storeRow.id) || []
-  ));
-
-  state.activities = activitiesResult.data.map((activity) => ({
-    id: String(activity.id),
-    storeName: activity.store_name,
-    result: activity.result,
-    comment: activity.comment || "",
-    confirmedBy: activity.confirmed_by || "",
-    createdAt: activity.created_at
-  }));
-
-  state.people = contactsResult.data.map(normalizeRemotePerson);
-  state.roleOptions = [
-    ...new Set([...defaultRoleOptions, ...rolesResult.data.map((role) => role.name)])
-  ];
-
-  const { data: authData } = await supabaseClient.auth.getSession();
-  const sessionPerson = roleValueFromSession(authData.session);
-  if (sessionPerson) {
-    state.activeUserName = sessionPerson.name;
-  } else if (!state.people.some((person) => person.name === state.activeUserName)) {
-    state.activeUserName = state.people.find((person) => person.role === "twem")?.name || state.people[0]?.name || "";
+  if (!state.people.some((person) => person.name === state.activeUserName)) {
+    state.activeUserName = state.people.find((person) => person.role === "twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
   saveState();
 }
 
 async function syncStoreToRemote(store, activityComment) {
-  if (!supabaseClient) {
+  if (supabaseClient) {
+    const storePayload = {
+      code: store.code,
+      name: store.name,
+      city: store.city,
+      owner_name: store.owner,
+      manager_name: store.manager,
+      status: store.status,
+      health: store.health,
+      last_update_at: store.updatedAt,
+      updated_at: store.updatedAt
+    };
+
+    const { data: upsertedStore, error: storeError } = await supabaseClient
+      .from("stores")
+      .upsert(storePayload, { onConflict: "code" })
+      .select()
+      .single();
+
+    if (storeError) throw storeError;
+
+    const stepPayload = store.steps.map((step) => ({
+      store_id: upsertedStore.id,
+      actor_type: step.actorType,
+      label: step.label,
+      status: step.status === "blocked" ? "issue" : step.status,
+      note: step.note
+    }));
+
+    const { error: stepError } = await supabaseClient
+      .from("store_steps")
+      .upsert(stepPayload, { onConflict: "store_id,actor_type" });
+
+    if (stepError) throw stepError;
+
+    const { error: deleteAppointmentError } = await supabaseClient
+      .from("appointments")
+      .delete()
+      .eq("store_id", upsertedStore.id);
+
+    if (deleteAppointmentError) throw deleteAppointmentError;
+
+    if (store.appointments.length) {
+      const appointmentPayload = store.appointments.map((appointment) => ({
+        store_id: upsertedStore.id,
+        scheduled_at: appointment.datetime,
+        status: appointment.status,
+        people: JSON.stringify(appointment.people || []),
+        note: appointment.note || ""
+      }));
+
+      const { error: appointmentError } = await supabaseClient
+        .from("appointments")
+        .insert(appointmentPayload);
+
+      if (appointmentError) throw appointmentError;
+    }
+
+    if (activityComment) {
+      const { error: confirmationError } = await supabaseClient
+        .from("confirmations")
+        .insert({
+          store_id: upsertedStore.id,
+          store_name: store.name,
+          actor_type: "store_manager",
+          result: store.status === "blocked" ? "issue" : "ok",
+          comment: activityComment,
+          confirmed_by: state.activeUserName
+        });
+
+      if (confirmationError) throw confirmationError;
+    }
     return;
   }
 
-  const storePayload = {
-    code: store.code,
-    name: store.name,
-    city: store.city,
-    owner_name: store.owner,
-    manager_name: store.manager,
-    status: store.status,
-    health: store.health,
-    last_update_at: store.updatedAt,
-    updated_at: store.updatedAt
-  };
-
-  const { data: upsertedStore, error: storeError } = await supabaseClient
-    .from("stores")
-    .upsert(storePayload, { onConflict: "code" })
-    .select()
-    .single();
-
-  if (storeError) throw storeError;
-
-  const stepPayload = store.steps.map((step) => ({
-    store_id: upsertedStore.id,
-    actor_type: step.actorType,
-    label: step.label,
-    status: step.status === "blocked" ? "issue" : step.status,
-    note: step.note
-  }));
-
-  const { error: stepError } = await supabaseClient
-    .from("store_steps")
-    .upsert(stepPayload, { onConflict: "store_id,actor_type" });
-
-  if (stepError) throw stepError;
-
-  const { error: deleteAppointmentError } = await supabaseClient
-    .from("appointments")
-    .delete()
-    .eq("store_id", upsertedStore.id);
-
-  if (deleteAppointmentError) throw deleteAppointmentError;
-
-  if (store.appointments.length) {
-    const appointmentPayload = store.appointments.map((appointment) => ({
-      store_id: upsertedStore.id,
-      scheduled_at: appointment.datetime,
-      status: appointment.status,
-      people: JSON.stringify(appointment.people || []),
-      note: appointment.note || ""
-    }));
-
-    const { error: appointmentError } = await supabaseClient
-      .from("appointments")
-      .insert(appointmentPayload);
-
-    if (appointmentError) throw appointmentError;
+  if (!hasAppwriteDataConfig) {
+    return;
   }
 
-  if (activityComment) {
-    const { error: confirmationError } = await supabaseClient
-      .from("confirmations")
-      .insert({
-        store_id: upsertedStore.id,
-        store_name: store.name,
-        actor_type: "store_manager",
-        result: store.status === "blocked" ? "issue" : "ok",
-        comment: activityComment,
-        confirmed_by: state.activeUserName
-      });
+  const documentId = safeDocumentId("store", store.code || store.id);
+  await upsertAppwriteDocument(
+    appwriteStoresCollectionId,
+    documentId,
+    buildAppwriteStoreDocument(store)
+  );
 
-    if (confirmationError) throw confirmationError;
+  if (activityComment) {
+    const activity = {
+      id: `activity-${Date.now()}`,
+      storeName: store.name,
+      result: store.status === "blocked" ? "issue" : "ok",
+      comment: activityComment,
+      confirmedBy: state.activeUserName,
+      createdAt: new Date().toISOString()
+    };
+    await upsertAppwriteDocument(
+      appwriteActivitiesCollectionId,
+      safeDocumentId("activity", activity.id),
+      buildAppwriteActivityDocument(activity)
+    );
   }
 }
 
 async function syncPersonToRemote(person) {
-  if (!supabaseClient) {
+  if (supabaseClient) {
+    const payload = {
+      id: Number.isNaN(Number(person.id)) ? undefined : Number(person.id),
+      name: person.name,
+      role: person.role,
+      phone: person.phone,
+      email: person.email,
+      store_code: person.storeCode,
+      language: person.language
+    };
+
+    const { error } = await supabaseClient.from("contacts").upsert(payload);
+    if (error) throw error;
     return;
   }
 
-  const payload = {
-    id: Number.isNaN(Number(person.id)) ? undefined : Number(person.id),
-    name: person.name,
-    role: person.role,
-    phone: person.phone,
-    email: person.email,
-    store_code: person.storeCode,
-    language: person.language
-  };
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
 
-  const { error } = await supabaseClient.from("contacts").upsert(payload);
-  if (error) throw error;
+  await upsertAppwriteDocument(
+    appwritePeopleCollectionId,
+    safeDocumentId("person", person.id || person.email || person.name),
+    buildAppwritePersonDocument(person)
+  );
 }
 
 async function deletePersonFromRemote(personId) {
-  if (!supabaseClient) {
+  if (supabaseClient) {
+    const numericId = Number(personId);
+    if (Number.isNaN(numericId)) {
+      return;
+    }
+    const { error } = await supabaseClient.from("contacts").delete().eq("id", numericId);
+    if (error) throw error;
     return;
   }
-  const numericId = Number(personId);
-  if (Number.isNaN(numericId)) {
+
+  if (!hasAppwriteDataConfig) {
     return;
   }
-  const { error } = await supabaseClient.from("contacts").delete().eq("id", numericId);
-  if (error) throw error;
+
+  await appwriteDatabases.deleteDocument(
+    appwriteDatabaseId,
+    appwritePeopleCollectionId,
+    safeDocumentId("person", personId)
+  );
 }
 
 async function syncRoleOptionsToRemote() {
-  if (!supabaseClient) {
+  if (supabaseClient) {
+    const customRoles = state.roleOptions.filter((role) => !defaultRoleOptions.includes(role));
+    const { error: deleteError } = await supabaseClient
+      .from("roles")
+      .delete()
+      .eq("built_in", false);
+    if (deleteError) throw deleteError;
+
+    if (customRoles.length) {
+      const { error: insertError } = await supabaseClient
+        .from("roles")
+        .insert(customRoles.map((role) => ({ name: role, built_in: false })));
+      if (insertError) throw insertError;
+    }
     return;
   }
 
-  const customRoles = state.roleOptions.filter((role) => !defaultRoleOptions.includes(role));
-  const { error: deleteError } = await supabaseClient
-    .from("roles")
-    .delete()
-    .eq("built_in", false);
-  if (deleteError) throw deleteError;
+  if (hasAppwriteDataConfig) {
+    await upsertAppwriteDocument(
+      appwriteSettingsCollectionId,
+      "global-state",
+      buildAppwriteSettingsDocument()
+    );
+  }
+}
 
-  if (customRoles.length) {
-    const { error: insertError } = await supabaseClient
-      .from("roles")
-      .insert(customRoles.map((role) => ({ name: role, built_in: false })));
-    if (insertError) throw insertError;
+async function syncSettingsToRemote() {
+  if (supabaseClient) {
+    await syncRoleOptionsToRemote();
+    return;
+  }
+
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
+
+  await upsertAppwriteDocument(
+    appwriteSettingsCollectionId,
+    "global-state",
+    buildAppwriteSettingsDocument()
+  );
+}
+
+async function syncAllRemoteState() {
+  if (!hasRemoteData()) {
+    return;
+  }
+
+  for (const person of state.people) {
+    await syncPersonToRemote(person);
+  }
+
+  for (const store of state.stores) {
+    await syncStoreToRemote(store);
+  }
+
+  await syncSettingsToRemote();
+
+  if (supabaseClient) {
+    return;
+  }
+
+  if (hasAppwriteDataConfig) {
+    for (const activity of state.activities) {
+      await upsertAppwriteDocument(
+        appwriteActivitiesCollectionId,
+        safeDocumentId("activity", activity.id || `${activity.storeName}-${activity.createdAt}`),
+        buildAppwriteActivityDocument(activity)
+      );
+    }
   }
 }
 
@@ -2420,33 +2765,46 @@ async function loadAppwriteSessionUser() {
 }
 
 async function setupRealtime() {
-  if (!supabaseClient || realtimeChannel) {
+  if (supabaseClient && !realtimeChannel) {
+    realtimeChannel = supabaseClient
+      .channel("twem-brico-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "stores" }, async () => {
+        await loadRemoteState();
+        render();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "store_steps" }, async () => {
+        await loadRemoteState();
+        render();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, async () => {
+        await loadRemoteState();
+        render();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "confirmations" }, async () => {
+        await loadRemoteState();
+        render();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "contacts" }, async () => {
+        await loadRemoteState();
+        render();
+      })
+      .subscribe();
     return;
   }
 
-  realtimeChannel = supabaseClient
-    .channel("twem-brico-live")
-    .on("postgres_changes", { event: "*", schema: "public", table: "stores" }, async () => {
-      await loadRemoteState();
-      render();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "store_steps" }, async () => {
-      await loadRemoteState();
-      render();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, async () => {
-      await loadRemoteState();
-      render();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "confirmations" }, async () => {
-      await loadRemoteState();
-      render();
-    })
-    .on("postgres_changes", { event: "*", schema: "public", table: "contacts" }, async () => {
-      await loadRemoteState();
-      render();
-    })
-    .subscribe();
+  if (!hasAppwriteDataConfig || appwriteRealtimeUnsubscribe || !appwriteClient?.subscribe) {
+    return;
+  }
+
+  appwriteRealtimeUnsubscribe = appwriteClient.subscribe([
+    `databases.${appwriteDatabaseId}.collections.${appwriteStoresCollectionId}.documents`,
+    `databases.${appwriteDatabaseId}.collections.${appwritePeopleCollectionId}.documents`,
+    `databases.${appwriteDatabaseId}.collections.${appwriteActivitiesCollectionId}.documents`,
+    `databases.${appwriteDatabaseId}.collections.${appwriteSettingsCollectionId}.documents`
+  ], async () => {
+    await loadRemoteState();
+    render();
+  });
 }
 
 function render() {
@@ -2465,7 +2823,7 @@ function render() {
   applyReadOnlyRules();
 }
 
-function importJsonData(payload) {
+async function importJsonData(payload) {
   if (Array.isArray(payload.stores)) {
     state.stores = payload.stores;
   }
@@ -2488,6 +2846,10 @@ function importJsonData(payload) {
   if (typeof payload.activeUserName === "string" && payload.activeUserName) {
     state.activeUserName = payload.activeUserName;
   }
+  if (hasRemoteData()) {
+    await syncAllRemoteState();
+    await loadRemoteState();
+  }
   saveState();
   render();
 }
@@ -2503,11 +2865,11 @@ function handleImportInputChange(event) {
   }
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       if (file.name.toLowerCase().endsWith(".json")) {
         const payload = JSON.parse(String(reader.result));
-        importJsonData(payload);
+        await importJsonData(payload);
         window.alert(t("importDone"));
       } else {
         window.alert(t("csvPending"));
@@ -2621,7 +2983,7 @@ async function handleRemoveAppointment(event) {
 
   store.appointments.splice(index, 1);
   store.updatedAt = new Date().toISOString();
-  if (isSupabaseMode) {
+  if (hasRemoteData()) {
     await syncStoreToRemote(store);
     await loadRemoteState();
   }
@@ -2725,7 +3087,7 @@ async function handleStoreEditorSubmit(event) {
     createdAt: new Date().toISOString()
   });
 
-  if (isSupabaseMode) {
+  if (hasRemoteData()) {
     await syncStoreToRemote(store, `Mise a jour magasin - statut ${statusLabel(store.status)}`);
     await loadRemoteState();
   }
@@ -2767,7 +3129,7 @@ async function handlePersonEditSubmit(event) {
     state.activeUserName = person.name;
   }
 
-  if (isSupabaseMode) {
+  if (hasRemoteData()) {
     await syncPersonToRemote(person);
     await loadRemoteState();
   }
@@ -2784,8 +3146,8 @@ async function handleRoleSubmit(event) {
 
   state.roleOptions.push(role);
   roleInput.value = "";
-  if (isSupabaseMode) {
-    await syncRoleOptionsToRemote();
+  if (hasRemoteData()) {
+    await syncSettingsToRemote();
     await loadRemoteState();
   }
   saveState();
@@ -2807,11 +3169,11 @@ async function handleRoleEditSubmit(event) {
       person.role = nextRole;
     }
   });
-  if (isSupabaseMode) {
+  if (hasRemoteData()) {
     for (const person of state.people.filter((entry) => entry.role === nextRole)) {
       await syncPersonToRemote(person);
     }
-    await syncRoleOptionsToRemote();
+    await syncSettingsToRemote();
     await loadRemoteState();
   }
   saveState();
@@ -2841,7 +3203,7 @@ function handleAdminTabClick(event) {
   }
 }
 
-function handleVisibilityOverrideSubmit(event) {
+async function handleVisibilityOverrideSubmit(event) {
   event.preventDefault();
   const storeId = overrideStoreSelect?.value;
   const personId = overridePersonSelect?.value;
@@ -2869,6 +3231,9 @@ function handleVisibilityOverrideSubmit(event) {
   if (overrideReasonInput) overrideReasonInput.value = "";
   if (overrideStartInput) overrideStartInput.value = "";
   if (overrideEndInput) overrideEndInput.value = "";
+  if (hasRemoteData()) {
+    await syncSettingsToRemote();
+  }
   saveState();
   renderVisibilityOverrides();
 }
@@ -2968,7 +3333,7 @@ async function handlePersonSubmit(event) {
     language: personLanguageSelect.value
   });
 
-  if (isSupabaseMode) {
+  if (hasRemoteData()) {
     await syncPersonToRemote(state.people.at(-1));
     await loadRemoteState();
   }
@@ -3008,7 +3373,7 @@ async function handleStoreSubmit(event) {
     appointments: []
   });
 
-  if (isSupabaseMode) {
+  if (hasRemoteData()) {
     await syncStoreToRemote(state.stores.at(-1));
     await loadRemoteState();
   }
@@ -3017,7 +3382,7 @@ async function handleStoreSubmit(event) {
   render();
 }
 
-function handleToolSubmit(event) {
+async function handleToolSubmit(event) {
   event.preventDefault();
   const text = toolInput.value.trim();
   if (!text) {
@@ -3030,6 +3395,9 @@ function handleToolSubmit(event) {
     done: false
   });
 
+  if (hasRemoteData()) {
+    await syncSettingsToRemote();
+  }
   toolForm.reset();
   saveState();
   renderToolList();
@@ -3136,6 +3504,10 @@ async function init() {
     try {
       await completeAppwriteMagicSession();
       await loadAppwriteSessionUser();
+      if (state.connectionState === "connected" && hasAppwriteDataConfig) {
+        await loadRemoteState();
+        await setupRealtime();
+      }
     } catch (error) {
       state.connectionState = "fallback";
       console.error("Appwrite init error", error);

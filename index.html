@@ -474,7 +474,18 @@
 
   <script>
     window.APP_CONFIG = Object.assign(
-      { mode: "demo", supabaseUrl: "", supabaseAnonKey: "", appwriteEndpoint: "", appwriteProjectId: "" },
+      {
+        mode: "demo",
+        supabaseUrl: "",
+        supabaseAnonKey: "",
+        appwriteEndpoint: "",
+        appwriteProjectId: "",
+        appwriteDatabaseId: "twem_brico",
+        appwriteStoresCollectionId: "stores",
+        appwritePeopleCollectionId: "people",
+        appwriteActivitiesCollectionId: "activities",
+        appwriteSettingsCollectionId: "settings"
+      },
       window.APP_CONFIG || {}
     );
   </script>
