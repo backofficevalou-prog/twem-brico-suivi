@@ -2358,6 +2358,24 @@ async function sendMagicLink(email) {
   if (error) throw error;
 }
 
+function describeAppwriteError(error) {
+  const code = error?.code || error?.response?.code;
+  const type = error?.type || error?.response?.type;
+  const message = error?.message || "Erreur inconnue";
+  const isFetchFailure = message === "Failed to fetch" || error instanceof TypeError;
+
+  if (isFetchFailure) {
+    return [
+      "Impossible de joindre Appwrite depuis le navigateur.",
+      `Site ouvert: ${window.location.hostname}.`,
+      `Endpoint: ${appConfig.appwriteEndpoint}.`,
+      "Verifie les Platforms Appwrite et teste aussi en navigation privee."
+    ].join(" ");
+  }
+
+  return [code, type, message].filter(Boolean).join(" | ");
+}
+
 async function completeAppwriteMagicSession() {
   if (!appwriteAccount) {
     return;
@@ -3029,7 +3047,8 @@ async function handleAuthSubmit(event) {
     window.alert("Lien de connexion envoye.");
     authForm.reset();
   } catch (error) {
-    window.alert(`Envoi impossible: ${error.message}`);
+    console.error("Magic link error", error);
+    window.alert(`Envoi impossible: ${describeAppwriteError(error)}`);
   }
 }
 
@@ -3118,7 +3137,6 @@ async function init() {
     try {
       await completeAppwriteMagicSession();
       await loadAppwriteSessionUser();
-      state.connectionState = "connected";
     } catch (error) {
       state.connectionState = "fallback";
       console.error("Appwrite init error", error);
