@@ -1348,3 +1348,84 @@ button {
     border-bottom: none;
   }
 }
+
+@media (max-width: 700px) {
+  .page-shell {
+    width: min(100%, calc(100% - 12px));
+    padding: 12px 0 20px;
+  }
+
+  .panel,
+  .status-box,
+  .workspace-sidebar-card,
+  .editor-card,
+  .appointments-card,
+  .admin-card,
+  .summary-card {
+    border-radius: 12px;
+  }
+
+  h1 {
+    font-size: 1.65rem;
+  }
+
+  .toolbar,
+  .table-panel,
+  .twem-workspace,
+  .details-panel {
+    padding: 12px;
+  }
+
+  .summary-grid,
+  .editor-grid,
+  .admin-content,
+  .admin-grid,
+  .contacts-grid,
+  .store-meta-grid,
+  .activity-list,
+  .placeholder-list,
+  .report-archive-list {
+    gap: 10px;
+  }
+
+  .quantity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gantt-label,
+  .gantt-week,
+  .gantt-bar,
+  .actor-board-title,
+  .actor-board-cell,
+  .store-side-block,
+  .store-meta-card,
+  .network-row,
+  .appointment-item {
+    padding: 10px;
+  }
+
+  .mini-donut {
+    width: 76px;
+    height: 76px;
+    background:
+      radial-gradient(circle at center, #fff 0 27px, transparent 28px),
+      conic-gradient(var(--accent) 0 var(--portion), #eef1f4 var(--portion) 100%);
+  }
+
+  .progress-circle {
+    width: 64px;
+    height: 64px;
+    background:
+      radial-gradient(circle at center, #fff 0 22px, transparent 23px),
+      conic-gradient(var(--brand-blue) 0 var(--progress), #f0f2f4 var(--progress) 100%);
+  }
+
+  .project-table {
+    min-width: 0;
+  }
+
+  .posts-table,
+  .visibility-table {
+    min-width: 720px;
+  }
+}
