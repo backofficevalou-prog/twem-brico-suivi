@@ -570,7 +570,7 @@ const state = {
   expandedStoreIds: new Set()
 };
 
-const presentationBypassUser = "Valou";
+const presentationBypassUser = "";
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
 const adminWorkspaceTabs = ["contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"];
@@ -693,8 +693,32 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function applyNamedPinOverrides(person = {}) {
+  const name = String(person.name || "").trim().toLowerCase();
+  const email = String(person.email || "").trim().toLowerCase();
+  if (name === "valou" || email === "valou@twem.be") {
+    return {
+      ...person,
+      pin: "222222",
+      pinStatus: person.pinStatus || "active"
+    };
+  }
+  if (name === "emir" || email === "emir@twem.be") {
+    return {
+      ...person,
+      pin: "111111",
+      pinStatus: person.pinStatus || "active"
+    };
+  }
+  return person;
+}
+
 function hydrateAccessProfile(person) {
   const defaults = defaultPinProfiles[person.id] || {};
+  const source = applyNamedPinOverrides({
+    ...person,
+    ...defaults
+  });
   return {
     pin: "",
     allowedStoreCodes: person.storeCode ? [person.storeCode] : ["*"],
@@ -704,8 +728,7 @@ function hydrateAccessProfile(person) {
     pinCreatedAt: "2026-05-06T00:00:00Z",
     pinExpiresAt: "",
     loginHistory: [],
-    ...person,
-    ...defaults,
+    ...source,
     allowedStoreCodes: Array.isArray(person.allowedStoreCodes) ? person.allowedStoreCodes : (defaults.allowedStoreCodes || (person.storeCode ? [person.storeCode] : ["*"])),
     accessibleTabs: Array.isArray(person.accessibleTabs) ? person.accessibleTabs : (defaults.accessibleTabs || ["dashboard", "timeline", "stores"]),
     accessibleBlocks: Array.isArray(person.accessibleBlocks) ? person.accessibleBlocks : (defaults.accessibleBlocks || ["appointments", "problem_notes"]),
@@ -3442,20 +3465,25 @@ function renderRoleList() {
 }
 
 function renderConnectionStatus() {
-  modeBadge.textContent = isSupabaseMode ? "Supabase" : isAppwriteMode ? "Appwrite" : t("demoMode");
-  connectionBadge.textContent = isSupabaseMode
-    ? (supabaseClient ? "Connecte" : "Configuration requise")
-    : isAppwriteMode
-      ? (state.connectionState === "fallback"
-          ? "Lecture locale"
-          : state.connectionState === "ready"
-            ? "Pret a se connecter"
-          : state.connectionState === "connected"
-            ? "Connecte"
-          : appwriteAccount
-            ? "Auth configuree"
-            : "Configuration requise")
-      : t("local");
+  if (presentationBypassUser) {
+    modeBadge.textContent = t("demoMode");
+    connectionBadge.textContent = "Presentation";
+  } else {
+    modeBadge.textContent = isSupabaseMode ? "Supabase" : isAppwriteMode ? "Appwrite" : t("demoMode");
+    connectionBadge.textContent = isSupabaseMode
+      ? (supabaseClient ? "Connecte" : "Configuration requise")
+      : isAppwriteMode
+        ? (state.connectionState === "fallback"
+            ? "Lecture locale"
+            : state.connectionState === "ready"
+              ? "Pret a se connecter"
+            : state.connectionState === "connected"
+              ? "Connecte"
+            : appwriteAccount
+              ? "Auth configuree"
+              : "Configuration requise")
+        : t("local");
+  }
   const user = currentUser();
   syncMessage.textContent = user?.role === "manager"
     ? "Vue complete de votre magasin avec zones modifiables selon vos droits."

@@ -84,10 +84,6 @@ body {
   color: var(--danger-text);
 }
 
-body.presentation-mode .pin-gate {
-  display: none !important;
-}
-
 .page-shell {
   width: min(1520px, calc(100% - 24px));
   margin: 0 auto;
