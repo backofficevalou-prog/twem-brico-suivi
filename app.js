@@ -554,6 +554,8 @@ const state = {
   toolItems: [],
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
+  roleVisibilityConfig: {},
+  visibilityEditorRole: "supadmin_twem",
   contactSearch: "",
   tickets: [],
   filters: {
@@ -571,6 +573,39 @@ const state = {
 const presentationBypassUser = "Valou";
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
+const adminWorkspaceTabs = ["contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"];
+const allWorkspaceTabs = [...mainWorkspaceTabs, ...adminWorkspaceTabs];
+const visibilityTabZones = {
+  dashboard: [],
+  timeline: ["appointments", "status_admin", "problem_notes"],
+  stores: [
+    "appointments",
+    "project_prep",
+    "order_articles",
+    "configuration_request",
+    "destiny_coordination",
+    "external_prep",
+    "network_config",
+    "store_posts",
+    "destiny_closure",
+    "brico_feedback",
+    "problem_notes",
+    "status_admin",
+    "sav_ticket"
+  ],
+  sav: ["sav_ticket"],
+  extensions: [],
+  contacts: [],
+  reports: [],
+  automations: [],
+  tools: [],
+  "pin-access": [],
+  "import-export": [],
+  visibility: []
+};
+const zoneTabLookup = Object.fromEntries(
+  Object.entries(visibilityTabZones).flatMap(([tab, zones]) => zones.map((zone) => [zone, tab]))
+);
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -648,6 +683,11 @@ const overrideStartInput = document.querySelector("#overrideStartInput");
 const overrideEndInput = document.querySelector("#overrideEndInput");
 const overrideReasonInput = document.querySelector("#overrideReasonInput");
 const visibilityOverrideList = document.querySelector("#visibilityOverrideList");
+const visibilityRoleSelect = document.querySelector("#visibilityRoleSelect");
+const visibilityRoleMeta = document.querySelector("#visibilityRoleMeta");
+const visibilityTabsEditor = document.querySelector("#visibilityTabsEditor");
+const visibilityZonesEditor = document.querySelector("#visibilityZonesEditor");
+const visibilityRoleSummary = document.querySelector("#visibilityRoleSummary");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -906,6 +946,8 @@ function localUiState() {
     toolItems: state.toolItems,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
+    roleVisibilityConfig: state.roleVisibilityConfig,
+    visibilityEditorRole: state.visibilityEditorRole,
     contactSearch: state.contactSearch
   };
 }
@@ -924,6 +966,8 @@ function loadState() {
       toolItems: [],
       accessOverrides: [],
       roleOptions: [...defaultRoleOptions],
+      roleVisibilityConfig: {},
+      visibilityEditorRole: "supadmin_twem",
       contactSearch: ""
     };
   }
@@ -945,6 +989,8 @@ function loadState() {
       toolItems: parsed.toolItems || [],
       accessOverrides: parsed.accessOverrides || [],
       roleOptions: parsed.roleOptions || [...defaultRoleOptions],
+      roleVisibilityConfig: parsed.roleVisibilityConfig || {},
+      visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
       contactSearch: parsed.contactSearch || ""
     };
   } catch {
@@ -959,6 +1005,8 @@ function loadState() {
       toolItems: [],
       accessOverrides: [],
       roleOptions: [...defaultRoleOptions],
+      roleVisibilityConfig: {},
+      visibilityEditorRole: "supadmin_twem",
       contactSearch: ""
     };
   }
@@ -1028,14 +1076,98 @@ function defaultTabsForRole(role) {
   return map[role] || ["dashboard"];
 }
 
+function createRoleVisibilityPreset(role) {
+  const defaultTabs = defaultTabsForRole(role);
+  const editableZones = editableZonesForRole(role);
+  const allVisible = defaultTabs.includes("*");
+  const tabs = Object.fromEntries(
+    allWorkspaceTabs.map((tab) => {
+      const visible = allVisible || defaultTabs.includes(tab);
+      return [tab, {
+        visible,
+        editable: visible && (role === "supadmin_twem" || role === "admin_twem")
+      }];
+    })
+  );
+
+  const zones = {};
+  Object.entries(visibilityTabZones).forEach(([tab, zoneList]) => {
+    zoneList.forEach((zone) => {
+      zones[zone] = tabs[tab]?.visible
+        ? (editableZones.includes("all") || editableZones.includes(zone) ? "edit" : "view")
+        : "none";
+    });
+  });
+
+  return { tabs, zones };
+}
+
+function ensureRoleVisibilityConfig() {
+  if (!state.roleVisibilityConfig || typeof state.roleVisibilityConfig !== "object") {
+    state.roleVisibilityConfig = {};
+  }
+
+  state.roleOptions.forEach((role) => {
+    if (!state.roleVisibilityConfig[role]) {
+      state.roleVisibilityConfig[role] = createRoleVisibilityPreset(role);
+      return;
+    }
+    const existing = state.roleVisibilityConfig[role];
+    const fallback = createRoleVisibilityPreset(role);
+    existing.tabs = existing.tabs || {};
+    existing.zones = existing.zones || {};
+    allWorkspaceTabs.forEach((tab) => {
+      existing.tabs[tab] = {
+        ...fallback.tabs[tab],
+        ...(existing.tabs[tab] || {})
+      };
+    });
+    Object.keys(fallback.zones).forEach((zone) => {
+      if (!existing.zones[zone]) {
+        existing.zones[zone] = fallback.zones[zone];
+      }
+    });
+  });
+
+  Object.keys(state.roleVisibilityConfig).forEach((role) => {
+    if (!state.roleOptions.includes(role)) {
+      delete state.roleVisibilityConfig[role];
+    }
+  });
+
+  if (!state.visibilityEditorRole || !state.roleOptions.includes(state.visibilityEditorRole)) {
+    state.visibilityEditorRole = state.roleOptions[0] || "supadmin_twem";
+  }
+}
+
+function roleVisibilityPreset(role) {
+  ensureRoleVisibilityConfig();
+  return state.roleVisibilityConfig[role] || createRoleVisibilityPreset(role);
+}
+
+function visibleTabsForRole(role) {
+  const preset = roleVisibilityPreset(role);
+  return allWorkspaceTabs.filter((tab) => preset.tabs?.[tab]?.visible);
+}
+
+function zoneAccessLevelForRole(role, zone) {
+  const preset = roleVisibilityPreset(role);
+  if (preset.zones?.[zone]) {
+    return preset.zones[zone];
+  }
+  const parentTab = zoneTabLookup[zone];
+  return preset.tabs?.[parentTab]?.visible ? "view" : "none";
+}
+
 function accessibleTabsForUser(user = currentUser()) {
   if (!user) {
     return ["dashboard"];
   }
-  if (user.accessibleTabs?.includes("*") || isSupAdmin(user)) {
+  const roleTabs = isSupAdmin(user) ? ["*"] : visibleTabsForRole(user.role);
+  if (roleTabs.includes("*") || user.accessibleTabs?.includes("*")) {
     return ["*"];
   }
-  return [...new Set([...(defaultTabsForRole(user.role) || []), ...(user.accessibleTabs || [])])];
+  return [...new Set(roleTabs)];
 }
 
 function canAccessTab(tab, user = currentUser()) {
@@ -1074,6 +1206,10 @@ function tabTitle(tab) {
 }
 
 function editableZonesForRole(role) {
+  const configuredLevels = Object.keys(zoneTabLookup).filter((zone) => zoneAccessLevelForRole(role, zone) === "edit");
+  if (configuredLevels.length) {
+    return configuredLevels;
+  }
   const map = {
     supadmin_twem: ["all"],
     admin_twem: ["all"],
@@ -1101,13 +1237,35 @@ function isOverrideActive(override) {
   return true;
 }
 
+function canViewZone(store, zone) {
+  const user = currentUser();
+  if (!user || !zone) {
+    return false;
+  }
+  if (isSupAdmin(user) || isAdminTwem(user)) {
+    return true;
+  }
+  if (zoneAccessLevelForRole(user.role, zone) !== "none") {
+    return true;
+  }
+  return state.accessOverrides.some((override) =>
+    String(override.storeId) === String(store.id)
+    && override.personId === user.id
+    && override.zone === zone
+    && ["view", "edit"].includes(override.level)
+    && isOverrideActive(override)
+  );
+}
+
 function canEditZone(store, zone) {
   const user = currentUser();
   if (!user || !zone) {
     return false;
   }
-  const allowedZones = editableZonesForRole(user.role);
-  if (allowedZones.includes("all") || allowedZones.includes(zone)) {
+  if (isSupAdmin(user) || isAdminTwem(user)) {
+    return true;
+  }
+  if (zoneAccessLevelForRole(user.role, zone) === "edit") {
     return true;
   }
   return state.accessOverrides.some((override) =>
@@ -3249,6 +3407,10 @@ function renderRoleList() {
         return;
       }
       state.roleOptions = state.roleOptions.filter((entry) => entry !== role);
+      delete state.roleVisibilityConfig[role];
+      if (state.visibilityEditorRole === role) {
+        state.visibilityEditorRole = state.roleOptions[0] || "supadmin_twem";
+      }
       if (hasRemoteData()) {
         await syncSettingsToRemote();
         await loadRemoteState();
@@ -3318,7 +3480,7 @@ function renderAuthState() {
 
 function renderAdminTabs() {
   const user = currentUser();
-  if (!canAccessTab(state.activeAdminTab, user) || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
+  if (!canAccessTab(state.activeAdminTab, user) || !allWorkspaceTabs.includes(state.activeAdminTab)) {
     state.activeAdminTab = "dashboard";
   }
   adminTabs.querySelectorAll("[data-admin-tab]").forEach((button) => {
@@ -3513,6 +3675,158 @@ function zoneLabel(value) {
   return labels[value] || value;
 }
 
+function visibilityLevelLabel(level) {
+  const labels = {
+    none: "Cache",
+    view: "Voir",
+    edit: "Modifier"
+  };
+  return labels[level] || level;
+}
+
+function renderVisibilityEditor() {
+  if (!visibilityRoleSelect || !visibilityTabsEditor || !visibilityZonesEditor || !visibilityRoleSummary) {
+    return;
+  }
+
+  ensureRoleVisibilityConfig();
+  const selectedRole = state.visibilityEditorRole;
+  const preset = roleVisibilityPreset(selectedRole);
+  const visibleTabs = visibleTabsForRole(selectedRole);
+
+  visibilityRoleSelect.innerHTML = renderRoleOptions(selectedRole);
+
+  if (visibilityRoleMeta) {
+    const scope = selectedRole === "manager" ? "1 magasin uniquement" : "Vue globale";
+    visibilityRoleMeta.innerHTML = `
+      <span class="info-chip">${escapeHtml(roleLabel(selectedRole))}</span>
+      <span class="info-chip">${visibleTabs.length} onglet(s) visible(s)</span>
+      <span class="info-chip">${escapeHtml(scope)}</span>
+    `;
+  }
+
+  visibilityTabsEditor.innerHTML = allWorkspaceTabs.map((tab) => `
+    <label class="visibility-tab-pill">
+      <input type="checkbox" data-visibility-tab="${escapeHtml(tab)}" ${preset.tabs?.[tab]?.visible ? "checked" : ""}>
+      <span>${escapeHtml(tabTitle(tab))}</span>
+    </label>
+  `).join("");
+
+  visibilityZonesEditor.innerHTML = visibleTabs.map((tab) => {
+    const zones = visibilityTabZones[tab] || [];
+    return `
+      <article class="visibility-zone-card">
+        <div class="visibility-zone-top">
+          <h5>${escapeHtml(tabTitle(tab))}</h5>
+          <div class="visibility-zone-top-actions">
+            <label class="visibility-inline-check">
+              <input type="checkbox" data-visibility-tab-edit="${escapeHtml(tab)}" ${preset.tabs?.[tab]?.editable ? "checked" : ""}>
+              <span>Modification onglet</span>
+            </label>
+          </div>
+        </div>
+        <div class="visibility-zone-list">
+          ${zones.length
+            ? zones.map((zone) => `
+              <div class="visibility-zone-row">
+                <div class="visibility-zone-label">
+                  <strong>${escapeHtml(zoneLabel(zone))}</strong>
+                  <span>Bloc de ${escapeHtml(tabTitle(tab))}</span>
+                </div>
+                <select class="visibility-zone-select" data-visibility-zone="${escapeHtml(zone)}">
+                  ${renderOptions([
+                    { value: "none", label: visibilityLevelLabel("none") },
+                    { value: "view", label: visibilityLevelLabel("view") },
+                    { value: "edit", label: visibilityLevelLabel("edit") }
+                  ], preset.zones?.[zone] || "view")}
+                </select>
+                <div class="visibility-zone-label">
+                  <strong>${escapeHtml(visibilityLevelLabel(preset.zones?.[zone] || "view"))}</strong>
+                  <span>Niveau actuel</span>
+                </div>
+              </div>
+            `).join("")
+            : `<div class="visibility-zone-empty">Pas de sous-bloc specifique a regler dans cet onglet pour l instant.</div>`}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  const editableZones = Object.entries(preset.zones || {})
+    .filter(([, level]) => level === "edit")
+    .map(([zone]) => zoneLabel(zone));
+  const readOnlyZones = Object.entries(preset.zones || {})
+    .filter(([, level]) => level === "view")
+    .map(([zone]) => zoneLabel(zone));
+
+  visibilityRoleSummary.innerHTML = `
+    <div class="visibility-summary-block">
+      <h5>Onglets visibles</h5>
+      <div class="visibility-chip-list">
+        ${visibleTabs.length
+          ? visibleTabs.map((tab) => `<span class="visibility-chip">${escapeHtml(tabTitle(tab))}</span>`).join("")
+          : `<span class="visibility-chip">Aucun</span>`}
+      </div>
+    </div>
+    <div class="visibility-summary-block">
+      <h5>Blocs modifiables</h5>
+      <div class="visibility-chip-list">
+        ${editableZones.length
+          ? editableZones.map((label) => `<span class="visibility-chip">${escapeHtml(label)}</span>`).join("")
+          : `<span class="visibility-chip">Lecture seule</span>`}
+      </div>
+    </div>
+    <div class="visibility-summary-block">
+      <h5>Blocs visibles sans modification</h5>
+      <div class="visibility-chip-list">
+        ${readOnlyZones.length
+          ? readOnlyZones.map((label) => `<span class="visibility-chip">${escapeHtml(label)}</span>`).join("")
+          : `<span class="visibility-chip">Aucun</span>`}
+      </div>
+    </div>
+  `;
+
+  visibilityTabsEditor.querySelectorAll("[data-visibility-tab]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const tab = checkbox.getAttribute("data-visibility-tab");
+      const rolePreset = roleVisibilityPreset(state.visibilityEditorRole);
+      rolePreset.tabs[tab].visible = checkbox.checked;
+      if (!checkbox.checked) {
+        rolePreset.tabs[tab].editable = false;
+        (visibilityTabZones[tab] || []).forEach((zone) => {
+          rolePreset.zones[zone] = "none";
+        });
+      } else {
+        (visibilityTabZones[tab] || []).forEach((zone) => {
+          if (rolePreset.zones[zone] === "none") {
+            rolePreset.zones[zone] = "view";
+          }
+        });
+      }
+      saveState();
+      renderVisibilityEditor();
+    });
+  });
+
+  visibilityZonesEditor.querySelectorAll("[data-visibility-tab-edit]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const tab = checkbox.getAttribute("data-visibility-tab-edit");
+      roleVisibilityPreset(state.visibilityEditorRole).tabs[tab].editable = checkbox.checked;
+      saveState();
+      renderVisibilityEditor();
+    });
+  });
+
+  visibilityZonesEditor.querySelectorAll("[data-visibility-zone]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const zone = select.getAttribute("data-visibility-zone");
+      roleVisibilityPreset(state.visibilityEditorRole).zones[zone] = select.value;
+      saveState();
+      renderVisibilityEditor();
+    });
+  });
+}
+
 function renderVisibilityOverrides() {
   if (!overrideStoreSelect || !overridePersonSelect || !visibilityOverrideList) {
     return;
@@ -3590,9 +3904,14 @@ function applyReadOnlyRules() {
     let hasEditableZone = false;
     form.querySelectorAll("[data-access-zone]").forEach((section) => {
       const zone = section.getAttribute("data-access-zone");
+      const visible = canViewZone(store, zone);
       let editable = canEditZone(store, zone);
       if (zone === "network_config" && isNetworkConfigLockedForUser(store)) {
         editable = false;
+      }
+      section.classList.toggle("hidden-panel", !visible);
+      if (!visible) {
+        return;
       }
       if (editable) {
         hasEditableZone = true;
@@ -3710,6 +4029,7 @@ async function loadRemoteState() {
       state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
     }
 
+    ensureRoleVisibilityConfig();
     saveState();
     return;
   }
@@ -3760,6 +4080,7 @@ async function loadRemoteState() {
     state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
+  ensureRoleVisibilityConfig();
   saveState();
 }
 
@@ -4126,6 +4447,7 @@ async function setupRealtime() {
 
 function render() {
   ensureValidActiveTab();
+  ensureRoleVisibilityConfig();
   applyStaticTranslations();
   renderConnectionStatus();
   syncSelectors();
@@ -4139,6 +4461,7 @@ function render() {
   renderRoleList();
   renderPinAccessList();
   renderToolList();
+  renderVisibilityEditor();
   renderVisibilityOverrides();
   applyReadOnlyRules();
 }
@@ -4163,9 +4486,16 @@ async function importJsonData(payload) {
   if (Array.isArray(payload.roleOptions)) {
     state.roleOptions = payload.roleOptions;
   }
+  if (payload.roleVisibilityConfig && typeof payload.roleVisibilityConfig === "object") {
+    state.roleVisibilityConfig = payload.roleVisibilityConfig;
+  }
+  if (typeof payload.visibilityEditorRole === "string" && payload.visibilityEditorRole) {
+    state.visibilityEditorRole = payload.visibilityEditorRole;
+  }
   if (typeof payload.activeUserName === "string" && payload.activeUserName) {
     state.activeUserName = payload.activeUserName;
   }
+  ensureRoleVisibilityConfig();
   if (hasRemoteData()) {
     await syncAllRemoteState();
     await loadRemoteState();
@@ -4186,6 +4516,8 @@ function exportJsonData() {
     people: state.people,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
+    roleVisibilityConfig: state.roleVisibilityConfig,
+    visibilityEditorRole: state.visibilityEditorRole,
     activeUserName: state.activeUserName,
     exportedAt: new Date().toISOString()
   };
@@ -4703,6 +5035,8 @@ async function handleRoleSubmit(event) {
   }
 
   state.roleOptions.push(role);
+  state.roleVisibilityConfig[role] = createRoleVisibilityPreset(role);
+  state.visibilityEditorRole = role;
   roleInput.value = "";
   if (hasRemoteData()) {
     await syncSettingsToRemote();
@@ -4722,6 +5056,13 @@ async function handleRoleEditSubmit(event) {
   }
 
   state.roleOptions = state.roleOptions.map((role) => role === currentRole ? nextRole : role);
+  if (state.roleVisibilityConfig[currentRole]) {
+    state.roleVisibilityConfig[nextRole] = clone(state.roleVisibilityConfig[currentRole]);
+    delete state.roleVisibilityConfig[currentRole];
+  }
+  if (state.visibilityEditorRole === currentRole) {
+    state.visibilityEditorRole = nextRole;
+  }
   state.people.forEach((person) => {
     if (person.role === currentRole) {
       person.role = nextRole;
@@ -5199,6 +5540,11 @@ peopleSearchInput.addEventListener("input", (event) => {
 });
 roleForm.addEventListener("submit", handleRoleSubmit);
 toolForm.addEventListener("submit", handleToolSubmit);
+visibilityRoleSelect?.addEventListener("change", (event) => {
+  state.visibilityEditorRole = event.target.value;
+  saveState();
+  renderVisibilityEditor();
+});
 visibilityOverrideForm?.addEventListener("submit", handleVisibilityOverrideSubmit);
 projectTableBody.addEventListener("click", handleNetworkConfirm);
 importButton.addEventListener("click", handleImportButtonClick);
@@ -5219,8 +5565,11 @@ async function init() {
   state.toolItems = stored.toolItems || [];
   state.accessOverrides = stored.accessOverrides || [];
   state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
+  state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
+  state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";
   document.documentElement.lang = state.language;
+  ensureRoleVisibilityConfig();
 
   if (presentationBypassUser) {
     state.activeUserName = presentationBypassUser;
