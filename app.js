@@ -11,7 +11,16 @@ const globalStatusOptions = [
   { value: "done", label: "Termine" }
 ];
 const appointmentStatusOptions = ["Propose", "Confirme"];
-const defaultRoleOptions = ["twem", "magasin", "telephonie", "electricien"];
+const defaultRoleOptions = [
+  "supadmin_twem",
+  "admin_twem",
+  "supmanager",
+  "manager",
+  "telephonie_destiny",
+  "it",
+  "infra",
+  "intervenant"
+];
 const translations = {
   fr: {
     pageTitle: "Suivi chantier magasin par magasin",
@@ -174,17 +183,30 @@ const translations = {
 };
 
 const initialPeople = [
-  { id: "p1", name: "Emir", role: "twem", phone: "0470 00 00 01", email: "emir@twem.be", storeCode: "", language: "fr" },
-  { id: "p2", name: "Valou", role: "twem", phone: "0470 00 00 02", email: "valou@twem.be", storeCode: "", language: "fr" },
-  { id: "p3", name: "M. Dupont", role: "magasin", phone: "0470 00 00 03", email: "anderlecht@brico.be", storeCode: "BRI-001", language: "fr" },
-  { id: "p4", name: "Mme Martin", role: "magasin", phone: "0470 00 00 04", email: "wavre@brico.be", storeCode: "BRI-002", language: "fr" },
-  { id: "p5", name: "M. Lambert", role: "magasin", phone: "0470 00 00 05", email: "liege@brico.be", storeCode: "BRI-003", language: "fr" },
-  { id: "p6", name: "Mme Simon", role: "magasin", phone: "0470 00 00 06", email: "namur@brico.be", storeCode: "BRI-004", language: "fr" },
-  { id: "p7", name: "Equipe Telephonie A", role: "telephonie", phone: "0470 00 00 07", email: "telephonie.a@partenaire.be", storeCode: "", language: "fr" },
-  { id: "p8", name: "Equipe Telephonie B", role: "telephonie", phone: "0470 00 00 08", email: "telephonie.b@partenaire.be", storeCode: "", language: "nl" },
-  { id: "p9", name: "Electricien Nord", role: "electricien", phone: "0470 00 00 09", email: "elec.nord@partenaire.be", storeCode: "", language: "fr" },
-  { id: "p10", name: "Electricien Sud", role: "electricien", phone: "0470 00 00 10", email: "elec.sud@partenaire.be", storeCode: "", language: "fr" }
+  { id: "p1", name: "Emir", role: "supadmin_twem", phone: "0470 00 00 01", email: "emir@twem.be", storeCode: "", language: "fr" },
+  { id: "p2", name: "Valou", role: "supadmin_twem", phone: "0470 00 00 02", email: "valou@twem.be", storeCode: "", language: "fr" },
+  { id: "p3", name: "M. Dupont", role: "manager", phone: "0470 00 00 03", email: "anderlecht@brico.be", storeCode: "BRI-001", language: "fr" },
+  { id: "p4", name: "Mme Martin", role: "manager", phone: "0470 00 00 04", email: "wavre@brico.be", storeCode: "BRI-002", language: "fr" },
+  { id: "p5", name: "M. Lambert", role: "manager", phone: "0470 00 00 05", email: "liege@brico.be", storeCode: "BRI-003", language: "fr" },
+  { id: "p6", name: "Mme Simon", role: "manager", phone: "0470 00 00 06", email: "namur@brico.be", storeCode: "BRI-004", language: "fr" },
+  { id: "p7", name: "Equipe Telephonie A", role: "telephonie_destiny", phone: "0470 00 00 07", email: "telephonie.a@partenaire.be", storeCode: "", language: "fr" },
+  { id: "p8", name: "Equipe Telephonie B", role: "telephonie_destiny", phone: "0470 00 00 08", email: "telephonie.b@partenaire.be", storeCode: "", language: "nl" },
+  { id: "p9", name: "Electricien Nord", role: "infra", phone: "0470 00 00 09", email: "elec.nord@partenaire.be", storeCode: "", language: "fr" },
+  { id: "p10", name: "Electricien Sud", role: "infra", phone: "0470 00 00 10", email: "elec.sud@partenaire.be", storeCode: "", language: "fr" }
 ];
+
+const defaultPinProfiles = {
+  p1: { pin: "111111", allowedStoreCodes: ["*"], accessibleTabs: ["*"], accessibleBlocks: ["*"], pinStatus: "active" },
+  p2: { pin: "222222", allowedStoreCodes: ["*"], accessibleTabs: ["*"], accessibleBlocks: ["*"], pinStatus: "active" },
+  p3: { pin: "300001", allowedStoreCodes: ["BRI-001"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p4: { pin: "300002", allowedStoreCodes: ["BRI-002"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p5: { pin: "300003", allowedStoreCodes: ["BRI-003"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p6: { pin: "300004", allowedStoreCodes: ["BRI-004"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p7: { pin: "440001", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material"], accessibleBlocks: ["destiny_coordination", "destiny_closure", "appointments", "problem_notes", "status_admin"], pinStatus: "active" },
+  p8: { pin: "440002", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material"], accessibleBlocks: ["destiny_coordination", "destiny_closure", "appointments", "problem_notes", "status_admin"], pinStatus: "active" },
+  p9: { pin: "550001", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment"], accessibleBlocks: ["infra", "external_prep", "problem_notes", "appointments"], pinStatus: "active" },
+  p10: { pin: "550002", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment"], accessibleBlocks: ["infra", "external_prep", "problem_notes", "appointments"], pinStatus: "active" }
+};
 
 const demoStores = [
   {
@@ -359,11 +381,12 @@ const state = {
   mode: "demo",
   connectionState: "offline",
   language: "fr",
-  activeAdminTab: "planning",
+  activeAdminTab: "dashboard",
   stores: [],
   activities: [],
   people: [],
   activeUserName: "Emir",
+  pinValidated: false,
   toolItems: [],
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
@@ -376,12 +399,17 @@ const state = {
   expandedStoreIds: new Set()
 };
 
+const pinGate = document.querySelector("#pinGate");
+const pinForm = document.querySelector("#pinForm");
+const pinInput = document.querySelector("#pinInput");
+const pinFeedback = document.querySelector("#pinFeedback");
 const summaryGrid = document.querySelector("#summaryGrid");
 const projectTableBody = document.querySelector("#projectTableBody");
 const activityList = document.querySelector("#activityList");
 const ownerFilter = document.querySelector("#ownerFilter");
 const searchInput = document.querySelector("#searchInput");
 const statusFilter = document.querySelector("#statusFilter");
+const userViewField = document.querySelector("#userViewField");
 const importButton = document.querySelector("#importButton");
 const importInput = document.querySelector("#importInput");
 const reportButton = document.querySelector("#reportButton");
@@ -409,6 +437,14 @@ const peopleSearchInput = document.querySelector("#peopleSearchInput");
 const roleForm = document.querySelector("#roleForm");
 const roleInput = document.querySelector("#roleInput");
 const roleList = document.querySelector("#roleList");
+const pinAccessForm = document.querySelector("#pinAccessForm");
+const pinPersonNameInput = document.querySelector("#pinPersonNameInput");
+const pinRoleSelect = document.querySelector("#pinRoleSelect");
+const pinCodeInput = document.querySelector("#pinCodeInput");
+const pinStoreMultiSelect = document.querySelector("#pinStoreMultiSelect");
+const pinExpiryInput = document.querySelector("#pinExpiryInput");
+const pinStatusSelect = document.querySelector("#pinStatusSelect");
+const pinAccessList = document.querySelector("#pinAccessList");
 const storeForm = document.querySelector("#storeForm");
 const storeNameInput = document.querySelector("#storeNameInput");
 const storeCityInput = document.querySelector("#storeCityInput");
@@ -432,6 +468,26 @@ const visibilityOverrideList = document.querySelector("#visibilityOverrideList")
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function hydrateAccessProfile(person) {
+  const defaults = defaultPinProfiles[person.id] || {};
+  return {
+    pin: "",
+    allowedStoreCodes: person.storeCode ? [person.storeCode] : ["*"],
+    accessibleTabs: ["dashboard", "timeline", "stores"],
+    accessibleBlocks: ["appointments", "problem_notes"],
+    pinStatus: "active",
+    pinCreatedAt: "2026-05-06T00:00:00Z",
+    pinExpiresAt: "",
+    loginHistory: [],
+    ...person,
+    ...defaults,
+    allowedStoreCodes: Array.isArray(person.allowedStoreCodes) ? person.allowedStoreCodes : (defaults.allowedStoreCodes || (person.storeCode ? [person.storeCode] : ["*"])),
+    accessibleTabs: Array.isArray(person.accessibleTabs) ? person.accessibleTabs : (defaults.accessibleTabs || ["dashboard", "timeline", "stores"]),
+    accessibleBlocks: Array.isArray(person.accessibleBlocks) ? person.accessibleBlocks : (defaults.accessibleBlocks || ["appointments", "problem_notes"]),
+    loginHistory: Array.isArray(person.loginHistory) ? person.loginHistory : []
+  };
 }
 
 function hasRemoteData() {
@@ -506,7 +562,7 @@ function normalizeAppwriteStore(document) {
 function buildAppwritePersonDocument(person) {
   return {
     name: person.name || "",
-    role: person.role || "magasin",
+    role: person.role || "manager",
     phone: person.phone || "",
     email: person.email || "",
     store_code: person.storeCode || "",
@@ -520,15 +576,17 @@ function normalizeAppwritePerson(document) {
   const base = {
     id: document.$id,
     name: document.name || "",
-    role: document.role || "magasin",
+    role: document.role || "manager",
     phone: document.phone || "",
     email: document.email || "",
     storeCode: document.store_code || "",
     language: document.language || "fr"
   };
-  return payload && typeof payload === "object"
-    ? { ...base, ...payload, id: payload.id || document.$id }
-    : base;
+  return hydrateAccessProfile(
+    payload && typeof payload === "object"
+      ? { ...base, ...payload, id: payload.id || document.$id }
+      : base
+  );
 }
 
 function buildAppwriteActivityDocument(activity) {
@@ -625,10 +683,10 @@ function loadState() {
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
-      people: clone(initialPeople),
+      people: clone(initialPeople).map(hydrateAccessProfile),
       activeUserName: "Emir",
       language: "fr",
-      activeAdminTab: "planning",
+      activeAdminTab: "dashboard",
       toolItems: [],
       accessOverrides: [],
       roleOptions: [...defaultRoleOptions],
@@ -641,14 +699,14 @@ function loadState() {
     return {
       stores: parsed.stores || clone(demoStores),
       activities: parsed.activities || clone(demoActivities),
-      people: (parsed.people || clone(initialPeople)).map((person) => ({
+      people: (parsed.people || clone(initialPeople)).map((person) => hydrateAccessProfile({
         language: "fr",
         storeCode: "",
         ...person
       })),
       activeUserName: parsed.activeUserName || "Emir",
       language: parsed.language || "fr",
-      activeAdminTab: parsed.activeAdminTab || "planning",
+      activeAdminTab: parsed.activeAdminTab || "dashboard",
       toolItems: parsed.toolItems || [],
       accessOverrides: parsed.accessOverrides || [],
       roleOptions: parsed.roleOptions || [...defaultRoleOptions],
@@ -658,10 +716,10 @@ function loadState() {
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
-      people: clone(initialPeople),
+      people: clone(initialPeople).map(hydrateAccessProfile),
       activeUserName: "Emir",
       language: "fr",
-      activeAdminTab: "planning",
+      activeAdminTab: "dashboard",
       toolItems: [],
       accessOverrides: [],
       roleOptions: [...defaultRoleOptions],
@@ -686,18 +744,107 @@ function currentUser() {
   return state.people.find((person) => person.name === state.activeUserName) || null;
 }
 
+function isSupAdmin(user = currentUser()) {
+  return user?.role === "supadmin_twem";
+}
+
+function isAdminTwem(user = currentUser()) {
+  return user?.role === "admin_twem";
+}
+
 function isTwemUser() {
-  return currentUser()?.role === "twem";
+  const user = currentUser();
+  return Boolean(user && ["supadmin_twem", "admin_twem"].includes(user.role));
+}
+
+function canSeeAllStores(user = currentUser()) {
+  return Boolean(user && user.role !== "manager");
+}
+
+function allowedStoresForUser(user = currentUser()) {
+  if (!user) {
+    return [];
+  }
+  if (user.allowedStoreCodes?.includes("*")) {
+    return ["*"];
+  }
+  const scopedStores = [];
+  if (user.storeCode) {
+    scopedStores.push(user.storeCode);
+  }
+  if (Array.isArray(user.allowedStoreCodes)) {
+    scopedStores.push(...user.allowedStoreCodes);
+  }
+  return [...new Set(scopedStores.filter(Boolean))];
+}
+
+function defaultTabsForRole(role) {
+  const map = {
+    supadmin_twem: ["*"],
+    admin_twem: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing", "contacts", "reports", "automations", "pin-access", "import-export", "visibility"],
+    supmanager: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "activities", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "reports"],
+    it: ["dashboard", "timeline", "stores", "activities", "deployment", "sav", "reports"],
+    infra: ["dashboard", "timeline", "stores", "activities", "deployment", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "activities", "reports"]
+  };
+  return map[role] || ["dashboard"];
+}
+
+function accessibleTabsForUser(user = currentUser()) {
+  if (!user) {
+    return ["dashboard"];
+  }
+  if (user.accessibleTabs?.includes("*") || isSupAdmin(user)) {
+    return ["*"];
+  }
+  return [...new Set([...(defaultTabsForRole(user.role) || []), ...(user.accessibleTabs || [])])];
+}
+
+function canAccessTab(tab, user = currentUser()) {
+  const tabs = accessibleTabsForUser(user);
+  return tabs.includes("*") || tabs.includes(tab);
+}
+
+function panelForTab(tab) {
+  if (["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing"].includes(tab)) {
+    return "dashboard";
+  }
+  return tab;
+}
+
+function tabTitle(tab) {
+  const titles = {
+    dashboard: "Dashboard",
+    timeline: "Timeline / Planning",
+    stores: "Magasins",
+    activities: "Activites / Suivi",
+    deployment: "Deploiement",
+    migration: "Migration",
+    sav: "SAV / Tickets",
+    material: "Materiel / SIM",
+    billing: "Facturation",
+    contacts: "Contacts",
+    reports: "Rapports",
+    automations: "Automatisations",
+    tools: "Tools TWEM",
+    "pin-access": "PIN / Acces",
+    "import-export": "Import / Export",
+    visibility: "Qui voit quoi"
+  };
+  return titles[tab] || "Dashboard";
 }
 
 function editableZonesForRole(role) {
   const map = {
-    twem: ["all"],
-    magasin: ["appointments", "project_prep", "network_config", "brico_feedback", "problem_notes"],
-    telephonie: ["appointments", "order_articles", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "status_admin"],
-    electricien: ["appointments", "store_posts", "problem_notes"],
+    supadmin_twem: ["all"],
+    admin_twem: ["all"],
+    supmanager: ["appointments", "project_prep", "problem_notes", "brico_feedback", "status_admin", "configuration_request"],
+    manager: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes"],
+    telephonie_destiny: ["appointments", "order_articles", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "status_admin"],
     it: ["appointments", "external_prep", "network_config", "store_posts"],
-    herbots: ["appointments", "external_prep"],
+    infra: ["appointments", "external_prep", "problem_notes"],
     default: ["appointments"]
   };
   return map[String(role || "").toLowerCase()] || map.default;
@@ -738,7 +885,7 @@ function canEditZone(store, zone) {
 function isNetworkConfigLockedForUser(store) {
   const user = currentUser();
   const workflow = ensureStoreWorkflowData(store);
-  return Boolean(user && user.role === "magasin" && workflow.networkConfigConfirmed);
+  return Boolean(user && user.role === "manager" && workflow.networkConfigConfirmed);
 }
 
 function getRoleScopedStores() {
@@ -747,11 +894,12 @@ function getRoleScopedStores() {
     return state.stores;
   }
 
-  if (user.role === "magasin") {
-    return state.stores.filter((store) => store.code === user.storeCode);
+  if (canSeeAllStores(user)) {
+    return state.stores;
   }
 
-  return state.stores;
+  const storeCodes = allowedStoresForUser(user);
+  return state.stores.filter((store) => storeCodes.includes(store.code));
 }
 
 function stepFor(store, actorType) {
@@ -806,19 +954,17 @@ function peopleLabel(people = []) {
 }
 
 function roleLabel(role) {
-  if (role === "twem") {
-    return "Twem";
-  }
-  if (role === "magasin") {
-    return t("store");
-  }
-  if (role === "telephonie") {
-    return t("telephony");
-  }
-  if (role === "electricien") {
-    return t("electrician");
-  }
-  return role;
+  const labels = {
+    supadmin_twem: "SupAdmin TWEM",
+    admin_twem: "Admin TWEM",
+    supmanager: "SupManager",
+    manager: "Manager magasin",
+    telephonie_destiny: "Telephonie / Destiny",
+    it: "IT",
+    infra: "Infra",
+    intervenant: "Autre intervenant"
+  };
+  return labels[role] || role;
 }
 
 function renderOptions(options, selectedValue) {
@@ -851,10 +997,10 @@ function renderStoreCodeOptions(selectedValue = "") {
 
 function renderStorePeopleOptions(store, selectedValues = []) {
   const candidates = state.people.filter((person) => {
-    if (person.role === "magasin") {
+    if (person.role === "manager") {
       return person.storeCode === store.code;
     }
-    return person.role === "twem" || person.role === "telephonie" || person.role === "electricien";
+    return ["supadmin_twem", "admin_twem", "telephonie_destiny", "it", "infra", "intervenant", "supmanager"].includes(person.role);
   });
 
   return candidates.map((person) => {
@@ -864,15 +1010,15 @@ function renderStorePeopleOptions(store, selectedValues = []) {
 }
 
 function normalizeRemotePerson(person) {
-  return {
+  return hydrateAccessProfile({
     id: String(person.id),
     name: person.name || "",
-    role: person.role || "magasin",
+    role: person.role || "manager",
     phone: person.phone || "",
     email: person.email || "",
     storeCode: person.store_code || "",
     language: person.language || "fr"
-  };
+  });
 }
 
 function mapStoreRowToState(storeRow, stepRows = [], appointmentRows = []) {
@@ -1002,7 +1148,8 @@ function buildTimeline(store) {
 
 function getFilteredStores() {
   return getRoleScopedStores().filter((store) => {
-    const haystack = `${store.name} ${store.city} ${store.code}`.toLowerCase();
+    const nextAction = sortedAppointments(store)[0]?.note || store.health || "";
+    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction}`.toLowerCase();
     const matchesSearch = haystack.includes(state.filters.search);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || store.owner === state.filters.owner;
@@ -1060,14 +1207,23 @@ function syncSelectors() {
   }).join("");
 
   storeOwnerSelect.innerHTML = state.people
-    .filter((person) => person.role === "twem")
+    .filter((person) => ["supadmin_twem", "admin_twem"].includes(person.role))
     .map((person) => `<option value="${escapeHtml(person.name)}">${escapeHtml(person.name)}</option>`)
     .join("");
 
-  personRoleSelect.innerHTML = renderRoleOptions(personRoleSelect.value || "twem");
+  personRoleSelect.innerHTML = renderRoleOptions(personRoleSelect.value || "manager");
   personLanguageSelect.value = personLanguageSelect.value || "fr";
   personStoreCodeInput.innerHTML = renderStoreCodeOptions(personStoreCodeInput.value || "");
   peopleSearchInput.value = state.contactSearch;
+
+  if (pinRoleSelect) {
+    pinRoleSelect.innerHTML = renderRoleOptions(pinRoleSelect.value || "manager");
+  }
+  if (pinStoreMultiSelect) {
+    pinStoreMultiSelect.innerHTML = state.stores
+      .map((store) => `<option value="${escapeHtml(store.code)}">${escapeHtml(store.name)} (${escapeHtml(store.code)})</option>`)
+      .join("");
+  }
 }
 
 function buildAppointmentsEditor(store) {
@@ -2008,8 +2164,8 @@ function renderPeopleList() {
         return;
       }
 
-      const remainingTwem = state.people.filter((person) => person.role === "twem");
-      if (target.role === "twem" && remainingTwem.length <= 1) {
+      const remainingTwem = state.people.filter((person) => person.role === "supadmin_twem");
+      if (target.role === "supadmin_twem" && remainingTwem.length <= 1) {
         return;
       }
 
@@ -2105,13 +2261,24 @@ function renderConnectionStatus() {
           ? "Lecture locale"
           : state.connectionState === "ready"
             ? "Pret a se connecter"
+          : state.connectionState === "connected"
+            ? "Connecte"
           : appwriteAccount
             ? "Auth configuree"
             : "Configuration requise")
       : t("local");
-  syncMessage.textContent = isTwemUser()
-    ? "Suivi partage en direct entre planning chantier, rendez-vous, remontees et rapports."
-    : "Vue limitee au magasin lie a cet utilisateur.";
+  const user = currentUser();
+  syncMessage.textContent = user?.role === "manager"
+    ? "Vue complete de votre magasin avec zones modifiables selon vos droits."
+    : "Suivi partage en direct entre planning chantier, rendez-vous, remontees et rapports.";
+}
+
+function renderPinGate() {
+  const user = currentUser();
+  pinGate?.classList.toggle("hidden-panel", state.pinValidated);
+  if (pinFeedback && !state.pinValidated) {
+    pinFeedback.textContent = user ? `Dernier profil charge: ${user.name}` : "";
+  }
 }
 
 function renderAuthState() {
@@ -2125,26 +2292,133 @@ function renderAuthState() {
   authForm.querySelector("button").disabled = !canAuth;
   logoutButton.disabled = !canAuth;
 
-  const visibleForTwem = isTwemUser();
-  workspaceSidebar.classList.toggle("hidden-panel", !visibleForTwem);
-  workspaceShell?.classList.toggle("without-sidebar", !visibleForTwem);
-  if (!visibleForTwem) {
-    state.activeAdminTab = "planning";
+  const availableTabs = accessibleTabsForUser();
+  const sidebarVisible = state.pinValidated && (
+    availableTabs.includes("*") || availableTabs.some((tab) => tab !== "dashboard")
+  );
+  const debugViewVisible = isSupAdmin();
+
+  workspaceSidebar.classList.toggle("hidden-panel", !sidebarVisible);
+  workspaceShell?.classList.toggle("without-sidebar", !sidebarVisible);
+  if (userViewField) {
+    userViewField.classList.toggle("hidden-panel", !debugViewVisible);
   }
-  twemWorkspace.classList.toggle("hidden-panel", !visibleForTwem || state.activeAdminTab === "planning");
+
+  const targetPanel = panelForTab(state.activeAdminTab);
+  twemWorkspace.classList.toggle("hidden-panel", !sidebarVisible || targetPanel === "dashboard");
 }
 
 function renderAdminTabs() {
+  const user = currentUser();
   adminTabs.querySelectorAll("[data-admin-tab]").forEach((button) => {
-    button.classList.toggle("is-active", button.getAttribute("data-admin-tab") === state.activeAdminTab);
+    const tab = button.getAttribute("data-admin-tab");
+    const visible = state.pinValidated && canAccessTab(tab, user);
+    button.classList.toggle("hidden-panel", !visible);
+    button.classList.toggle("is-active", visible && tab === state.activeAdminTab);
   });
 
+  const targetPanel = panelForTab(state.activeAdminTab);
   document.querySelectorAll("[data-admin-panel]").forEach((panel) => {
-    panel.classList.toggle("is-active", panel.getAttribute("data-admin-panel") === state.activeAdminTab);
+    panel.classList.toggle("is-active", panel.getAttribute("data-admin-panel") === targetPanel);
   });
 
   document.querySelectorAll(".workspace-view").forEach((panel) => {
-    panel.classList.toggle("is-active", panel.getAttribute("data-admin-panel") === state.activeAdminTab);
+    panel.classList.toggle("is-active", panel.getAttribute("data-admin-panel") === targetPanel);
+  });
+
+  const planningTitleNode = document.getElementById("planningTitle");
+  if (planningTitleNode) {
+    planningTitleNode.textContent = tabTitle(state.activeAdminTab);
+  }
+}
+
+function fillPinAccessForm(person) {
+  if (!pinAccessForm || !person) {
+    return;
+  }
+  pinAccessForm.dataset.editPersonId = person.id;
+  pinPersonNameInput.value = person.name || "";
+  pinRoleSelect.value = person.role || "manager";
+  pinCodeInput.value = person.pin || "";
+  pinExpiryInput.value = person.pinExpiresAt || "";
+  pinStatusSelect.value = person.pinStatus || "active";
+  [...pinStoreMultiSelect.options].forEach((option) => {
+    option.selected = (person.allowedStoreCodes || []).includes(option.value) || (person.allowedStoreCodes || []).includes("*");
+  });
+}
+
+function renderPinAccessList() {
+  if (!pinAccessList) {
+    return;
+  }
+
+  const visibleRows = state.people
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
+  if (!visibleRows.length) {
+    pinAccessList.innerHTML = '<div class="empty-state">Aucun acces PIN configure.</div>';
+    return;
+  }
+
+  pinAccessList.innerHTML = visibleRows.map((person) => {
+    const stores = person.allowedStoreCodes?.includes("*")
+      ? "Tous les magasins"
+      : (person.allowedStoreCodes?.length ? person.allowedStoreCodes.join(", ") : (person.storeCode || "-"));
+    const lastSeen = person.loginHistory?.length ? formatDateTime(person.loginHistory[0].at) : "Jamais";
+    return `
+      <div class="simple-item person-row">
+        <div>
+          <strong>${escapeHtml(person.name)}</strong>
+          <div class="override-meta">${escapeHtml(roleLabel(person.role))}</div>
+        </div>
+        <div>
+          <strong>${escapeHtml(person.pin || "------")}</strong>
+          <div class="override-meta">PIN</div>
+        </div>
+        <div>
+          <strong>${escapeHtml(person.pinStatus || "active")}</strong>
+          <div class="override-meta">Statut</div>
+        </div>
+        <div>
+          <strong>${escapeHtml(stores)}</strong>
+          <div class="override-meta">Magasins</div>
+        </div>
+        <div>
+          <strong>${escapeHtml(person.pinExpiresAt || "-")}</strong>
+          <div class="override-meta">Expiration</div>
+        </div>
+        <div>
+          <strong>${escapeHtml(lastSeen)}</strong>
+          <div class="override-meta">Derniere connexion</div>
+        </div>
+        <div class="person-row-actions">
+          <button type="button" class="mini-button" data-pin-edit="${escapeHtml(person.id)}">Modifier</button>
+          <button type="button" class="mini-button" data-pin-disable="${escapeHtml(person.id)}">Desactiver</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  pinAccessList.querySelectorAll("[data-pin-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const person = state.people.find((entry) => entry.id === button.getAttribute("data-pin-edit"));
+      fillPinAccessForm(person);
+    });
+  });
+
+  pinAccessList.querySelectorAll("[data-pin-disable]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const person = state.people.find((entry) => entry.id === button.getAttribute("data-pin-disable"));
+      if (!person) return;
+      person.pinStatus = "disabled";
+      if (hasRemoteData()) {
+        await syncPersonToRemote(person);
+        await loadRemoteState();
+      }
+      saveState();
+      render();
+    });
   });
 }
 
@@ -2396,7 +2670,7 @@ async function loadRemoteState() {
     if (sessionPerson) {
       state.activeUserName = sessionPerson.name;
     } else if (!state.people.some((person) => person.name === state.activeUserName)) {
-      state.activeUserName = state.people.find((person) => person.role === "twem")?.name || state.people[0]?.name || "";
+      state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
     }
 
     saveState();
@@ -2440,7 +2714,7 @@ async function loadRemoteState() {
   }
 
   if (!state.people.some((person) => person.name === state.activeUserName)) {
-    state.activeUserName = state.people.find((person) => person.role === "twem")?.name || state.people[0]?.name || state.activeUserName;
+    state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
   saveState();
@@ -2808,9 +3082,11 @@ async function setupRealtime() {
 }
 
 function render() {
+  ensureValidActiveTab();
   applyStaticTranslations();
   renderConnectionStatus();
   syncSelectors();
+  renderPinGate();
   renderAuthState();
   renderAdminTabs();
   renderSummary();
@@ -2818,6 +3094,7 @@ function render() {
   renderActivities();
   renderPeopleList();
   renderRoleList();
+  renderPinAccessList();
   renderToolList();
   renderVisibilityOverrides();
   applyReadOnlyRules();
@@ -2831,7 +3108,7 @@ async function importJsonData(payload) {
     state.activities = payload.activities;
   }
   if (Array.isArray(payload.people)) {
-    state.people = payload.people.map((person) => ({
+    state.people = payload.people.map((person) => hydrateAccessProfile({
       language: "fr",
       storeCode: "",
       ...person
@@ -3180,8 +3457,126 @@ async function handleRoleEditSubmit(event) {
   render();
 }
 
+function normalizePin(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 6);
+}
+
+function firstAccessibleTabForUser(user = currentUser()) {
+  const tabs = accessibleTabsForUser(user);
+  if (tabs.includes("*")) {
+    return "dashboard";
+  }
+  return tabs[0] || "dashboard";
+}
+
+function ensureValidActiveTab() {
+  if (!canAccessTab(state.activeAdminTab)) {
+    state.activeAdminTab = firstAccessibleTabForUser();
+  }
+}
+
+function loginAllowedForPerson(person) {
+  if (!person) {
+    return false;
+  }
+  if (person.pinStatus === "disabled" || person.pinStatus === "expired") {
+    return false;
+  }
+  if (person.pinExpiresAt) {
+    const expiry = new Date(`${person.pinExpiresAt}T23:59:59`);
+    if (Date.now() > expiry.getTime()) {
+      person.pinStatus = "expired";
+      return false;
+    }
+  }
+  return true;
+}
+
+async function handlePinSubmit(event) {
+  event.preventDefault();
+  const submittedPin = normalizePin(pinInput?.value);
+  const matchedPerson = state.people.find((person) => normalizePin(person.pin) === submittedPin);
+
+  if (!matchedPerson || !loginAllowedForPerson(matchedPerson)) {
+    if (pinFeedback) {
+      pinFeedback.textContent = "PIN invalide, desactive ou expire.";
+    }
+    return;
+  }
+
+  matchedPerson.loginHistory = [
+    { at: new Date().toISOString(), source: window.location.hostname },
+    ...(matchedPerson.loginHistory || [])
+  ].slice(0, 20);
+
+  state.activeUserName = matchedPerson.name;
+  state.pinValidated = true;
+  state.activeAdminTab = firstAccessibleTabForUser(matchedPerson);
+  pinInput.value = "";
+  if (pinFeedback) {
+    pinFeedback.textContent = "";
+  }
+
+  if (hasRemoteData()) {
+    await syncPersonToRemote(matchedPerson);
+  }
+  saveState();
+  render();
+}
+
+async function handlePinAccessSubmit(event) {
+  event.preventDefault();
+  const name = pinPersonNameInput?.value.trim();
+  const role = pinRoleSelect?.value;
+  const pin = normalizePin(pinCodeInput?.value);
+  if (!name || !role || pin.length !== 6) {
+    return;
+  }
+
+  const selectedStores = [...pinStoreMultiSelect.selectedOptions].map((option) => option.value);
+  const editId = pinAccessForm.dataset.editPersonId;
+  let target = editId
+    ? state.people.find((person) => person.id === editId)
+    : state.people.find((person) => person.name.toLowerCase() === name.toLowerCase());
+
+  if (!target) {
+    target = hydrateAccessProfile({
+      id: `person-${Date.now()}`,
+      name,
+      role,
+      phone: "",
+      email: "",
+      storeCode: selectedStores[0] || "",
+      language: "fr"
+    });
+    state.people.push(target);
+  }
+
+  target.name = name;
+  target.role = role;
+  target.pin = pin;
+  target.storeCode = selectedStores[0] || target.storeCode || "";
+  target.allowedStoreCodes = canSeeAllStores(target) ? ["*"] : selectedStores;
+  target.accessibleTabs = accessibleTabsForUser(target).includes("*") ? ["*"] : defaultTabsForRole(role);
+  target.pinStatus = pinStatusSelect?.value || "active";
+  target.pinCreatedAt = target.pinCreatedAt || new Date().toISOString();
+  target.pinExpiresAt = pinExpiryInput?.value || "";
+
+  if (hasRemoteData()) {
+    await syncPersonToRemote(target);
+    await loadRemoteState();
+  }
+
+  pinAccessForm.reset();
+  pinAccessForm.dataset.editPersonId = "";
+  saveState();
+  render();
+}
+
 function handleActiveUserChange(event) {
   state.activeUserName = event.target.value;
+  state.pinValidated = true;
+  ensureValidActiveTab();
   saveState();
   render();
 }
@@ -3196,7 +3591,11 @@ function handleLanguageChange(event) {
 function handleAdminTabClick(event) {
   const button = event.target.closest("[data-admin-tab]");
   if (button) {
-    state.activeAdminTab = button.getAttribute("data-admin-tab");
+    const nextTab = button.getAttribute("data-admin-tab");
+    if (!canAccessTab(nextTab)) {
+      return;
+    }
+    state.activeAdminTab = nextTab;
     saveState();
     render();
     return;
@@ -3276,7 +3675,7 @@ function applyStaticTranslations() {
   set("storeReportsIntro", t("storeReportsIntro"));
   set("adminTitle", t("admin"));
   set("adminIntro", t("adminIntro"));
-  set("adminPlanningButton", t("planning"));
+  set("adminPlanningButton", "Dashboard");
   set("personNameLabel", t("name"));
   set("personPhoneLabel", t("phone"));
   set("personEmailLabel", t("email"));
@@ -3323,7 +3722,7 @@ async function handlePersonSubmit(event) {
     return;
   }
 
-  state.people.push({
+  state.people.push(hydrateAccessProfile({
     id: `person-${Date.now()}`,
     name,
     role,
@@ -3331,7 +3730,7 @@ async function handlePersonSubmit(event) {
     email: personEmailInput.value.trim(),
     storeCode: personStoreCodeInput.value.trim().toUpperCase(),
     language: personLanguageSelect.value
-  });
+  }));
 
   if (hasRemoteData()) {
     await syncPersonToRemote(state.people.at(-1));
@@ -3426,8 +3825,9 @@ async function handleLogout() {
   if (isSupabaseMode && supabaseClient) {
     await supabaseClient.auth.signOut();
   }
-  state.activeUserName = state.people.find((person) => person.role === "twem")?.name || state.people[0]?.name || "";
-  state.activeAdminTab = "planning";
+  state.pinValidated = false;
+  state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
+  state.activeAdminTab = "dashboard";
   saveState();
   render();
 }
@@ -3447,6 +3847,8 @@ ownerFilter.addEventListener("change", (event) => {
   renderStores();
 });
 
+pinForm?.addEventListener("submit", handlePinSubmit);
+pinAccessForm?.addEventListener("submit", handlePinAccessSubmit);
 authForm.addEventListener("submit", handleAuthSubmit);
 logoutButton.addEventListener("click", handleLogout);
 activeUserSelect.addEventListener("change", handleActiveUserChange);
@@ -3474,7 +3876,8 @@ async function init() {
   state.people = stored.people;
   state.activeUserName = stored.activeUserName;
   state.language = stored.language || "fr";
-  state.activeAdminTab = stored.activeAdminTab || "planning";
+  state.activeAdminTab = stored.activeAdminTab || "dashboard";
+  state.pinValidated = false;
   state.toolItems = stored.toolItems || [];
   state.accessOverrides = stored.accessOverrides || [];
   state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
@@ -3504,7 +3907,7 @@ async function init() {
     try {
       await completeAppwriteMagicSession();
       await loadAppwriteSessionUser();
-      if (state.connectionState === "connected" && hasAppwriteDataConfig) {
+      if (hasAppwriteDataConfig) {
         await loadRemoteState();
         await setupRealtime();
       }
@@ -3514,6 +3917,7 @@ async function init() {
     }
   }
 
+  ensureValidActiveTab();
   render();
 }
 

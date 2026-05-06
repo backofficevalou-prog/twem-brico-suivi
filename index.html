@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Txwem | Suivi chantier Brico</title>
+  <title>TWEM | Suivi chantier Brico</title>
   <meta name="theme-color" content="#ffde3b">
   <link rel="icon" type="image/png" href="assets/logo-appli.png">
   <link rel="apple-touch-icon" href="assets/logo-appli.png">
@@ -13,6 +13,23 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="pin-gate" id="pinGate">
+    <div class="pin-gate-card">
+      <img src="assets/logo-appli.png" alt="Suivi Brico TWEM" class="pin-gate-logo">
+      <p class="eyebrow">TWEM x Brico</p>
+      <h1>Acces securise par PIN</h1>
+      <p class="intro">Saisis ton code PIN a 6 chiffres pour charger tes droits, tes magasins et tes blocs accessibles.</p>
+      <form id="pinForm" class="pin-form">
+        <label>
+          <span>Code PIN</span>
+          <input type="password" id="pinInput" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+        </label>
+        <button type="submit" id="pinSubmitButton">Entrer</button>
+      </form>
+      <p class="pin-feedback" id="pinFeedback"></p>
+    </div>
+  </div>
+
   <div class="page-shell">
     <header class="topbar">
       <div>
@@ -38,18 +55,28 @@
           <p class="eyebrow sidebar-eyebrow">Twem</p>
           <h2 class="sidebar-title">Navigation</h2>
           <div class="admin-tabs" id="adminTabs">
-            <button type="button" class="admin-tab is-active" id="adminPlanningButton" data-admin-tab="planning">Planning chantier</button>
+            <button type="button" class="admin-tab is-active" id="adminPlanningButton" data-admin-tab="dashboard">Dashboard</button>
+            <button type="button" class="admin-tab" data-admin-tab="timeline">Timeline / Planning</button>
+            <button type="button" class="admin-tab" data-admin-tab="stores">Magasins</button>
+            <button type="button" class="admin-tab" data-admin-tab="activities">Activites / Suivi</button>
+            <button type="button" class="admin-tab" data-admin-tab="deployment">Deploiement</button>
+            <button type="button" class="admin-tab" data-admin-tab="migration">Migration</button>
+            <button type="button" class="admin-tab" data-admin-tab="sav">SAV / Tickets</button>
+            <button type="button" class="admin-tab" data-admin-tab="material">Materiel / SIM</button>
+            <button type="button" class="admin-tab" data-admin-tab="billing">Facturation</button>
             <button type="button" class="admin-tab" data-admin-tab="contacts">Contacts</button>
-            <button type="button" class="admin-tab" data-admin-tab="visibility">Qui voit quoi</button>
             <button type="button" class="admin-tab" data-admin-tab="reports">Rapports</button>
             <button type="button" class="admin-tab" data-admin-tab="automations">Automatisations</button>
-            <button type="button" class="admin-tab" data-admin-tab="tools">Tools</button>
+            <button type="button" class="admin-tab" data-admin-tab="tools">Tools TWEM</button>
+            <button type="button" class="admin-tab" data-admin-tab="pin-access">PIN / Acces</button>
+            <button type="button" class="admin-tab" data-admin-tab="import-export">Import / Export</button>
+            <button type="button" class="admin-tab" data-admin-tab="visibility">Qui voit quoi</button>
           </div>
         </div>
       </aside>
 
       <div class="workspace-content">
-        <section class="workspace-view is-active" data-admin-panel="planning">
+        <section class="workspace-view is-active" data-admin-panel="dashboard">
           <section class="toolbar panel">
             <label>
               <span id="searchLabel">Recherche</span>
@@ -71,7 +98,7 @@
                 <option value="all">Tous</option>
               </select>
             </label>
-            <label>
+            <label class="hidden-panel" id="userViewField">
               <span id="userViewLabel">Vue utilisateur</span>
               <select id="activeUserSelect"></select>
             </label>
@@ -94,7 +121,7 @@
           <section class="panel table-panel">
             <div class="table-head">
               <div>
-                <h2 id="planningTitle">Planning chantier</h2>
+                <h2 id="planningTitle">Dashboard</h2>
                 <p id="syncMessage">Clique sur `+` pour ouvrir la fiche du magasin.</p>
               </div>
             </div>
@@ -464,6 +491,63 @@
                   <button type="submit">Ajouter</button>
                 </form>
                 <div id="toolList" class="simple-list"></div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="pin-access">
+              <article class="admin-card">
+                <h3>PIN / Acces</h3>
+                <p>Visible uniquement SupAdmin et Admin TWEM. Creation, expiration, affectation et suivi des connexions PIN.</p>
+                <form id="pinAccessForm" class="auth-form">
+                  <label>
+                    <span>Nom</span>
+                    <input type="text" id="pinPersonNameInput" placeholder="Ex: M. Dupont">
+                  </label>
+                  <label>
+                    <span>Role</span>
+                    <select id="pinRoleSelect"></select>
+                  </label>
+                  <label>
+                    <span>PIN 6 chiffres</span>
+                    <input type="text" id="pinCodeInput" maxlength="6" inputmode="numeric" placeholder="Ex: 123456">
+                  </label>
+                  <label>
+                    <span>Magasins lies</span>
+                    <select id="pinStoreMultiSelect" multiple></select>
+                  </label>
+                  <label>
+                    <span>Expiration</span>
+                    <input type="date" id="pinExpiryInput">
+                  </label>
+                  <label>
+                    <span>Statut</span>
+                    <select id="pinStatusSelect">
+                      <option value="active">Actif</option>
+                      <option value="disabled">Desactive</option>
+                      <option value="expired">Expire</option>
+                    </select>
+                  </label>
+                  <button type="submit">Creer / mettre a jour le PIN</button>
+                </form>
+              </article>
+
+              <article class="admin-card">
+                <h3>Historique des acces PIN</h3>
+                <div id="pinAccessList" class="simple-list"></div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="import-export">
+              <article class="admin-card">
+                <h3>Import / Export</h3>
+                <p>Base de travail centralisee pour importer magasins, extensions, puis exporter les vues par onglet.</p>
+                <div class="placeholder-list">
+                  <div class="placeholder-item">Import Excel magasins</div>
+                  <div class="placeholder-item">Export Excel magasins</div>
+                  <div class="placeholder-item">Import liste extensions</div>
+                  <div class="placeholder-item">Export liste extensions</div>
+                  <div class="placeholder-item">Historique import et validation doublons</div>
+                </div>
               </article>
             </section>
           </div>
