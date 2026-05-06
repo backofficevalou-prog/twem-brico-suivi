@@ -4290,12 +4290,16 @@ function buildStoreReportHtml(group) {
       <meta charset="UTF-8">
       <title>Rapport ${escapeHtml(group.storeName)}</title>
       <style>
-        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
-        h1 { margin: 0 0 8px; }
-        .meta { color: #666; margin-bottom: 20px; }
-        .entry { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-        .entry-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; color: #666; font-size: 12px; }
-        .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+        @page { margin: 12mm; }
+        body { font-family: Arial, sans-serif; padding: 0; color: #222; font-size: 11px; line-height: 1.35; }
+        h1 { margin: 0 0 4px; font-size: 22px; }
+        .meta { color: #666; margin-bottom: 10px; font-size: 11px; }
+        .list { border-top: 1px solid #d8d8d8; }
+        .entry { border-bottom: 1px solid #e2e2e2; padding: 6px 0; margin: 0; break-inside: avoid; }
+        .entry-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2px; color: #666; font-size: 10px; }
+        .entry-author { font-weight: 700; margin-bottom: 2px; }
+        .entry-text { margin: 0; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 999px; font-weight: 700; font-size: 10px; }
         .badge-ok { background: #e6f5ea; color: #2d6b46; }
         .badge-issue { background: #fde8e6; color: #b3422c; }
       </style>
@@ -4303,16 +4307,18 @@ function buildStoreReportHtml(group) {
     <body>
       <h1>Rapport magasin - ${escapeHtml(group.storeName)}</h1>
       <div class="meta">Genere le ${escapeHtml(generatedAt)} - ${escapeHtml(state.activeUserName)}</div>
+      <div class="list">
       ${group.entries.map((entry) => `
         <div class="entry">
           <div class="entry-head">
             <span class="badge ${entry.result === "issue" ? "badge-issue" : "badge-ok"}">${entry.result === "issue" ? "Probleme" : "OK"}</span>
             <span>${escapeHtml(formatDateTime(entry.createdAt))}</span>
           </div>
-          <strong>${escapeHtml(entry.confirmedBy)}</strong>
-          <p>${escapeHtml(entry.comment)}</p>
+          <div class="entry-author">${escapeHtml(entry.confirmedBy)}</div>
+          <p class="entry-text">${escapeHtml(entry.comment)}</p>
         </div>
       `).join("")}
+      </div>
     </body>
     </html>
   `;

@@ -1655,12 +1655,12 @@ button {
 
 .report-archive-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .report-store {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fffdf8;
   overflow: hidden;
 }
@@ -1668,11 +1668,11 @@ button {
 .report-store summary {
   list-style: none;
   cursor: pointer;
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 600;
 }
 
@@ -1692,40 +1692,41 @@ button {
 
 .report-store-body {
   display: grid;
-  gap: 8px;
-  padding: 0 12px 12px;
+  gap: 4px;
+  padding: 0 10px 10px;
 }
 
 .report-entry {
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 7px 10px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: linear-gradient(135deg, #fff8d1, #fffdf3);
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .report-entry-meta {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.74rem;
 }
 
 .report-store-title {
   min-width: 0;
+  font-size: 0.96rem;
 }
 
 .report-store-meta {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
 }
 
 .report-export-button {
-  padding: 7px 12px;
-  font-size: 0.82rem;
+  padding: 6px 10px;
+  font-size: 0.76rem;
 }
 
 .full-span-report-card {
