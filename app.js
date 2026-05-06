@@ -509,7 +509,33 @@ function mergePeopleWithPinFallback(people = []) {
       return;
     }
     const existing = byKey.get(key);
-    byKey.set(key, existing ? hydrateAccessProfile({ ...existing, ...person }) : hydrateAccessProfile(person));
+    if (!existing) {
+      byKey.set(key, hydrateAccessProfile(person));
+      return;
+    }
+
+    const merged = hydrateAccessProfile({
+      ...existing,
+      ...person,
+      pin: normalizePin(person.pin).length === 6 ? person.pin : existing.pin,
+      allowedStoreCodes: Array.isArray(person.allowedStoreCodes) && person.allowedStoreCodes.length
+        ? person.allowedStoreCodes
+        : existing.allowedStoreCodes,
+      accessibleTabs: Array.isArray(person.accessibleTabs) && person.accessibleTabs.length
+        ? person.accessibleTabs
+        : existing.accessibleTabs,
+      accessibleBlocks: Array.isArray(person.accessibleBlocks) && person.accessibleBlocks.length
+        ? person.accessibleBlocks
+        : existing.accessibleBlocks,
+      loginHistory: Array.isArray(person.loginHistory) && person.loginHistory.length
+        ? person.loginHistory
+        : existing.loginHistory,
+      pinStatus: person.pinStatus || existing.pinStatus,
+      pinCreatedAt: person.pinCreatedAt || existing.pinCreatedAt,
+      pinExpiresAt: person.pinExpiresAt || existing.pinExpiresAt
+    });
+
+    byKey.set(key, merged);
   });
 
   return [...byKey.values()];
