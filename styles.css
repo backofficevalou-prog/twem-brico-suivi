@@ -1480,6 +1480,16 @@ button {
   border-top: 1px solid var(--line);
 }
 
+.role-manager-inline {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.compact-role-list .simple-item,
+.compact-role-list .role-row {
+  padding: 8px 10px;
+}
+
 .role-manager-head h4,
 .contact-directory-head h3 {
   margin: 0;

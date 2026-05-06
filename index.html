@@ -222,6 +222,18 @@
                     </div>
                     <button type="submit" id="addPersonButton">Ajouter une personne</button>
                   </form>
+
+                  <div class="role-manager role-manager-inline">
+                    <div class="role-manager-head">
+                      <h4 id="rolesTitle">Roles</h4>
+                      <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
+                    </div>
+                    <form id="roleForm" class="tool-form">
+                      <input type="text" id="roleInput" placeholder="Ex: responsable secteur">
+                      <button type="submit" id="addRoleButton">Ajouter le role</button>
+                    </form>
+                    <div id="roleList" class="simple-list compact-role-list"></div>
+                  </div>
                 </article>
 
                 <article class="admin-card store-admin-card">
@@ -264,20 +276,6 @@
                   </div>
                   <div id="peopleList" class="simple-list contact-list"></div>
                 </article>
-
-                <div class="hidden-panel">
-                  <div class="role-manager">
-                    <div class="role-manager-head">
-                      <h4 id="rolesTitle">Roles</h4>
-                      <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
-                    </div>
-                    <form id="roleForm" class="tool-form">
-                      <input type="text" id="roleInput" placeholder="Ex: responsable secteur">
-                      <button type="submit" id="addRoleButton">Ajouter le role</button>
-                    </form>
-                    <div id="roleList" class="simple-list"></div>
-                  </div>
-                </div>
               </div>
             </section>
 
