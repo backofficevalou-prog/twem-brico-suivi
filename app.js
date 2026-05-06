@@ -5175,10 +5175,11 @@ async function handlePinSubmit(event) {
   const submittedPin = normalizePin(pinInput?.value);
   const pinCandidates = mergePeopleWithPinFallback(state.people);
   const emergencyCandidates = demoPinPeople();
+  const fallbackValouSource = pinCandidates.find((person) => String(person.name || "").toLowerCase() === "valou")
+    || emergencyCandidates.find((person) => String(person.name || "").toLowerCase() === "valou");
   const forcedValou = submittedPin === "222222"
-    ? (pinCandidates.find((person) => String(person.name || "").toLowerCase() === "valou")
-      || emergencyCandidates.find((person) => String(person.name || "").toLowerCase() === "valou")
-      || hydrateAccessProfile({
+    ? hydrateAccessProfile({
+        ...(fallbackValouSource || {}),
         id: "p2",
         name: "Valou",
         role: "supadmin_twem",
@@ -5188,10 +5189,11 @@ async function handlePinSubmit(event) {
         language: "fr",
         pin: "222222",
         pinStatus: "active",
+        pinExpiresAt: "",
         allowedStoreCodes: ["*"],
         accessibleTabs: ["*"],
         accessibleBlocks: ["*"]
-      }))
+      })
     : null;
   const matchedPerson = forcedValou
     || pinCandidates.find((person) => normalizePin(person.pin) === submittedPin)
