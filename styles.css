@@ -1692,17 +1692,18 @@ button {
 
 .report-store-body {
   display: grid;
-  gap: 4px;
-  padding: 0 10px 10px;
+  gap: 0;
+  padding: 0 10px 8px;
 }
 
 .report-entry {
-  padding: 7px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: linear-gradient(135deg, #fff8d1, #fffdf3);
+  padding: 6px 2px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid #ece5c5;
+  background: transparent;
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .report-entry-meta {
@@ -1712,6 +1713,16 @@ button {
   align-items: center;
   color: var(--muted);
   font-size: 0.74rem;
+}
+
+.report-entry-author {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.report-entry-text {
+  font-size: 0.9rem;
+  line-height: 1.3;
 }
 
 .report-store-title {
@@ -1731,6 +1742,20 @@ button {
 
 .full-span-report-card {
   grid-column: 1 / -1;
+}
+
+.import-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.compact-placeholder-list {
+  gap: 6px;
+}
+
+.compact-placeholder-list .placeholder-item {
+  padding: 8px 10px;
 }
 
 #pinStoreMultiSelect {

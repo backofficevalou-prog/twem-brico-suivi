@@ -591,6 +591,8 @@ const userViewField = document.querySelector("#userViewField");
 const importButton = document.querySelector("#importButton");
 const importInput = document.querySelector("#importInput");
 const reportButton = document.querySelector("#reportButton");
+const tabImportButton = document.querySelector("#tabImportButton");
+const tabExportButton = document.querySelector("#tabExportButton");
 const modeBadge = document.querySelector("#modeBadge");
 const connectionBadge = document.querySelector("#connectionBadge");
 const syncMessage = document.querySelector("#syncMessage");
@@ -3076,8 +3078,8 @@ function renderActivities() {
               <span class="${badgeClass(entry.result)}">${entry.result === "issue" ? "Probleme" : "OK"}</span>
               <span>${escapeHtml(formatDateTime(entry.createdAt))}</span>
             </div>
-            <strong>${escapeHtml(entry.confirmedBy)}</strong>
-            <p>${escapeHtml(entry.comment)}</p>
+            <div class="report-entry-author">${escapeHtml(entry.confirmedBy)}</div>
+            <div class="report-entry-text">${escapeHtml(entry.comment)}</div>
           </article>
         `).join("")}
       </div>
@@ -4176,6 +4178,28 @@ function handleImportButtonClick() {
   importInput.click();
 }
 
+function exportJsonData() {
+  const payload = {
+    stores: state.stores,
+    activities: state.activities,
+    tickets: state.tickets,
+    people: state.people,
+    accessOverrides: state.accessOverrides,
+    roleOptions: state.roleOptions,
+    activeUserName: state.activeUserName,
+    exportedAt: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `twem-brico-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function handleImportInputChange(event) {
   const file = event.target.files?.[0];
   if (!file) {
@@ -5180,6 +5204,8 @@ projectTableBody.addEventListener("click", handleNetworkConfirm);
 importButton.addEventListener("click", handleImportButtonClick);
 importInput.addEventListener("change", handleImportInputChange);
 reportButton.addEventListener("click", handleReportButtonClick);
+tabImportButton?.addEventListener("click", handleImportButtonClick);
+tabExportButton?.addEventListener("click", exportJsonData);
 
 async function init() {
   const stored = loadState();
