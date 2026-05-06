@@ -399,7 +399,7 @@ const state = {
   expandedStoreIds: new Set()
 };
 
-const presentationBypassUser = "Emir";
+const presentationBypassUser = "Valou";
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing"];
 
