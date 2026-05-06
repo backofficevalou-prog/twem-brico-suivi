@@ -84,10 +84,6 @@ body {
   color: var(--danger-text);
 }
 
-body.presentation-mode .pin-gate {
-  display: none !important;
-}
-
 .page-shell {
   width: min(1520px, calc(100% - 24px));
   margin: 0 auto;
@@ -1400,191 +1396,26 @@ button {
   gap: 10px;
 }
 
-.visibility-editor-shell {
+.visibility-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.visibility-role-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: end;
-  justify-content: space-between;
-}
-
-.visibility-role-picker {
-  min-width: 260px;
-}
-
-.visibility-role-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.visibility-role-meta .info-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #fff8d1;
-  border: 1px solid var(--line);
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.visibility-step-card {
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #fffdfa;
-}
-
-.visibility-step-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin-bottom: 12px;
-}
-
-.visibility-step-head h4,
-.visibility-summary-block h5,
-.visibility-zone-top h5 {
-  margin: 0;
-}
-
-.visibility-step-head p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.visibility-tab-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.visibility-tab-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #fff;
-  font-weight: 600;
-}
-
-.visibility-tab-pill input,
-.visibility-inline-check input {
-  margin: 0;
-}
-
-.visibility-zone-stack {
-  display: grid;
-  gap: 10px;
-}
-
-.visibility-zone-card {
+.visibility-card {
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
-  overflow: hidden;
+  background: linear-gradient(135deg, #fff8d1, #fffdf3);
 }
 
-.visibility-zone-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 14px;
-  padding: 10px 12px;
-  background: #fff8d1;
-  border-bottom: 1px solid var(--line);
+.visibility-card h4 {
+  margin: 0 0 10px;
 }
 
-.visibility-zone-top-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.visibility-inline-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-
-.visibility-zone-list {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px 12px;
-}
-
-.visibility-zone-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr);
-  gap: 10px;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: #fffdf8;
-  border: 1px solid #efe6c9;
-}
-
-.visibility-zone-label strong {
-  display: block;
-}
-
-.visibility-zone-label span {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.visibility-zone-select {
-  min-width: 0;
-}
-
-.visibility-zone-empty {
-  color: var(--muted);
-  font-size: 0.9rem;
-  padding: 4px 2px 0;
-}
-
-.visibility-summary {
-  display: grid;
-  gap: 10px;
-}
-
-.visibility-summary-block {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fff;
-}
-
-.visibility-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.visibility-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #fff8d1;
-  border: 1px solid var(--line);
-  font-size: 0.82rem;
-  font-weight: 600;
+.visibility-table td,
+.visibility-table th {
+  white-space: nowrap;
 }
 
 .visibility-override-form {
@@ -1943,8 +1774,8 @@ button {
   .appointment-item,
   .simple-item-grid,
   .admin-grid,
+  .visibility-grid,
   .visibility-override-form,
-  .visibility-zone-row,
   .tool-form,
   .contacts-form-grid,
   .actor-board-head,
@@ -1988,12 +1819,6 @@ button {
 
   .workspace-sidebar {
     position: static;
-  }
-
-  .visibility-role-head,
-  .visibility-zone-top,
-  .visibility-zone-top-actions {
-    align-items: stretch;
   }
 
   .person-admin-card {
@@ -2060,7 +1885,6 @@ button {
   .admin-content,
   .admin-grid,
   .contacts-grid,
-  .visibility-zone-stack,
   .store-meta-grid,
   .activity-list,
   .placeholder-list,
@@ -2123,7 +1947,8 @@ button {
     min-width: 0;
   }
 
-  .posts-table {
+  .posts-table,
+  .visibility-table {
     min-width: 720px;
   }
 }

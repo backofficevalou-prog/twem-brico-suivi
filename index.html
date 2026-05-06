@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260507a">
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body class="presentation-mode">
+<body>
   <div class="pin-gate" id="pinGate">
     <div class="pin-gate-card">
       <img src="assets/logo-appli.png" alt="Suivi Brico TWEM" class="pin-gate-logo">
@@ -285,39 +285,136 @@
             <section class="admin-panel workspace-view" data-admin-panel="visibility">
               <article class="admin-card">
                 <h3>Qui voit quoi</h3>
-                <p>Reglage des droits par role: on choisit d abord le role, puis les onglets visibles, puis ce qui peut etre vu ou modifie a l interieur.</p>
-                <div class="visibility-editor-shell">
-                  <div class="visibility-role-head">
-                    <label class="visibility-role-picker">
-                      <span>Role a configurer</span>
-                      <select id="visibilityRoleSelect"></select>
-                    </label>
-                    <div id="visibilityRoleMeta" class="visibility-role-meta"></div>
+                <p>Matrice Twem pour cadrer les droits par role avant consolidation. Visible uniquement pour Twem.</p>
+                <div class="visibility-grid">
+                  <div class="visibility-card">
+                    <h4>Twem</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Voit tout le planning chantier</div>
+                      <div class="placeholder-item">Modifie tous les blocs magasin</div>
+                      <div class="placeholder-item">Accede aux contacts, rapports, automatisations et tools</div>
+                    </div>
                   </div>
 
-                  <section class="visibility-step-card">
-                    <div class="visibility-step-head">
-                      <h4>1. Onglets visibles</h4>
-                      <p>Choisis d abord les onglets que ce role peut voir.</p>
+                  <div class="visibility-card">
+                    <h4>Magasin</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Voit uniquement son magasin</div>
+                      <div class="placeholder-item">Peut completer la configuration demandee au magasin</div>
+                      <div class="placeholder-item">Peut faire des remarques et confirmer ce qui fonctionne</div>
                     </div>
-                    <div id="visibilityTabsEditor" class="visibility-tab-pills"></div>
-                  </section>
+                  </div>
 
-                  <section class="visibility-step-card">
-                    <div class="visibility-step-head">
-                      <h4>2. Droits detail par onglet</h4>
-                      <p>Pour chaque onglet visible, precise si le role lit seulement ou peut aussi modifier.</p>
+                  <div class="visibility-card">
+                    <h4>Destiny / Telephonie</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Voit les magasins concernes</div>
+                      <div class="placeholder-item">Peut mettre a jour PM, ticket, pre-visite et fin d installation</div>
+                      <div class="placeholder-item">Peut laisser une remarque technique de chantier</div>
                     </div>
-                    <div id="visibilityZonesEditor" class="visibility-zone-stack"></div>
-                  </section>
+                  </div>
 
-                  <section class="visibility-step-card">
-                    <div class="visibility-step-head">
-                      <h4>Recapitulatif compact</h4>
-                      <p>Lecture rapide du role courant sans la grosse matrice indigeste.</p>
+                  <div class="visibility-card">
+                    <h4>IT</h4>
+                    <div class="simple-list">
+                      <div class="placeholder-item">Peut agir sur VLAN22, alarme, reseau et pre-requis techniques</div>
+                      <div class="placeholder-item">Voit les elements necessaires a la preparation</div>
+                      <div class="placeholder-item">Ne touche pas a l admin Twem</div>
                     </div>
-                    <div id="visibilityRoleSummary" class="visibility-summary"></div>
-                  </section>
+                  </div>
+                </div>
+              </article>
+
+              <article class="admin-card">
+                <h3>Matrice par bloc</h3>
+                <p>Base de travail editable ensuite. On s en sert pour decider ce qui est visible, cache ou modifiable.</p>
+                <div class="table-wrap">
+                  <table class="posts-table visibility-table">
+                    <thead>
+                      <tr>
+                        <th>Bloc</th>
+                        <th>Twem</th>
+                        <th>Magasin</th>
+                        <th>Destiny</th>
+                        <th>IT</th>
+                        <th>Autres intervenants</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Identite magasin</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                      </tr>
+                      <tr>
+                        <td>Intervenants</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                        <td>Voir</td>
+                      </tr>
+                      <tr>
+                        <td>Rendez-vous</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / repondre</td>
+                        <td>Voir / repondre</td>
+                        <td>Voir / repondre</td>
+                        <td>Voir / repondre</td>
+                      </tr>
+                      <tr>
+                        <td>Configuration demandee au magasin</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / completer</td>
+                        <td>Voir</td>
+                        <td>Cache</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Coordination Destiny</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Preparation externe / VLAN22 / alarme</td>
+                        <td>Voir / modifier</td>
+                        <td>Cache</td>
+                        <td>Voir</td>
+                        <td>Voir / modifier</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Configuration du reseau</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / completer</td>
+                        <td>Voir</td>
+                        <td>Voir / preparer</td>
+                        <td>Cache</td>
+                      </tr>
+                      <tr>
+                        <td>Postes magasin</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / modifier si affecte</td>
+                      </tr>
+                      <tr>
+                        <td>Cloture / remarques finales</td>
+                        <td>Voir / modifier</td>
+                        <td>Voir / commenter</td>
+                        <td>Voir / cloturer</td>
+                        <td>Voir</td>
+                        <td>Voir / commenter</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </article>
 
@@ -516,6 +613,6 @@
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260507a"></script>
+  <script src="app.js"></script>
 </body>
 </html>
