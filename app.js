@@ -39,7 +39,7 @@ const defaultRoleOptions = [
 ];
 const translations = {
   fr: {
-    pageTitle: "Suivi chantier magasin par magasin",
+    pageTitle: "Suivi magasin telephonie",
     pageIntro: "Une ligne par magasin, puis un detail depliant pour gerer les intervenants, les rendez-vous et les blocages.",
     mode: "Mode",
     connection: "Connexion",
@@ -118,7 +118,7 @@ const translations = {
     authState: "Utilisateur actif"
   },
   nl: {
-    pageTitle: "Werfopvolging winkel per winkel",
+    pageTitle: "Winkelopvolging telefonie",
     pageIntro: "Een lijn per winkel, daarna een uitklapbaar detail om betrokkenen, afspraken en blokkeringen te beheren.",
     mode: "Modus",
     connection: "Verbinding",
