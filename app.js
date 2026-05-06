@@ -156,6 +156,7 @@ const defaultRoleOptions = [
 ];
 const translations = {
   fr: {
+    navigation: "Navigation",
     pageTitle: "Suivi magasin telephonie",
     pageIntro: "Une ligne par magasin, puis un detail depliant pour gerer les intervenants, les rendez-vous et les blocages.",
     mode: "Mode",
@@ -235,6 +236,7 @@ const translations = {
     authState: "Utilisateur actif"
   },
   nl: {
+    navigation: "Navigatie",
     pageTitle: "Winkelopvolging telefonie",
     pageIntro: "Een lijn per winkel, daarna een uitklapbaar detail om betrokkenen, afspraken en blokkeringen te beheren.",
     mode: "Modus",
@@ -1014,19 +1016,20 @@ function activeMainWorkspaceTab() {
 }
 
 function tabTitle(tab) {
+  const isNl = state.language === "nl";
   const titles = {
     dashboard: "Dashboard",
-    timeline: "Timeline / Planning",
-    stores: "Magasins",
+    timeline: isNl ? "Tijdlijn / Planning" : "Timeline / Planning",
+    stores: isNl ? "Winkels" : "Magasins",
     sav: "SAV / Tickets",
     extensions: "Extensions",
-    contacts: "Contacts",
-    reports: "Rapports",
-    automations: "Automatisations",
+    contacts: isNl ? "Contacten" : "Contacts",
+    reports: isNl ? "Rapporten" : "Rapports",
+    automations: isNl ? "Automatiseringen" : "Automatisations",
     tools: "Tools TWEM",
     "pin-access": "PIN / Acces",
-    "import-export": "Import / Export",
-    visibility: "Qui voit quoi"
+    "import-export": isNl ? "Import / Export" : "Import / Export",
+    visibility: isNl ? "Wie ziet wat" : "Qui voit quoi"
   };
   return titles[tab] || "Dashboard";
 }
@@ -3034,6 +3037,7 @@ function renderAdminTabs() {
     const visible = state.pinValidated && canAccessTab(tab, user);
     button.classList.toggle("hidden-panel", !visible);
     button.classList.toggle("is-active", visible && tab === state.activeAdminTab);
+    button.textContent = tabTitle(tab);
   });
 
   const targetPanel = panelForTab(state.activeAdminTab);
@@ -4386,6 +4390,7 @@ function applyStaticTranslations() {
 
   set("pageTitle", t("pageTitle"));
   set("pageIntro", t("pageIntro"));
+  set("sidebarTitle", t("navigation"));
   set("modeLabel", t("mode"));
   set("connectionLabel", t("connection"));
   set("searchLabel", t("search"));
@@ -4418,7 +4423,6 @@ function applyStaticTranslations() {
   set("storeReportsIntro", t("storeReportsIntro"));
   set("adminTitle", t("admin"));
   set("adminIntro", t("adminIntro"));
-  set("adminPlanningButton", "Dashboard");
   set("personNameLabel", t("name"));
   set("personPhoneLabel", t("phone"));
   set("personEmailLabel", t("email"));
