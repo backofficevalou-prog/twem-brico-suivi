@@ -154,6 +154,108 @@ const defaultRoleOptions = [
   "infra",
   "intervenant"
 ];
+const visibilityTabCatalog = [
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    blocks: [
+      { key: "filters", label: "Filtres dashboard", hint: "Recherche, statut, type, ville, date." },
+      { key: "overview", label: "Vue globale", hint: "KPI principaux et synthese." },
+      { key: "alerts", label: "Alertes critiques", hint: "Bloques, retards, urgences." }
+    ]
+  },
+  {
+    key: "timeline",
+    label: "Timeline / Planning",
+    blocks: [
+      { key: "filters", label: "Filtres timeline", hint: "Filtrage commun timeline." },
+      { key: "timeline_rows", label: "Lignes timeline", hint: "Lecture des etapes par magasin." },
+      { key: "timeline_actions", label: "Actions timeline", hint: "Acces fiche / activite depuis une etape." }
+    ]
+  },
+  {
+    key: "stores",
+    label: "Magasins",
+    blocks: [
+      { key: "store_list", label: "Liste magasins", hint: "Tableau et recherche magasins." },
+      { key: "store_profile", label: "Fiche magasin", hint: "Vue complete du magasin." },
+      { key: "store_edit", label: "Edition fiche", hint: "Modification des blocs dans la fiche." },
+      { key: "store_sav", label: "Creation SAV", hint: "Creation demande SAV depuis la fiche." }
+    ]
+  },
+  {
+    key: "sav",
+    label: "SAV / Tickets",
+    blocks: [
+      { key: "sav_list", label: "Liste tickets", hint: "Vue de tous les tickets." },
+      { key: "sav_followup", label: "Suivi ticket", hint: "Commentaires et historique." },
+      { key: "sav_status", label: "Statut ticket", hint: "Ouvert, en cours, cloture." }
+    ]
+  },
+  {
+    key: "extensions",
+    label: "Extensions",
+    blocks: [
+      { key: "extensions_catalog", label: "Catalogue extensions", hint: "Reference commune de numerotation." }
+    ]
+  },
+  {
+    key: "contacts",
+    label: "Contacts",
+    blocks: [
+      { key: "contact_create", label: "Ajouter personne", hint: "Creation d un contact." },
+      { key: "contact_store", label: "Ajouter magasin", hint: "Creation fiche magasin rapide." },
+      { key: "contact_manage", label: "Liste contacts", hint: "Recherche et modification." }
+    ]
+  },
+  {
+    key: "reports",
+    label: "Rapports",
+    blocks: [
+      { key: "reports_today", label: "Remontees du jour", hint: "Journal quotidien." },
+      { key: "reports_store", label: "Rapports par magasin", hint: "Historique replie par magasin." },
+      { key: "reports_export", label: "Export PDF", hint: "Generation d un rapport PDF." }
+    ]
+  },
+  {
+    key: "automations",
+    label: "Automatisations",
+    blocks: [
+      { key: "automations_workflow", label: "Workflow", hint: "Relances, escalades, automatisations." }
+    ]
+  },
+  {
+    key: "tools",
+    label: "Tools TWEM",
+    blocks: [
+      { key: "tools_notes", label: "Notes / tools", hint: "Checklist et notes internes." }
+    ]
+  },
+  {
+    key: "pin-access",
+    label: "PIN / Acces",
+    blocks: [
+      { key: "pin_directory", label: "Gestion PIN", hint: "Creation, edition, expiration." },
+      { key: "pin_magic", label: "Lien magique", hint: "Envoi du lien de connexion." }
+    ]
+  },
+  {
+    key: "import-export",
+    label: "Import / Export",
+    blocks: [
+      { key: "import_data", label: "Import", hint: "Import magasins, extensions, donnees." },
+      { key: "export_data", label: "Export", hint: "Export des donnees et listes." }
+    ]
+  },
+  {
+    key: "visibility",
+    label: "Qui voit quoi",
+    blocks: [
+      { key: "visibility_matrix", label: "Configuration role", hint: "Cascade des droits par role." },
+      { key: "visibility_overrides", label: "Derogations chantier", hint: "Exceptions par magasin et personne." }
+    ]
+  }
+];
 const translations = {
   fr: {
     navigation: "Navigation",
@@ -554,6 +656,8 @@ const state = {
   toolItems: [],
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
+  roleVisibilityConfig: {},
+  visibilityEditorRole: "supadmin_twem",
   contactSearch: "",
   tickets: [],
   filters: {
@@ -648,6 +752,11 @@ const overrideStartInput = document.querySelector("#overrideStartInput");
 const overrideEndInput = document.querySelector("#overrideEndInput");
 const overrideReasonInput = document.querySelector("#overrideReasonInput");
 const visibilityOverrideList = document.querySelector("#visibilityOverrideList");
+const visibilityRoleSelect = document.querySelector("#visibilityRoleSelect");
+const visibilityRoleMeta = document.querySelector("#visibilityRoleMeta");
+const visibilityTabsEditor = document.querySelector("#visibilityTabsEditor");
+const visibilityZonesEditor = document.querySelector("#visibilityZonesEditor");
+const visibilityRoleSummary = document.querySelector("#visibilityRoleSummary");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -906,6 +1015,8 @@ function localUiState() {
     toolItems: state.toolItems,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
+    roleVisibilityConfig: state.roleVisibilityConfig,
+    visibilityEditorRole: state.visibilityEditorRole,
     contactSearch: state.contactSearch
   };
 }
@@ -921,11 +1032,13 @@ function loadState() {
       activeUserName: "Emir",
       language: "fr",
       activeAdminTab: "dashboard",
-      toolItems: [],
-      accessOverrides: [],
-      roleOptions: [...defaultRoleOptions],
-      contactSearch: ""
-    };
+        toolItems: [],
+        accessOverrides: [],
+        roleOptions: [...defaultRoleOptions],
+        roleVisibilityConfig: {},
+        visibilityEditorRole: "supadmin_twem",
+        contactSearch: ""
+      };
   }
 
   try {
@@ -942,11 +1055,13 @@ function loadState() {
       activeUserName: parsed.activeUserName || "Emir",
       language: parsed.language || "fr",
       activeAdminTab: parsed.activeAdminTab || "dashboard",
-      toolItems: parsed.toolItems || [],
-      accessOverrides: parsed.accessOverrides || [],
-      roleOptions: parsed.roleOptions || [...defaultRoleOptions],
-      contactSearch: parsed.contactSearch || ""
-    };
+        toolItems: parsed.toolItems || [],
+        accessOverrides: parsed.accessOverrides || [],
+        roleOptions: parsed.roleOptions || [...defaultRoleOptions],
+        roleVisibilityConfig: parsed.roleVisibilityConfig || {},
+        visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
+        contactSearch: parsed.contactSearch || ""
+      };
   } catch {
     return {
       stores: clone(demoStores),
@@ -956,11 +1071,13 @@ function loadState() {
       activeUserName: "Emir",
       language: "fr",
       activeAdminTab: "dashboard",
-      toolItems: [],
-      accessOverrides: [],
-      roleOptions: [...defaultRoleOptions],
-      contactSearch: ""
-    };
+        toolItems: [],
+        accessOverrides: [],
+        roleOptions: [...defaultRoleOptions],
+        roleVisibilityConfig: {},
+        visibilityEditorRole: "supadmin_twem",
+        contactSearch: ""
+      };
   }
 }
 
@@ -1215,6 +1332,192 @@ function roleLabel(role) {
     intervenant: "Autre intervenant"
   };
   return labels[role] || role;
+}
+
+function defaultVisibilityModesForRole(role) {
+  const visibleTabs = defaultTabsForRole(role).includes("*")
+    ? visibilityTabCatalog.map((tab) => tab.key)
+    : defaultTabsForRole(role).filter((tab) => visibilityTabCatalog.some((entry) => entry.key === tab));
+  const editableZones = editableZonesForRole(role);
+  const tabs = {};
+  const blocks = {};
+  visibleTabs.forEach((tabKey) => {
+    tabs[tabKey] = true;
+    const catalog = visibilityTabCatalog.find((entry) => entry.key === tabKey);
+    if (!catalog) return;
+    blocks[tabKey] = {};
+    catalog.blocks.forEach((block) => {
+      const editable = editableZones.includes("all")
+        || editableZones.includes(block.key)
+        || editableZones.includes(tabKey)
+        || (tabKey === "stores" && editableZones.includes("sav_ticket") && block.key === "store_sav");
+      blocks[tabKey][block.key] = editable ? "edit" : "view";
+    });
+  });
+  return { tabs, blocks };
+}
+
+function ensureRoleVisibilityConfig(role) {
+  if (!role) {
+    return { tabs: {}, blocks: {} };
+  }
+  if (!state.roleVisibilityConfig[role]) {
+    state.roleVisibilityConfig[role] = defaultVisibilityModesForRole(role);
+  }
+  state.roleVisibilityConfig[role].tabs ||= {};
+  state.roleVisibilityConfig[role].blocks ||= {};
+  return state.roleVisibilityConfig[role];
+}
+
+function summarizeRoleVisibility(role) {
+  const config = ensureRoleVisibilityConfig(role);
+  const visibleTabs = visibilityTabCatalog.filter((tab) => config.tabs[tab.key]);
+  const editableBlocks = [];
+  visibleTabs.forEach((tab) => {
+    tab.blocks.forEach((block) => {
+      const mode = config.blocks?.[tab.key]?.[block.key];
+      if (mode === "edit") {
+        editableBlocks.push(`${tab.label} : ${block.label}`);
+      }
+    });
+  });
+  return { visibleTabs, editableBlocks };
+}
+
+function renderVisibilityEditor() {
+  if (!visibilityRoleSelect || !visibilityTabsEditor || !visibilityZonesEditor || !visibilityRoleSummary) {
+    return;
+  }
+
+  const availableRoles = [...new Set([...(state.roleOptions || []), ...defaultRoleOptions])];
+  if (!availableRoles.includes(state.visibilityEditorRole)) {
+    state.visibilityEditorRole = availableRoles[0] || "supadmin_twem";
+  }
+  const role = state.visibilityEditorRole;
+  const config = ensureRoleVisibilityConfig(role);
+
+  visibilityRoleSelect.innerHTML = availableRoles
+    .map((entry) => `<option value="${escapeHtml(entry)}" ${entry === role ? "selected" : ""}>${escapeHtml(roleLabel(entry))}</option>`)
+    .join("");
+
+  const summary = summarizeRoleVisibility(role);
+  visibilityRoleMeta.innerHTML = `
+    <span class="info-chip">${escapeHtml(roleLabel(role))}</span>
+    <span class="info-chip">${summary.visibleTabs.length} onglet(s) visibles</span>
+    <span class="info-chip">${summary.editableBlocks.length} bloc(s) modifiable(s)</span>
+  `;
+
+  visibilityTabsEditor.innerHTML = visibilityTabCatalog
+    .map((tab) => `
+      <label class="visibility-tab-pill">
+        <input type="checkbox" data-visibility-tab="${escapeHtml(tab.key)}" ${config.tabs[tab.key] ? "checked" : ""}>
+        <span>${escapeHtml(tab.label)}</span>
+      </label>
+    `)
+    .join("");
+
+  const visibleTabCards = visibilityTabCatalog
+    .filter((tab) => config.tabs[tab.key])
+      .map((tab) => {
+        const blockRows = tab.blocks.map((block) => {
+          const currentMode = config.blocks?.[tab.key]?.[block.key] || "view";
+          return `
+            <div class="visibility-zone-row">
+              <div class="visibility-zone-label">
+                <strong>${escapeHtml(block.label)}</strong>
+                <span>${escapeHtml(block.hint)}</span>
+              </div>
+              <label>
+                <span>Cacher</span>
+                <input type="radio" name="visibility-${escapeHtml(role)}-${escapeHtml(tab.key)}-${escapeHtml(block.key)}" value="hide" data-visibility-mode="${escapeHtml(tab.key)}::${escapeHtml(block.key)}" ${currentMode === "hide" ? "checked" : ""}>
+              </label>
+              <label>
+                <span>Voir</span>
+                <input type="radio" name="visibility-${escapeHtml(role)}-${escapeHtml(tab.key)}-${escapeHtml(block.key)}" value="view" data-visibility-mode="${escapeHtml(tab.key)}::${escapeHtml(block.key)}" ${currentMode === "view" ? "checked" : ""}>
+              </label>
+              <label>
+                <span>Modifier</span>
+                <input type="radio" name="visibility-${escapeHtml(role)}-${escapeHtml(tab.key)}-${escapeHtml(block.key)}" value="edit" data-visibility-mode="${escapeHtml(tab.key)}::${escapeHtml(block.key)}" ${currentMode === "edit" ? "checked" : ""}>
+              </label>
+          </div>
+        `;
+      }).join("");
+      return `
+        <article class="visibility-zone-card">
+          <h5>${escapeHtml(tab.label)}</h5>
+          <div class="visibility-zone-list">${blockRows}</div>
+        </article>
+      `;
+    })
+    .join("");
+
+  visibilityZonesEditor.innerHTML = visibleTabCards || '<div class="visibility-zone-empty">Aucun onglet visible pour ce role.</div>';
+
+  const visibleTabChips = summary.visibleTabs.length
+    ? summary.visibleTabs.map((tab) => `<span class="visibility-chip">${escapeHtml(tab.label)}</span>`).join("")
+    : '<div class="empty-state">Aucun onglet visible.</div>';
+    const editableBlockChips = summary.editableBlocks.length
+      ? summary.editableBlocks.map((block) => `<span class="visibility-chip">${escapeHtml(block)}</span>`).join("")
+      : '<div class="empty-state">Tout est en lecture seule.</div>';
+    const hiddenBlocks = [];
+    summary.visibleTabs.forEach((tab) => {
+      tab.blocks.forEach((block) => {
+        const mode = config.blocks?.[tab.key]?.[block.key];
+        if (mode === "hide") {
+          hiddenBlocks.push(`${tab.label} : ${block.label}`);
+        }
+      });
+    });
+    const hiddenBlockChips = hiddenBlocks.length
+      ? hiddenBlocks.map((block) => `<span class="visibility-chip">${escapeHtml(block)}</span>`).join("")
+      : '<div class="empty-state">Aucun bloc masque.</div>';
+
+    visibilityRoleSummary.innerHTML = `
+      <article class="visibility-summary-card">
+        <h5>Onglets visibles</h5>
+        <div class="visibility-zone-list">
+        <div class="visibility-chip-list">${visibleTabChips}</div>
+      </div>
+    </article>
+      <article class="visibility-summary-card">
+        <h5>Blocs modifiables</h5>
+        <div class="visibility-zone-list">
+          <div class="visibility-chip-list">${editableBlockChips}</div>
+        </div>
+      </article>
+      <article class="visibility-summary-card">
+        <h5>Blocs masques</h5>
+        <div class="visibility-zone-list">
+          <div class="visibility-chip-list">${hiddenBlockChips}</div>
+        </div>
+      </article>
+    `;
+
+  visibilityTabsEditor.querySelectorAll("[data-visibility-tab]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const tabKey = checkbox.getAttribute("data-visibility-tab");
+      config.tabs[tabKey] = checkbox.checked;
+      const catalog = visibilityTabCatalog.find((entry) => entry.key === tabKey);
+      if (checkbox.checked && catalog) {
+        config.blocks[tabKey] ||= {};
+        catalog.blocks.forEach((block) => {
+          config.blocks[tabKey][block.key] ||= "view";
+        });
+      }
+      saveState();
+      renderVisibilityEditor();
+    });
+  });
+
+  visibilityZonesEditor.querySelectorAll("[data-visibility-mode]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const [tabKey, blockKey] = input.getAttribute("data-visibility-mode").split("::");
+      config.blocks[tabKey] ||= {};
+      config.blocks[tabKey][blockKey] = input.value;
+      saveState();
+      renderVisibilityEditor();
+    });
+  });
 }
 
 function renderOptions(options, selectedValue) {
@@ -4139,6 +4442,7 @@ function render() {
   renderRoleList();
   renderPinAccessList();
   renderToolList();
+  renderVisibilityEditor();
   renderVisibilityOverrides();
   applyReadOnlyRules();
 }
@@ -4163,6 +4467,12 @@ async function importJsonData(payload) {
   if (Array.isArray(payload.roleOptions)) {
     state.roleOptions = payload.roleOptions;
   }
+  if (payload.roleVisibilityConfig && typeof payload.roleVisibilityConfig === "object") {
+    state.roleVisibilityConfig = payload.roleVisibilityConfig;
+  }
+  if (typeof payload.visibilityEditorRole === "string" && payload.visibilityEditorRole) {
+    state.visibilityEditorRole = payload.visibilityEditorRole;
+  }
   if (typeof payload.activeUserName === "string" && payload.activeUserName) {
     state.activeUserName = payload.activeUserName;
   }
@@ -4186,6 +4496,8 @@ function exportJsonData() {
     people: state.people,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
+    roleVisibilityConfig: state.roleVisibilityConfig,
+    visibilityEditorRole: state.visibilityEditorRole,
     activeUserName: state.activeUserName,
     exportedAt: new Date().toISOString()
   };
@@ -5186,6 +5498,11 @@ authForm.addEventListener("submit", handleAuthSubmit);
 logoutButton.addEventListener("click", handleLogout);
 activeUserSelect.addEventListener("change", handleActiveUserChange);
 languageSelect.addEventListener("change", handleLanguageChange);
+visibilityRoleSelect?.addEventListener("change", (event) => {
+  state.visibilityEditorRole = event.target.value;
+  saveState();
+  renderVisibilityEditor();
+});
 pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
 pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
@@ -5219,6 +5536,8 @@ async function init() {
   state.toolItems = stored.toolItems || [];
   state.accessOverrides = stored.accessOverrides || [];
   state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
+  state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
+  state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";
   document.documentElement.lang = state.language;
 

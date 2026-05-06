@@ -285,136 +285,39 @@
             <section class="admin-panel workspace-view" data-admin-panel="visibility">
               <article class="admin-card">
                 <h3>Qui voit quoi</h3>
-                <p>Matrice Twem pour cadrer les droits par role avant consolidation. Visible uniquement pour Twem.</p>
-                <div class="visibility-grid">
-                  <div class="visibility-card">
-                    <h4>Twem</h4>
-                    <div class="simple-list">
-                      <div class="placeholder-item">Voit tout le planning chantier</div>
-                      <div class="placeholder-item">Modifie tous les blocs magasin</div>
-                      <div class="placeholder-item">Accede aux contacts, rapports, automatisations et tools</div>
-                    </div>
+                <p>Reglage en cascade: on choisit d abord le role, puis les onglets visibles, puis les droits de lecture et de modification dans chaque onglet.</p>
+                <div class="visibility-editor-shell">
+                  <div class="visibility-role-head">
+                    <label class="visibility-role-picker">
+                      <span>Role</span>
+                      <select id="visibilityRoleSelect"></select>
+                    </label>
+                    <div id="visibilityRoleMeta" class="visibility-role-meta"></div>
                   </div>
 
-                  <div class="visibility-card">
-                    <h4>Magasin</h4>
-                    <div class="simple-list">
-                      <div class="placeholder-item">Voit uniquement son magasin</div>
-                      <div class="placeholder-item">Peut completer la configuration demandee au magasin</div>
-                      <div class="placeholder-item">Peut faire des remarques et confirmer ce qui fonctionne</div>
+                  <article class="visibility-step-card">
+                    <div class="visibility-step-head">
+                      <h4>1. Onglets visibles</h4>
+                      <p>Choisis ce que le role peut voir dans la navigation.</p>
                     </div>
-                  </div>
+                    <div id="visibilityTabsEditor" class="visibility-tab-pills"></div>
+                  </article>
 
-                  <div class="visibility-card">
-                    <h4>Destiny / Telephonie</h4>
-                    <div class="simple-list">
-                      <div class="placeholder-item">Voit les magasins concernes</div>
-                      <div class="placeholder-item">Peut mettre a jour PM, ticket, pre-visite et fin d installation</div>
-                      <div class="placeholder-item">Peut laisser une remarque technique de chantier</div>
+                  <article class="visibility-step-card">
+                    <div class="visibility-step-head">
+                      <h4>2. Droits dans les onglets</h4>
+                      <p>Lecture seule ou modification, onglet par onglet et bloc par bloc.</p>
                     </div>
-                  </div>
+                    <div id="visibilityZonesEditor" class="visibility-zone-stack"></div>
+                  </article>
 
-                  <div class="visibility-card">
-                    <h4>IT</h4>
-                    <div class="simple-list">
-                      <div class="placeholder-item">Peut agir sur VLAN22, alarme, reseau et pre-requis techniques</div>
-                      <div class="placeholder-item">Voit les elements necessaires a la preparation</div>
-                      <div class="placeholder-item">Ne touche pas a l admin Twem</div>
+                  <article class="visibility-step-card">
+                    <div class="visibility-step-head">
+                      <h4>Recapitulatif</h4>
+                      <p>Resume leger du role courant pour relire sans se perdre.</p>
                     </div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="admin-card">
-                <h3>Matrice par bloc</h3>
-                <p>Base de travail editable ensuite. On s en sert pour decider ce qui est visible, cache ou modifiable.</p>
-                <div class="table-wrap">
-                  <table class="posts-table visibility-table">
-                    <thead>
-                      <tr>
-                        <th>Bloc</th>
-                        <th>Twem</th>
-                        <th>Magasin</th>
-                        <th>Destiny</th>
-                        <th>IT</th>
-                        <th>Autres intervenants</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Identite magasin</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir</td>
-                        <td>Voir</td>
-                        <td>Voir</td>
-                        <td>Voir</td>
-                      </tr>
-                      <tr>
-                        <td>Intervenants</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir</td>
-                        <td>Voir</td>
-                        <td>Voir</td>
-                        <td>Voir</td>
-                      </tr>
-                      <tr>
-                        <td>Rendez-vous</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir / repondre</td>
-                        <td>Voir / repondre</td>
-                        <td>Voir / repondre</td>
-                        <td>Voir / repondre</td>
-                      </tr>
-                      <tr>
-                        <td>Configuration demandee au magasin</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir / completer</td>
-                        <td>Voir</td>
-                        <td>Cache</td>
-                        <td>Cache</td>
-                      </tr>
-                      <tr>
-                        <td>Coordination Destiny</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir</td>
-                        <td>Cache</td>
-                      </tr>
-                      <tr>
-                        <td>Preparation externe / VLAN22 / alarme</td>
-                        <td>Voir / modifier</td>
-                        <td>Cache</td>
-                        <td>Voir</td>
-                        <td>Voir / modifier</td>
-                        <td>Cache</td>
-                      </tr>
-                      <tr>
-                        <td>Configuration du reseau</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir / completer</td>
-                        <td>Voir</td>
-                        <td>Voir / preparer</td>
-                        <td>Cache</td>
-                      </tr>
-                      <tr>
-                        <td>Postes magasin</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir / modifier si affecte</td>
-                      </tr>
-                      <tr>
-                        <td>Cloture / remarques finales</td>
-                        <td>Voir / modifier</td>
-                        <td>Voir / commenter</td>
-                        <td>Voir / cloturer</td>
-                        <td>Voir</td>
-                        <td>Voir / commenter</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                    <div id="visibilityRoleSummary" class="visibility-summary"></div>
+                  </article>
                 </div>
               </article>
 

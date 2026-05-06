@@ -1396,26 +1396,155 @@ button {
   gap: 10px;
 }
 
-.visibility-grid {
+.visibility-editor-shell {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.visibility-card {
-  padding: 14px;
+.visibility-role-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+}
+
+.visibility-role-picker {
+  min-width: 240px;
+}
+
+.visibility-role-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.visibility-role-meta .info-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff8d1;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.visibility-step-card {
+  padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: linear-gradient(135deg, #fff8d1, #fffdf3);
+  background: #fffdfa;
 }
 
-.visibility-card h4 {
-  margin: 0 0 10px;
+.visibility-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  align-items: end;
+  margin-bottom: 12px;
 }
 
-.visibility-table td,
-.visibility-table th {
-  white-space: nowrap;
+.visibility-step-head h4,
+.visibility-zone-card h5,
+.visibility-summary-card h5 {
+  margin: 0;
+}
+
+.visibility-step-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.visibility-tab-pills,
+.visibility-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.visibility-tab-pill,
+.visibility-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-weight: 600;
+}
+
+.visibility-tab-pill input {
+  margin: 0;
+}
+
+.visibility-zone-stack,
+.visibility-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.visibility-zone-card,
+.visibility-summary-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.visibility-zone-card h5,
+.visibility-summary-card h5 {
+  padding: 10px 12px;
+  background: #fff8d1;
+  border-bottom: 1px solid var(--line);
+}
+
+.visibility-zone-list {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.visibility-zone-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.15fr) repeat(3, minmax(100px, 0.6fr));
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #efe6c9;
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.visibility-zone-row label {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.visibility-zone-row label input {
+  margin: 0;
+}
+
+.visibility-zone-label strong {
+  display: block;
+}
+
+.visibility-zone-label span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.visibility-zone-empty,
+.visibility-summary-card .empty-state {
+  padding: 10px 12px;
+  color: var(--muted);
 }
 
 .visibility-override-form {
@@ -1774,7 +1903,8 @@ button {
   .appointment-item,
   .simple-item-grid,
   .admin-grid,
-  .visibility-grid,
+  .visibility-role-head,
+  .visibility-zone-row,
   .visibility-override-form,
   .tool-form,
   .contacts-form-grid,
@@ -1885,6 +2015,8 @@ button {
   .admin-content,
   .admin-grid,
   .contacts-grid,
+  .visibility-zone-stack,
+  .visibility-summary,
   .store-meta-grid,
   .activity-list,
   .placeholder-list,
@@ -1947,8 +2079,7 @@ button {
     min-width: 0;
   }
 
-  .posts-table,
-  .visibility-table {
+  .posts-table {
     min-width: 720px;
   }
 }
