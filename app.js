@@ -399,6 +399,8 @@ const state = {
   expandedStoreIds: new Set()
 };
 
+const presentationBypassUser = "Emir";
+
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing"];
 
 const pinGate = document.querySelector("#pinGate");
@@ -2596,7 +2598,8 @@ function renderConnectionStatus() {
 
 function renderPinGate() {
   const user = currentUser();
-  pinGate?.classList.toggle("hidden-panel", state.pinValidated);
+  const bypassActive = Boolean(presentationBypassUser);
+  pinGate?.classList.toggle("hidden-panel", state.pinValidated || bypassActive);
   if (pinFeedback && !state.pinValidated) {
     pinFeedback.textContent = user ? `Dernier profil charge: ${user.name}` : "";
   }
@@ -4224,6 +4227,12 @@ async function init() {
   state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
   state.contactSearch = stored.contactSearch || "";
   document.documentElement.lang = state.language;
+
+  if (presentationBypassUser) {
+    state.activeUserName = presentationBypassUser;
+    state.pinValidated = true;
+    state.activeAdminTab = "dashboard";
+  }
 
   if (isSupabaseMode && supabaseClient) {
     try {
