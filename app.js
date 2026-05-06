@@ -3159,6 +3159,10 @@ function renderPeopleList() {
 
 function renderRoleList() {
   roleList.innerHTML = "";
+  const roleStackSummary = document.querySelector("#roleStackSummary");
+  if (roleStackSummary) {
+    roleStackSummary.textContent = `Voir les roles (${state.roleOptions.length})`;
+  }
 
   state.roleOptions.forEach((role) => {
     const isLocked = defaultRoleOptions.includes(role);
@@ -3173,12 +3177,9 @@ function renderRoleList() {
       `
       : `
         <form class="role-editor" data-role-value="${escapeHtml(role)}">
-          <div class="role-row">
-            <label>
-              <span>Role</span>
-              <input type="text" name="role" value="${escapeHtml(role)}">
-            </label>
-            <div class="person-row-actions">
+          <div class="role-row role-row-editable">
+            <input type="text" name="role" value="${escapeHtml(role)}" aria-label="Role">
+            <div class="role-actions">
               <button type="submit" class="mini-button">Enregistrer</button>
               <button type="button" class="mini-button" data-role-remove="${escapeHtml(role)}">Supprimer</button>
             </div>

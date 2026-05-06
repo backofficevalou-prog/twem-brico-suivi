@@ -1485,9 +1485,46 @@ button {
   padding-top: 12px;
 }
 
+.role-stack {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+  overflow: hidden;
+}
+
+.role-stack summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-family: "Space Grotesk", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.role-stack summary::-webkit-details-marker {
+  display: none;
+}
+
+.role-stack summary::after {
+  content: "+";
+  color: var(--accent-dark);
+  font-size: 1.1rem;
+}
+
+.role-stack[open] summary::after {
+  content: "−";
+}
+
+.compact-role-list {
+  padding: 0 10px 10px;
+}
+
 .compact-role-list .simple-item,
 .compact-role-list .role-row {
-  padding: 8px 10px;
+  padding: 6px 8px;
+  background: #fff;
 }
 
 .role-manager-head h4,
@@ -1552,12 +1589,16 @@ button {
 .role-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .role-row.locked-role {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.role-row-editable {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .role-name {
@@ -1567,6 +1608,16 @@ button {
 .role-note {
   font-size: 0.82rem;
   color: var(--muted);
+}
+
+.role-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-actions .mini-button {
+  padding: 8px 12px;
 }
 
 .auth-form,
