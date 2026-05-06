@@ -2060,6 +2060,89 @@ function getStoreQuantityPlan(store) {
   return { licenseCount, fixCount, mobileCount, callButtonCount, panicCount };
 }
 
+function defaultNetworkRowsForStore(store) {
+  const { fixCount, mobileCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
+  const rows = [];
+  const pushRows = (category, count) => {
+    for (let index = 1; index <= count; index += 1) {
+      rows.push({
+        id: `${category}-${index}`,
+        category,
+        slotLabel: `${category} ${index}`,
+        extensionLabel: "",
+        note: ""
+      });
+    }
+  };
+  pushRows("Poste fixe", fixCount);
+  pushRows("Mobile", mobileCount);
+  pushRows("Call button", callButtonCount);
+  pushRows("Panic button", panicCount);
+  return rows;
+}
+
+function getNetworkConfigRows(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  if (!Array.isArray(workflow.networkRows) || !workflow.networkRows.length) {
+    workflow.networkRows = defaultNetworkRowsForStore(store);
+  }
+  return workflow.networkRows;
+}
+
+function defaultGsmRowsForStore(store) {
+  const { mobileCount } = getStoreQuantityPlan(store);
+  const count = Math.max(2, Math.min(4, mobileCount));
+  return Array.from({ length: count }, (_, index) => ({
+    id: `gsm-${index + 1}`,
+    model: "",
+    mobileNumber: "",
+    mobileNetwork: "",
+    iccid: "",
+    puk: "",
+    extensionLinked: "",
+    user: "",
+    callGroup: ""
+  }));
+}
+
+function getGsmRows(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  if (!Array.isArray(workflow.gsmRows) || !workflow.gsmRows.length) {
+    workflow.gsmRows = defaultGsmRowsForStore(store);
+  }
+  return workflow.gsmRows;
+}
+
+function defaultIntervenantRows() {
+  return [
+    { id: "it", slotName: "IT", note: "Preparation technique" },
+    { id: "herbots", slotName: "Herbots", note: "Intervention site" },
+    { id: "extra1", slotName: "", note: "" },
+    { id: "extra2", slotName: "", note: "" },
+    { id: "extra3", slotName: "", note: "" },
+    { id: "extra4", slotName: "", note: "" }
+  ];
+}
+
+function getIntervenantRows(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  if (!Array.isArray(workflow.intervenantRows) || !workflow.intervenantRows.length) {
+    workflow.intervenantRows = defaultIntervenantRows();
+  }
+  return workflow.intervenantRows;
+}
+
+function renderPersonSelect(selectedValue = "", includeBlank = true) {
+  const options = [
+    ...(includeBlank ? [{ value: "", label: "Choisir un intervenant" }] : []),
+    ...state.people.map((person) => ({
+      value: person.name,
+      label: `${person.name} - ${roleLabel(person.role)}`
+    }))
+  ];
+  return `<select>${renderOptions(options, selectedValue)}</select>`;
+}
+
 function buildStorePilotSkeleton(store) {
   const { licenseCount, fixCount, mobileCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
 
@@ -2079,61 +2162,68 @@ function buildStorePilotSkeleton(store) {
 }
 
 function buildNetworkConfigSkeleton(store) {
-  const { fixCount, mobileCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
   const workflow = ensureStoreWorkflowData(store);
-  const extensionOptions = [
-    "250 - compta",
-    "300 - jardin",
-    "320 - accueil",
-    "340 - caisse",
-    "350 - carrelage",
-    "380 - drive-in",
-    "900 - zaagmachine",
-    "901 - tuin",
-    "902 - verf",
-    "903 - keukens",
-    "904 - tegels",
-    "922 - front end evacuation",
-    "923 - safe room",
-    "924 - drive in till zone"
-  ];
+  const rows = getNetworkConfigRows(store);
+  const groupedRows = rows.reduce((accumulator, row) => {
+    accumulator[row.category] ||= [];
+    accumulator[row.category].push(row);
+    return accumulator;
+  }, {});
 
-  const buildSelect = () => `
-    <select>
-      <option value="">Choisir une extension / un lieu</option>
-      ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}
-    </select>
-  `;
+  const editableContent = Object.entries(groupedRows).map(([category, categoryRows]) => `
+    <article class="network-category">
+      <div class="network-category-head">
+        <h4>${escapeHtml(category)}</h4>
+        <span>${categoryRows.length} ligne(s)</span>
+      </div>
+      <div class="network-rows">
+        ${categoryRows.map((row, index) => `
+          <div class="network-row">
+            <div class="network-slot">${escapeHtml(row.slotLabel || `${category} ${index + 1}`)}</div>
+            <label>
+              <span>Extension + lieu</span>
+              <select name="network_extension_${escapeHtml(row.id)}">
+                <option value="">Choisir une extension / un lieu</option>
+                ${extensionReferenceOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+              </select>
+            </label>
+            <label>
+              <span>Note</span>
+              <input type="text" name="network_note_${escapeHtml(row.id)}" value="${escapeHtml(row.note || "")}" placeholder="Ex: personnaliser la touche / commentaire">
+            </label>
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `).join("");
 
-  const buildRows = (label, count) => {
-    if (!count) {
-      return "";
-    }
-
-    return `
-      <article class="network-category">
-        <div class="network-category-head">
-          <h4>${label}</h4>
-          <span>${count} ligne(s)</span>
-        </div>
-        <div class="network-rows">
-          ${Array.from({ length: count }, (_, index) => `
-            <div class="network-row">
-              <div class="network-slot">${label} ${index + 1}</div>
-              <label>
-                <span>Extension + lieu</span>
-                ${buildSelect()}
-              </label>
-              <label>
-                <span>Note</span>
-                <input type="text" placeholder="Ex: personnaliser la touche / commentaire">
-              </label>
-            </div>
-          `).join("")}
-        </div>
-      </article>
-    `;
-  };
+  const summaryRows = rows.filter((row) => row.extensionLabel || row.note);
+  const summaryContent = summaryRows.length
+    ? `
+      <div class="compact-table-wrap">
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Slot</th>
+              <th>Extension + lieu</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summaryRows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.category)}</td>
+                <td>${escapeHtml(row.slotLabel)}</td>
+                <td>${escapeHtml(row.extensionLabel || "-")}</td>
+                <td>${escapeHtml(row.note || "-")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : '<div class="empty-state">Aucun choix extension confirme pour le moment.</div>';
 
   return `
     <details class="network-skeleton" open data-access-zone="network_config">
@@ -2144,14 +2234,11 @@ function buildNetworkConfigSkeleton(store) {
       <div class="network-skeleton-body">
         <p class="posts-skeleton-intro">Le responsable magasin remplit cette partie pour permettre a l IT de programmer les appareils avant installation.</p>
         <input type="hidden" name="network_config_confirmed" value="${workflow.networkConfigConfirmed ? "1" : "0"}">
+        ${workflow.networkConfigConfirmed ? summaryContent : editableContent}
         <div class="network-confirm-bar">
-          <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Le magasin peut remplir puis confirmer ses choix."}</span>
+          <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Le magasin remplit ses choix puis confirme en bas du module."}</span>
           <button type="button" class="mini-button" data-network-confirm="${store.id}">${workflow.networkConfigConfirmed ? "Choix confirmes" : "Confirmer vos choix"}</button>
         </div>
-        ${buildRows("Poste fixe", fixCount)}
-        ${buildRows("Mobile", mobileCount)}
-        ${buildRows("Call button", callButtonCount)}
-        ${buildRows("Panic button", panicCount)}
       </div>
     </details>
   `;
@@ -2250,35 +2337,298 @@ function buildStoreHeaderCards() {
   `;
 }
 
-function buildExtraActorsBoard() {
-  const groups = [
-    [
-      { title: "Intervenant", statusName: "it_status", noteName: "it_note", noteValue: "IT - Preparation technique en attente" },
-      { title: "Intervenant", statusName: "herbots_status", noteName: "herbots_note", noteValue: "Herbots - Intervention a planifier" },
-      { title: "Intervenant", statusName: "other_actor_status_1", noteName: "other_actor_1", noteValue: "Nom de l intervenant + note" },
-      { title: "Intervenant", statusName: "other_actor_status_2", noteName: "other_actor_2", noteValue: "Nom de l intervenant + note" }
-    ],
-    [
-      { title: "Intervenant", statusName: "other_actor_status_3", noteName: "other_actor_3", noteValue: "Nom de l intervenant + note" },
-      { title: "Intervenant", statusName: "other_actor_status_4", noteName: "other_actor_4", noteValue: "Nom de l intervenant + note" },
-      { title: "Intervenant", statusName: "other_actor_status_5", noteName: "other_actor_5", noteValue: "Nom de l intervenant + note" },
-      { title: "Intervenant", statusName: "other_actor_status_6", noteName: "other_actor_6", noteValue: "Nom de l intervenant + note" }
-    ]
+function buildStoreSectionNav() {
+  const links = [
+    ["overview", "Vue d ensemble"],
+    ["quantities", "Quantites"],
+    ["preparation", "Preparation"],
+    ["configuration", "Configuration"],
+    ["equipment", "Equipements"],
+    ["appointments", "Rendez-vous"],
+    ["sav", "SAV"],
+    ["closing", "Cloture"]
   ];
+  return `
+    <nav class="store-editor-nav">
+      ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
+    </nav>
+  `;
+}
+
+function buildPreparationHubCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  return `
+    <div class="editor-grid section-anchor" id="section-preparation">
+      <article class="editor-card full-span-card grouped-card" data-access-zone="external_prep">
+        <div class="grouped-card-head">
+          <h3>Preparation chantier</h3>
+          <p>Pre-visite, coordination Destiny et preparation externe regroupes dans un seul cadre.</p>
+        </div>
+        <div class="grouped-card-grid three-col-grid">
+          <section class="subpanel">
+            <h4>Coordination Destiny</h4>
+            <div class="contacts-form-grid">
+              <label>
+                <span>Date installation Destiny</span>
+                <input type="date" name="destiny_install_date" value="${escapeHtml(workflow.destinyInstallDate)}">
+              </label>
+              <label>
+                <span>Reference ticket</span>
+                <input type="text" name="destiny_ticket_ref" value="${escapeHtml(workflow.destinyTicketRef)}" placeholder="Ex: DST-2026-0412">
+              </label>
+              <label>
+                <span>Numero dossier</span>
+                <input type="text" name="destiny_case_ref" value="${escapeHtml(workflow.destinyCaseRef)}">
+              </label>
+              <label>
+                <span>PM installateur</span>
+                <input type="text" name="destiny_pm_name" value="${escapeHtml(workflow.destinyPmName)}">
+              </label>
+              <label>
+                <span>Mail PM</span>
+                <input type="email" name="destiny_pm_email" value="${escapeHtml(workflow.destinyPmEmail)}">
+              </label>
+              <label>
+                <span>Diffusion</span>
+                <input type="text" name="destiny_distribution" value="${escapeHtml(workflow.destinyDistribution)}">
+              </label>
+            </div>
+          </section>
+          <section class="subpanel">
+            <h4>Pre-visite Destiny</h4>
+            <div class="two-col">
+              <label>
+                <span>Verification reseau</span>
+                <select name="network_survey_status">
+                  ${renderOptions(["A planifier", "En cours", "Termine", "Probleme"], workflow.networkSurveyStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Couverture mobile</span>
+                <select name="mobile_coverage">
+                  ${renderOptions(["A verifier", "Tous reseaux OK", "Certains reseaux manquants", "Aucun reseau mobile"], workflow.mobileCoverage)}
+                </select>
+              </label>
+            </div>
+            <label>
+              <span>Remarque premiere visite</span>
+              <textarea name="first_visit_remark" rows="5">${escapeHtml(workflow.firstVisitRemark)}</textarea>
+            </label>
+          </section>
+          <section class="subpanel">
+            <h4>Preparation externe</h4>
+            <div class="external-prep-grid compact-prep-grid">
+              <label>
+                <span>Alarme geree par IT</span>
+                <select name="alarm_handled_by_it">
+                  ${renderOptions(["A confirmer", "Oui", "Non"], workflow.alarmHandledByIt)}
+                </select>
+              </label>
+              <label>
+                <span>VLAN22 demande</span>
+                <select name="vlan22_status">
+                  ${renderOptions(["Pas demande", "Demandee", "Recue", "Bloquee"], workflow.vlan22Status)}
+                </select>
+              </label>
+              <label>
+                <span>VLAN22 active</span>
+                <select name="vlan22_activated">
+                  ${renderOptions(["Non", "Oui", "Bloque"], workflow.vlan22Activated)}
+                </select>
+              </label>
+              <label>
+                <span>Charles Roux</span>
+                <select name="charles_roux_status">
+                  ${renderOptions(["A verifier", "OK", "Probleme"], workflow.charlesRouxStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Cablage</span>
+                <select name="cabling_status">
+                  ${renderOptions(["A verifier", "OK", "Probleme"], workflow.cablingStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Chargeurs mobiles envoyes</span>
+                <select name="mobile_chargers_sent">
+                  ${renderOptions(["Non", "Partiel", "Oui"], workflow.mobileChargersSent)}
+                </select>
+              </label>
+              <label>
+                <span>Nombre chargeurs</span>
+                <input type="number" min="0" name="mobile_charger_count" value="${escapeHtml(workflow.mobileChargerCount)}">
+              </label>
+            </div>
+          </section>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
+function buildConfigurationHubCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  return `
+    <div class="editor-grid section-anchor" id="section-configuration">
+      <article class="editor-card full-span-card grouped-card" data-access-zone="configuration_request">
+        <div class="grouped-card-head">
+          <h3>Configuration magasin</h3>
+          <p>De la demande de configuration jusqu au choix final des extensions.</p>
+        </div>
+        <div class="two-col">
+          <label>
+            <span>Demande configuration</span>
+            <select name="config_status">
+              ${renderOptions(["Pas envoye", "Envoye", "Recue"], "Envoye")}
+            </select>
+          </label>
+          <label>
+            <span>Date telephonie actuelle</span>
+            <input type="date" name="current_phone_date" value="2026-04-30">
+          </label>
+          <label>
+            <span>Commande articles</span>
+            <select name="order_status">
+              ${renderOptions(["Non transmise", "Transmise fournisseur", "Recue magasin"], "Transmise fournisseur")}
+            </select>
+          </label>
+          <label>
+            <span>Commentaire logistique</span>
+            <input type="text" name="order_note" value="Livraison partielle prevue cette semaine">
+          </label>
+        </div>
+        <div class="contacts-form-grid section-block">
+          <label>
+            <span>Mail configuration envoye</span>
+            <select name="extension_request_status">
+              ${renderOptions(["A envoyer", "Envoye", "Relancee"], workflow.extensionRequestStatus)}
+            </select>
+          </label>
+          <label>
+            <span>Configuration extensions recue</span>
+            <select name="extension_config_status">
+              ${renderOptions(["En attente", "Partielle", "Recue"], workflow.extensionConfigStatus)}
+            </select>
+          </label>
+        </div>
+        <div class="two-col section-block">
+          <label>
+            <span>Message d accueil / IVR / remarques manager</span>
+            <textarea name="ivr_notes" rows="5">${escapeHtml(workflow.ivrNotes)}</textarea>
+          </label>
+          <label>
+            <span>Autres consignes Brico</span>
+            <textarea name="greeting_notes" rows="5">${escapeHtml(workflow.greetingNotes)}</textarea>
+          </label>
+        </div>
+        ${buildNetworkConfigSkeleton(store)}
+      </article>
+    </div>
+  `;
+}
+
+function buildEquipmentCards(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const gsmRows = getGsmRows(store);
+  return `
+    <div class="editor-grid section-anchor" id="section-equipment">
+      <article class="editor-card full-span-card" data-access-zone="store_posts">
+        <h3>GSM / SIM</h3>
+        <div class="compact-table-wrap">
+          <table class="compact-table">
+            <thead>
+              <tr>
+                <th>Modele appareil</th>
+                <th>Numero mobile</th>
+                <th>Reseau mobile</th>
+                <th>ICCID</th>
+                <th>Code PUK</th>
+                <th>Extension liee</th>
+                <th>Utilisateur</th>
+                <th>Groupe appel</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${gsmRows.map((row) => `
+                <tr>
+                  <td><input type="text" name="gsm_model_${escapeHtml(row.id)}" value="${escapeHtml(row.model || "")}"></td>
+                  <td><input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}"></td>
+                  <td><input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}"></td>
+                  <td><input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}"></td>
+                  <td><input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}"></td>
+                  <td><input type="text" name="gsm_extension_${escapeHtml(row.id)}" value="${escapeHtml(row.extensionLinked || "")}"></td>
+                  <td><input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}"></td>
+                  <td><input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}"></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </article>
+      <article class="editor-card">
+        <h3>Alarme</h3>
+        <div class="two-col">
+          <label>
+            <span>Type d alarme</span>
+            <select name="alarm_type">
+              ${renderOptions(["PSTN", "DATA", "PSTN / DATA", "A confirmer"], workflow.alarmType)}
+            </select>
+          </label>
+          <label>
+            <span>Societe</span>
+            <input type="text" name="alarm_company" value="${escapeHtml(workflow.alarmCompany)}">
+          </label>
+          <label>
+            <span>Tel centrale alarme</span>
+            <input type="text" name="alarm_phone" value="${escapeHtml(workflow.alarmCentralPhone)}">
+          </label>
+          <label class="full-row">
+            <span>Autres</span>
+            <textarea name="alarm_other" rows="4">${escapeHtml(workflow.alarmOther)}</textarea>
+          </label>
+        </div>
+      </article>
+      <article class="editor-card">
+        <h3>Cascades / groupes d appel</h3>
+        <div class="two-col">
+          <label class="full-row">
+            <span>Groupes d appel</span>
+            <textarea name="call_groups_note" rows="4" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
+          </label>
+          <label class="full-row">
+            <span>Cascades</span>
+            <textarea name="cascade_note" rows="4" placeholder="Ex: si non reponse, renvoi vers permanence">${escapeHtml(workflow.cascadeNote)}</textarea>
+          </label>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
+function buildExtraActorsBoard(store) {
+  const rows = getIntervenantRows(store);
+  const groups = [rows.slice(0, 4), rows.slice(4, 8)].filter((group) => group.length);
 
   return `
     <div class="actor-board-stack">
       ${groups.map((group) => `
         <div class="actor-board yellow-line-clone">
           <div class="actor-board-head">
-            ${group.map((item) => `<div class="actor-board-title">${item.title}</div>`).join("")}
+            ${group.map((item) => `<div class="actor-board-title">${escapeHtml(item.slotName || "Intervenant")}</div>`).join("")}
           </div>
           <div class="actor-board-body">
             ${group.map((item) => `
               <div class="actor-board-cell">
                 <div class="cell-stack">
                   <span class="${badgeClass("planned")}">${statusLabel("planned")}</span>
-                  <input type="text" name="${item.noteName}" value="${escapeHtml(item.noteValue)}" placeholder="Nom / note">
+                  <label>
+                    <span class="sr-only">Intervenant</span>
+                    <select name="intervenant_name_${escapeHtml(item.id)}">
+                      <option value="">Choisir un intervenant</option>
+                      ${state.people.map((person) => `<option value="${escapeHtml(person.name)}" ${item.slotName === person.name ? "selected" : ""}>${escapeHtml(person.name)} - ${escapeHtml(roleLabel(person.role))}</option>`).join("")}
+                    </select>
+                  </label>
+                  <input type="text" name="intervenant_note_${escapeHtml(item.id)}" value="${escapeHtml(item.note || "")}" placeholder="Note / suivi">
                 </div>
               </div>
             `).join("")}
@@ -2367,7 +2717,16 @@ function ensureStoreWorkflowData(store) {
     bricoFinalMailStatus: "A envoyer",
     bricoFinalRemark: "",
     ltSwitchStatus: "En attente",
-    networkConfigConfirmed: false
+    networkConfigConfirmed: false,
+    networkRows: defaultNetworkRowsForStore(store),
+    gsmRows: defaultGsmRowsForStore(store),
+    intervenantRows: defaultIntervenantRows(),
+    alarmType: "A confirmer",
+    alarmCompany: "",
+    alarmCentralPhone: "",
+    alarmOther: "",
+    callGroupsNote: "",
+    cascadeNote: ""
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -2665,7 +3024,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded) {
       </article>
       <article class="editor-card intervenants-focus">
         ${buildPrimaryIntervenantsBoard(store, manager, installer, electrician)}
-        ${buildExtraActorsBoard()}
+        ${buildExtraActorsBoard(store)}
         <p class="intervenants-help">Ajout et modification des intervenants dans l onglet Contacts.</p>
       </article>
       <article class="editor-card store-side-shell">
@@ -2706,25 +3065,29 @@ function renderStoreCards(stores) {
     if (isExpanded) {
       const detailRow = document.createElement("tr");
       detailRow.className = "details-row";
-      detailRow.innerHTML = `
-        <td colspan="9">
-          <div class="details-panel">
+        detailRow.innerHTML = `
+          <td colspan="9">
+            <div class="details-panel">
             <form class="store-editor" data-store-editor="${store.id}">
-              ${buildStoreHeaderCards()}
+              ${buildStoreSectionNav()}
 
-              ${buildDestinyWorkflowCards(store)}
+              <div class="editor-grid section-anchor" id="section-quantities">
+                ${buildStorePilotSkeleton(store)}
+              </div>
 
-              ${buildBricoRequestCard(store)}
+              ${buildPreparationHubCard(store)}
 
-              ${buildExternalPreparationCard(store)}
+              ${buildConfigurationHubCard(store)}
 
-              ${buildStorePilotSkeleton(store)}
+              ${buildEquipmentCards(store)}
 
-              ${buildNetworkConfigSkeleton(store)}
+              <div class="editor-grid section-anchor" id="section-overview">
+                ${buildStorePostsSkeleton(store)}
+              </div>
 
-              ${buildStorePostsSkeleton(store)}
-
-              ${buildClosureWorkflowCard(store)}
+              <div class="editor-grid section-anchor" id="section-closing">
+                ${buildClosureWorkflowCard(store)}
+              </div>
 
               <div class="editor-grid">
                 <article class="editor-card full-span-card">
@@ -2734,11 +3097,11 @@ function renderStoreCards(stores) {
                 </article>
               </div>
 
-              <div class="editor-grid">
+              <div class="editor-grid section-anchor" id="section-appointments">
                 ${buildAppointmentsEditor(store)}
               </div>
 
-              <div class="editor-grid">
+              <div class="editor-grid section-anchor" id="section-sav">
                 ${buildSavCard(store)}
               </div>
 
@@ -4732,6 +5095,36 @@ function readAppointments(form, store) {
   return currentAppointments;
 }
 
+function readNetworkRows(form, store) {
+  return getNetworkConfigRows(store).map((row) => ({
+    ...row,
+    extensionLabel: form.querySelector(`[name="network_extension_${row.id}"]`)?.value ?? row.extensionLabel ?? "",
+    note: form.querySelector(`[name="network_note_${row.id}"]`)?.value?.trim() ?? row.note ?? ""
+  }));
+}
+
+function readGsmRows(form, store) {
+  return getGsmRows(store).map((row) => ({
+    ...row,
+    model: form.querySelector(`[name="gsm_model_${row.id}"]`)?.value.trim() || "",
+    mobileNumber: form.querySelector(`[name="gsm_number_${row.id}"]`)?.value.trim() || "",
+    mobileNetwork: form.querySelector(`[name="gsm_network_${row.id}"]`)?.value.trim() || "",
+    iccid: form.querySelector(`[name="gsm_iccid_${row.id}"]`)?.value.trim() || "",
+    puk: form.querySelector(`[name="gsm_puk_${row.id}"]`)?.value.trim() || "",
+    extensionLinked: form.querySelector(`[name="gsm_extension_${row.id}"]`)?.value.trim() || "",
+    user: form.querySelector(`[name="gsm_user_${row.id}"]`)?.value.trim() || "",
+    callGroup: form.querySelector(`[name="gsm_group_${row.id}"]`)?.value.trim() || ""
+  }));
+}
+
+function readIntervenantRows(form, store) {
+  return getIntervenantRows(store).map((row) => ({
+    ...row,
+    slotName: form.querySelector(`[name="intervenant_name_${row.id}"]`)?.value || row.slotName || "",
+    note: form.querySelector(`[name="intervenant_note_${row.id}"]`)?.value.trim() || ""
+  }));
+}
+
 async function handleStoreEditorSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -4792,6 +5185,15 @@ async function handleStoreEditorSubmit(event) {
   workflow.bricoFinalRemark = form.querySelector('[name="brico_final_remark"]').value.trim();
   workflow.ltSwitchStatus = form.querySelector('[name="lt_switch_status"]').value;
   workflow.networkConfigConfirmed = form.querySelector('[name="network_config_confirmed"]')?.value === "1";
+  workflow.networkRows = readNetworkRows(form, store);
+  workflow.gsmRows = readGsmRows(form, store);
+  workflow.intervenantRows = readIntervenantRows(form, store);
+  workflow.alarmType = form.querySelector('[name="alarm_type"]')?.value || workflow.alarmType;
+  workflow.alarmCompany = form.querySelector('[name="alarm_company"]')?.value.trim() || "";
+  workflow.alarmCentralPhone = form.querySelector('[name="alarm_phone"]')?.value.trim() || "";
+  workflow.alarmOther = form.querySelector('[name="alarm_other"]')?.value.trim() || "";
+  workflow.callGroupsNote = form.querySelector('[name="call_groups_note"]')?.value.trim() || "";
+  workflow.cascadeNote = form.querySelector('[name="cascade_note"]')?.value.trim() || "";
 
   state.activities.unshift({
     id: `edit-${Date.now()}`,

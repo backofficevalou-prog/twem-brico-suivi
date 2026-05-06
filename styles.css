@@ -865,6 +865,95 @@ button {
   margin-top: 12px;
 }
 
+.store-editor-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.store-editor-nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.section-anchor {
+  scroll-margin-top: 18px;
+}
+
+.grouped-card {
+  display: grid;
+  gap: 12px;
+}
+
+.grouped-card-head h3,
+.subpanel h4 {
+  margin: 0;
+}
+
+.grouped-card-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.three-col-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.subpanel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdfa;
+}
+
+.section-block {
+  margin-top: 8px;
+}
+
+.compact-prep-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.compact-table-wrap {
+  overflow-x: auto;
+}
+
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compact-table th {
+  background: #fff3ae;
+  color: #4d4731;
+  font-size: 0.8rem;
+}
+
+.compact-table input,
+.compact-table select {
+  min-width: 120px;
+}
+
 .sav-request-grid,
 .sav-thread-actions {
   display: grid;
