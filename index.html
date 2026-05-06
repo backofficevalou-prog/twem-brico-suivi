@@ -470,21 +470,7 @@
 
             <section class="admin-panel workspace-view" data-admin-panel="reports">
               <div class="admin-grid">
-                <article class="admin-card">
-                  <h3 id="accessTitle">Liens de connexion</h3>
-                  <p id="accessIntro">Zone Twem pour envoyer un lien magique de connexion.</p>
-                  <div id="authState" class="auth-state">Session locale</div>
-                  <form id="authForm" class="auth-form">
-                    <label>
-                      <span id="emailLabel">Email destinataire</span>
-                      <input type="email" id="emailInput" placeholder="nom@twem.be">
-                    </label>
-                    <button type="submit" id="magicLinkButton">Envoyer le lien de connexion</button>
-                  </form>
-                  <button type="button" id="logoutButton" class="secondary-button">Reinitialiser la session locale</button>
-                </article>
-
-                <article class="admin-card">
+                <article class="admin-card full-span-report-card">
                   <h3 id="recentUpdatesTitle">Remontees du jour</h3>
                   <p id="recentUpdatesIntro">Affichage du jour uniquement. Le tableau repart a zero chaque nuit, mais les rapports magasin gardent l historique complet.</p>
                   <div id="activityList" class="activity-list"></div>
@@ -524,12 +510,27 @@
 
             <section class="admin-panel workspace-view" data-admin-panel="pin-access">
               <article class="admin-card">
+                <h3 id="accessTitle">Liens de connexion</h3>
+                <p id="accessIntro">Zone Twem pour envoyer un lien magique de connexion.</p>
+                <div id="authState" class="auth-state">Session locale</div>
+                <form id="authForm" class="auth-form">
+                  <label>
+                    <span id="emailLabel">Email destinataire</span>
+                    <input type="email" id="emailInput" placeholder="nom@twem.be">
+                  </label>
+                  <button type="submit" id="magicLinkButton">Envoyer le lien de connexion</button>
+                </form>
+                <button type="button" id="logoutButton" class="secondary-button">Reinitialiser la session locale</button>
+              </article>
+
+              <article class="admin-card">
                 <h3>PIN / Acces</h3>
                 <p>Visible uniquement SupAdmin et Admin TWEM. Creation, expiration, affectation et suivi des connexions PIN.</p>
                 <form id="pinAccessForm" class="auth-form">
                   <label>
                     <span>Nom</span>
-                    <input type="text" id="pinPersonNameInput" placeholder="Ex: M. Dupont">
+                    <input type="text" id="pinPersonNameInput" list="pinPersonNameOptions" placeholder="Ex: M. Dupont">
+                    <datalist id="pinPersonNameOptions"></datalist>
                   </label>
                   <label>
                     <span>Role</span>
@@ -538,6 +539,11 @@
                   <label>
                     <span>PIN 6 chiffres</span>
                     <input type="text" id="pinCodeInput" maxlength="6" inputmode="numeric" placeholder="Ex: 123456">
+                  </label>
+                  <label>
+                    <span>Recherche magasin</span>
+                    <input type="text" id="pinStoreSearchInput" list="pinStoreSearchOptions" placeholder="Ex: Anderlecht / BRI-001">
+                    <datalist id="pinStoreSearchOptions"></datalist>
                   </label>
                   <label>
                     <span>Magasins lies</span>

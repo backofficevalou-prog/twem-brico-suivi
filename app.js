@@ -617,8 +617,11 @@ const roleInput = document.querySelector("#roleInput");
 const roleList = document.querySelector("#roleList");
 const pinAccessForm = document.querySelector("#pinAccessForm");
 const pinPersonNameInput = document.querySelector("#pinPersonNameInput");
+const pinPersonNameOptions = document.querySelector("#pinPersonNameOptions");
 const pinRoleSelect = document.querySelector("#pinRoleSelect");
 const pinCodeInput = document.querySelector("#pinCodeInput");
+const pinStoreSearchInput = document.querySelector("#pinStoreSearchInput");
+const pinStoreSearchOptions = document.querySelector("#pinStoreSearchOptions");
 const pinStoreMultiSelect = document.querySelector("#pinStoreMultiSelect");
 const pinExpiryInput = document.querySelector("#pinExpiryInput");
 const pinStatusSelect = document.querySelector("#pinStatusSelect");
@@ -1185,6 +1188,19 @@ function peopleLabel(people = []) {
   return Array.isArray(people) ? people.join(", ") : String(people || "");
 }
 
+function generateUniquePin() {
+  const existingPins = new Set(
+    state.people
+      .map((person) => normalizePin(person.pin))
+      .filter((pin) => pin.length === 6)
+  );
+  let candidate = "";
+  do {
+    candidate = String(Math.floor(100000 + Math.random() * 900000));
+  } while (existingPins.has(candidate));
+  return candidate;
+}
+
 function roleLabel(role) {
   const labels = {
     supadmin_twem: "SupAdmin TWEM",
@@ -1648,6 +1664,20 @@ function syncSelectors() {
 
   if (pinRoleSelect) {
     pinRoleSelect.innerHTML = renderRoleOptions(pinRoleSelect.value || "manager");
+  }
+  if (pinPersonNameOptions) {
+    pinPersonNameOptions.innerHTML = state.people
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+      .map((person) => `<option value="${escapeHtml(person.name)}">${escapeHtml(roleLabel(person.role))}</option>`)
+      .join("");
+  }
+  if (pinStoreSearchOptions) {
+    pinStoreSearchOptions.innerHTML = state.stores
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+      .map((store) => `<option value="${escapeHtml(`${store.name} (${store.code})`)}">${escapeHtml(store.city || "")}</option>`)
+      .join("");
   }
   if (pinStoreMultiSelect) {
     pinStoreMultiSelect.innerHTML = state.stores
@@ -3035,8 +3065,9 @@ function renderActivities() {
     details.className = "report-store";
     details.innerHTML = `
       <summary>
-        <span>${escapeHtml(group.storeName)}</span>
-        <span>${group.entries.length} remontee(s)</span>
+        <span class="report-store-title">${escapeHtml(group.storeName)}</span>
+        <span class="report-store-meta">${group.entries.length} remontee(s)</span>
+        <button type="button" class="mini-button report-export-button" data-report-export="${escapeHtml(group.storeName)}">Exporter PDF</button>
       </summary>
       <div class="report-store-body">
         ${group.entries.map((entry) => `
@@ -3052,6 +3083,18 @@ function renderActivities() {
       </div>
     `;
     reportArchiveList.append(details);
+  });
+
+  reportArchiveList.querySelectorAll("[data-report-export]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const storeName = button.getAttribute("data-report-export");
+      const group = groupedByStore.find((entry) => entry.storeName === storeName);
+      if (group) {
+        exportStoreReportPdf(group);
+      }
+    });
   });
 }
 
@@ -3311,6 +3354,30 @@ function fillPinAccessForm(person) {
   pinStatusSelect.value = person.pinStatus || "active";
   [...pinStoreMultiSelect.options].forEach((option) => {
     option.selected = (person.allowedStoreCodes || []).includes(option.value) || (person.allowedStoreCodes || []).includes("*");
+  });
+}
+
+function syncPinAccessFromSelectedPerson() {
+  const name = pinPersonNameInput?.value.trim().toLowerCase();
+  if (!name) {
+    return;
+  }
+  const person = state.people.find((entry) => entry.name.toLowerCase() === name);
+  if (!person) {
+    return;
+  }
+  fillPinAccessForm(person);
+}
+
+function filterPinStoreOptions() {
+  if (!pinStoreMultiSelect || !pinStoreSearchInput) {
+    return;
+  }
+  const search = pinStoreSearchInput.value.trim().toLowerCase();
+  [...pinStoreMultiSelect.options].forEach((option) => {
+    const store = state.stores.find((entry) => entry.code === option.value);
+    const label = `${store?.name || ""} ${store?.code || option.value} ${store?.city || ""}`.toLowerCase();
+    option.hidden = Boolean(search) && !label.includes(search);
   });
 }
 
@@ -4210,6 +4277,61 @@ function buildReportHtml() {
   `;
 }
 
+function buildStoreReportHtml(group) {
+  const generatedAt = new Intl.DateTimeFormat("fr-BE", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(new Date());
+
+  return `
+    <!doctype html>
+    <html lang="${state.language}">
+    <head>
+      <meta charset="UTF-8">
+      <title>Rapport ${escapeHtml(group.storeName)}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
+        h1 { margin: 0 0 8px; }
+        .meta { color: #666; margin-bottom: 20px; }
+        .entry { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+        .entry-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; color: #666; font-size: 12px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+        .badge-ok { background: #e6f5ea; color: #2d6b46; }
+        .badge-issue { background: #fde8e6; color: #b3422c; }
+      </style>
+    </head>
+    <body>
+      <h1>Rapport magasin - ${escapeHtml(group.storeName)}</h1>
+      <div class="meta">Genere le ${escapeHtml(generatedAt)} - ${escapeHtml(state.activeUserName)}</div>
+      ${group.entries.map((entry) => `
+        <div class="entry">
+          <div class="entry-head">
+            <span class="badge ${entry.result === "issue" ? "badge-issue" : "badge-ok"}">${entry.result === "issue" ? "Probleme" : "OK"}</span>
+            <span>${escapeHtml(formatDateTime(entry.createdAt))}</span>
+          </div>
+          <strong>${escapeHtml(entry.confirmedBy)}</strong>
+          <p>${escapeHtml(entry.comment)}</p>
+        </div>
+      `).join("")}
+    </body>
+    </html>
+  `;
+}
+
+function exportStoreReportPdf(group) {
+  const reportWindow = window.open("", "_blank");
+  if (!reportWindow) {
+    window.alert(t("reportWindowError"));
+    return;
+  }
+
+  reportWindow.document.open();
+  reportWindow.document.write(buildStoreReportHtml(group));
+  reportWindow.document.close();
+  reportWindow.focus();
+  reportWindow.print();
+}
+
 function handleReportButtonClick() {
   const reportWindow = window.open("", "_blank");
   if (!reportWindow) {
@@ -4672,7 +4794,7 @@ async function handlePinAccessSubmit(event) {
   const name = pinPersonNameInput?.value.trim();
   const role = pinRoleSelect?.value;
   const pin = normalizePin(pinCodeInput?.value);
-  if (!name || !role || pin.length !== 6) {
+  if (!name || !role) {
     return;
   }
 
@@ -4695,9 +4817,16 @@ async function handlePinAccessSubmit(event) {
     state.people.push(target);
   }
 
+  const finalPin = pin.length === 6 ? pin : (normalizePin(target.pin).length === 6 ? normalizePin(target.pin) : generateUniquePin());
+  const duplicate = state.people.find((person) => person.id !== target.id && normalizePin(person.pin) === finalPin);
+  if (duplicate) {
+    window.alert("Ce PIN est deja attribue a une autre personne.");
+    return;
+  }
+
   target.name = name;
   target.role = role;
-  target.pin = pin;
+  target.pin = finalPin;
   target.storeCode = selectedStores[0] || target.storeCode || "";
   target.allowedStoreCodes = canSeeAllStores(target) ? ["*"] : selectedStores;
   target.accessibleTabs = accessibleTabsForUser(target).includes("*") ? ["*"] : defaultTabsForRole(role);
@@ -4869,14 +4998,20 @@ async function handlePersonSubmit(event) {
     return;
   }
 
+  const generatedPin = generateUniquePin();
+  const linkedStoreCode = personStoreCodeInput.value.trim().toUpperCase();
   state.people.push(hydrateAccessProfile({
     id: `person-${Date.now()}`,
     name,
     role,
     phone: personPhoneInput.value.trim(),
     email: personEmailInput.value.trim(),
-    storeCode: personStoreCodeInput.value.trim().toUpperCase(),
-    language: personLanguageSelect.value
+    storeCode: linkedStoreCode,
+    language: personLanguageSelect.value,
+    pin: generatedPin,
+    allowedStoreCodes: linkedStoreCode ? [linkedStoreCode] : (role === "manager" ? [] : ["*"]),
+    pinCreatedAt: new Date().toISOString(),
+    pinStatus: "active"
   }));
 
   if (hasRemoteData()) {
@@ -4887,6 +5022,7 @@ async function handlePersonSubmit(event) {
   personLanguageSelect.value = "fr";
   saveState();
   render();
+  window.alert(`PIN attribue a ${name}: ${generatedPin}`);
 }
 
 async function handleStoreSubmit(event) {
@@ -5020,6 +5156,9 @@ authForm.addEventListener("submit", handleAuthSubmit);
 logoutButton.addEventListener("click", handleLogout);
 activeUserSelect.addEventListener("change", handleActiveUserChange);
 languageSelect.addEventListener("change", handleLanguageChange);
+pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
+pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
+pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
 personForm.addEventListener("submit", handlePersonSubmit);
 storeForm.addEventListener("submit", handleStoreSubmit);
 adminTabs.addEventListener("click", handleAdminTabClick);
