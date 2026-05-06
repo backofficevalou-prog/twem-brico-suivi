@@ -222,18 +222,33 @@
                     </div>
                     <button type="submit" id="addPersonButton">Ajouter une personne</button>
                   </form>
+                </article>
 
-                  <div class="role-manager">
-                    <div class="role-manager-head">
-                      <h4 id="rolesTitle">Roles</h4>
-                      <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
-                    </div>
-                    <form id="roleForm" class="tool-form">
-                      <input type="text" id="roleInput" placeholder="Ex: responsable secteur">
-                      <button type="submit" id="addRoleButton">Ajouter le role</button>
-                    </form>
-                    <div id="roleList" class="simple-list"></div>
-                  </div>
+                <article class="admin-card store-admin-card">
+                  <h3 id="storeTitle">Magasins</h3>
+                  <form id="storeForm" class="auth-form">
+                    <label>
+                      <span id="storeNameLabel">Nom magasin</span>
+                      <input type="text" id="storeNameInput" placeholder="Ex: Brico Charleroi">
+                    </label>
+                    <label>
+                      <span id="storeCityLabel">Ville</span>
+                      <input type="text" id="storeCityInput" placeholder="Ex: Charleroi">
+                    </label>
+                    <label>
+                      <span id="storeCodeLabel">Code</span>
+                      <input type="text" id="storeCodeInput" placeholder="Ex: BRI-005">
+                    </label>
+                    <label>
+                      <span id="storeOwnerLabel">Responsable Twem</span>
+                      <select id="storeOwnerSelect"></select>
+                    </label>
+                    <label>
+                      <span id="storeManagerLabel">Contact magasin</span>
+                      <input type="text" id="storeManagerInput" placeholder="Ex: Mme Leroy">
+                    </label>
+                    <button type="submit" id="addStoreButton">Ajouter un magasin</button>
+                  </form>
                 </article>
 
                 <article class="admin-card contact-directory-card">
@@ -249,34 +264,21 @@
                   </div>
                   <div id="peopleList" class="simple-list contact-list"></div>
                 </article>
-              </div>
 
-              <article class="admin-card">
-                <h3 id="storeTitle">Magasins</h3>
-                <form id="storeForm" class="auth-form">
-                  <label>
-                    <span id="storeNameLabel">Nom magasin</span>
-                    <input type="text" id="storeNameInput" placeholder="Ex: Brico Charleroi">
-                  </label>
-                  <label>
-                    <span id="storeCityLabel">Ville</span>
-                    <input type="text" id="storeCityInput" placeholder="Ex: Charleroi">
-                  </label>
-                  <label>
-                    <span id="storeCodeLabel">Code</span>
-                    <input type="text" id="storeCodeInput" placeholder="Ex: BRI-005">
-                  </label>
-                  <label>
-                    <span id="storeOwnerLabel">Responsable Twem</span>
-                    <select id="storeOwnerSelect"></select>
-                  </label>
-                  <label>
-                    <span id="storeManagerLabel">Contact magasin</span>
-                    <input type="text" id="storeManagerInput" placeholder="Ex: Mme Leroy">
-                  </label>
-                  <button type="submit" id="addStoreButton">Ajouter un magasin</button>
-                </form>
-              </article>
+                <div class="hidden-panel">
+                  <div class="role-manager">
+                    <div class="role-manager-head">
+                      <h4 id="rolesTitle">Roles</h4>
+                      <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
+                    </div>
+                    <form id="roleForm" class="tool-form">
+                      <input type="text" id="roleInput" placeholder="Ex: responsable secteur">
+                      <button type="submit" id="addRoleButton">Ajouter le role</button>
+                    </form>
+                    <div id="roleList" class="simple-list"></div>
+                  </div>
+                </div>
+              </div>
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="visibility">
