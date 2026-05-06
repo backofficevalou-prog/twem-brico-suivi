@@ -58,12 +58,8 @@
             <button type="button" class="admin-tab is-active" id="adminPlanningButton" data-admin-tab="dashboard">Dashboard</button>
             <button type="button" class="admin-tab" data-admin-tab="timeline">Timeline / Planning</button>
             <button type="button" class="admin-tab" data-admin-tab="stores">Magasins</button>
-            <button type="button" class="admin-tab" data-admin-tab="activities">Activites / Suivi</button>
-            <button type="button" class="admin-tab" data-admin-tab="deployment">Deploiement</button>
-            <button type="button" class="admin-tab" data-admin-tab="migration">Migration</button>
             <button type="button" class="admin-tab" data-admin-tab="sav">SAV / Tickets</button>
-            <button type="button" class="admin-tab" data-admin-tab="material">Materiel / SIM</button>
-            <button type="button" class="admin-tab" data-admin-tab="billing">Facturation</button>
+            <button type="button" class="admin-tab" data-admin-tab="extensions">Extensions</button>
             <button type="button" class="admin-tab" data-admin-tab="contacts">Contacts</button>
             <button type="button" class="admin-tab" data-admin-tab="reports">Rapports</button>
             <button type="button" class="admin-tab" data-admin-tab="automations">Automatisations</button>
@@ -93,6 +89,24 @@
               </select>
             </label>
             <label>
+              <span id="stageLabel">Etape</span>
+              <select id="stageFilter">
+                <option value="all">Toutes</option>
+              </select>
+            </label>
+            <label>
+              <span id="typeLabel">Type magasin</span>
+              <select id="typeFilter">
+                <option value="all">Tous</option>
+              </select>
+            </label>
+            <label>
+              <span id="cityLabelTop">Ville / region</span>
+              <select id="cityFilter">
+                <option value="all">Toutes</option>
+              </select>
+            </label>
+            <label>
               <span id="ownerLabel">Responsable Twem</span>
               <select id="ownerFilter">
                 <option value="all">Tous</option>
@@ -101,6 +115,16 @@
             <label class="hidden-panel" id="userViewField">
               <span id="userViewLabel">Vue utilisateur</span>
               <select id="activeUserSelect"></select>
+            </label>
+            <label>
+              <span id="dateLabel">Date</span>
+              <select id="dateFilter">
+                <option value="all">Toutes</option>
+                <option value="today">Aujourd hui</option>
+                <option value="week">Cette semaine</option>
+                <option value="late">En retard</option>
+                <option value="future">Futur</option>
+              </select>
             </label>
             <label>
               <span id="languageLabel">Langue</span>
@@ -117,6 +141,7 @@
           </section>
 
           <section class="summary-grid" id="summaryGrid"></section>
+          <section class="panel dashboard-extra hidden-panel" id="dashboardExtra"></section>
 
           <section class="panel table-panel">
             <div class="table-head">

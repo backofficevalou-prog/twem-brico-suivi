@@ -11,6 +11,22 @@ const globalStatusOptions = [
   { value: "done", label: "Termine" }
 ];
 const appointmentStatusOptions = ["Propose", "Confirme"];
+const extensionReferenceOptions = [
+  "250 - compta",
+  "300 - jardin",
+  "320 - accueil",
+  "340 - caisse",
+  "350 - carrelage",
+  "380 - drive-in",
+  "900 - zaagmachine",
+  "901 - tuin",
+  "902 - verf",
+  "903 - keukens",
+  "904 - tegels",
+  "922 - front end evacuation",
+  "923 - safe room",
+  "924 - drive in till zone"
+];
 const defaultRoleOptions = [
   "supadmin_twem",
   "admin_twem",
@@ -198,14 +214,14 @@ const initialPeople = [
 const defaultPinProfiles = {
   p1: { pin: "111111", allowedStoreCodes: ["*"], accessibleTabs: ["*"], accessibleBlocks: ["*"], pinStatus: "active" },
   p2: { pin: "222222", allowedStoreCodes: ["*"], accessibleTabs: ["*"], accessibleBlocks: ["*"], pinStatus: "active" },
-  p3: { pin: "300001", allowedStoreCodes: ["BRI-001"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
-  p4: { pin: "300002", allowedStoreCodes: ["BRI-002"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
-  p5: { pin: "300003", allowedStoreCodes: ["BRI-003"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
-  p6: { pin: "300004", allowedStoreCodes: ["BRI-004"], accessibleTabs: ["dashboard", "timeline", "stores", "activities"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
-  p7: { pin: "440001", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material"], accessibleBlocks: ["destiny_coordination", "destiny_closure", "appointments", "problem_notes", "status_admin"], pinStatus: "active" },
-  p8: { pin: "440002", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material"], accessibleBlocks: ["destiny_coordination", "destiny_closure", "appointments", "problem_notes", "status_admin"], pinStatus: "active" },
-  p9: { pin: "550001", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment"], accessibleBlocks: ["infra", "external_prep", "problem_notes", "appointments"], pinStatus: "active" },
-  p10: { pin: "550002", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "activities", "deployment"], accessibleBlocks: ["infra", "external_prep", "problem_notes", "appointments"], pinStatus: "active" }
+  p3: { pin: "300001", allowedStoreCodes: ["BRI-001"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p4: { pin: "300002", allowedStoreCodes: ["BRI-002"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p5: { pin: "300003", allowedStoreCodes: ["BRI-003"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p6: { pin: "300004", allowedStoreCodes: ["BRI-004"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
+  p7: { pin: "440001", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["destiny_coordination", "destiny_closure", "appointments", "problem_notes", "status_admin"], pinStatus: "active" },
+  p8: { pin: "440002", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["destiny_coordination", "destiny_closure", "appointments", "problem_notes", "status_admin"], pinStatus: "active" },
+  p9: { pin: "550001", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["infra", "external_prep", "problem_notes", "appointments"], pinStatus: "active" },
+  p10: { pin: "550002", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["infra", "external_prep", "problem_notes", "appointments"], pinStatus: "active" }
 };
 
 const demoStores = [
@@ -394,25 +410,34 @@ const state = {
   filters: {
     search: "",
     status: "all",
-    owner: "all"
+    owner: "all",
+    stage: "all",
+    type: "all",
+    city: "all",
+    date: "all"
   },
   expandedStoreIds: new Set()
 };
 
 const presentationBypassUser = "Valou";
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
 const pinInput = document.querySelector("#pinInput");
 const pinFeedback = document.querySelector("#pinFeedback");
 const summaryGrid = document.querySelector("#summaryGrid");
+const dashboardExtra = document.querySelector("#dashboardExtra");
 const projectTableBody = document.querySelector("#projectTableBody");
 const activityList = document.querySelector("#activityList");
 const ownerFilter = document.querySelector("#ownerFilter");
 const searchInput = document.querySelector("#searchInput");
 const statusFilter = document.querySelector("#statusFilter");
+const stageFilter = document.querySelector("#stageFilter");
+const typeFilter = document.querySelector("#typeFilter");
+const cityFilter = document.querySelector("#cityFilter");
+const dateFilter = document.querySelector("#dateFilter");
 const userViewField = document.querySelector("#userViewField");
 const importButton = document.querySelector("#importButton");
 const importInput = document.querySelector("#importInput");
@@ -834,13 +859,13 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing", "contacts", "reports", "automations", "pin-access", "import-export", "visibility"],
-    supmanager: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "activities", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "reports"],
-    it: ["dashboard", "timeline", "stores", "activities", "deployment", "sav", "reports"],
-    infra: ["dashboard", "timeline", "stores", "activities", "deployment", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "activities", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
+    supmanager: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    it: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    infra: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"]
   };
   return map[role] || ["dashboard"];
 }
@@ -876,12 +901,8 @@ function tabTitle(tab) {
     dashboard: "Dashboard",
     timeline: "Timeline / Planning",
     stores: "Magasins",
-    activities: "Activites / Suivi",
-    deployment: "Deploiement",
-    migration: "Migration",
     sav: "SAV / Tickets",
-    material: "Materiel / SIM",
-    billing: "Facturation",
+    extensions: "Extensions",
     contacts: "Contacts",
     reports: "Rapports",
     automations: "Automatisations",
@@ -1203,14 +1224,69 @@ function buildTimeline(store) {
   `;
 }
 
+function normalizeDateOnly(dateLike) {
+  if (!dateLike) {
+    return null;
+  }
+  const parsed = new Date(dateLike);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function nextRelevantDate(store) {
+  const appointments = sortedAppointments(store);
+  if (appointments[0]?.datetime) {
+    return normalizeDateOnly(appointments[0].datetime);
+  }
+  const workflow = ensureStoreWorkflowData(store);
+  return normalizeDateOnly(workflow.destinyInstallDate || store.updatedAt);
+}
+
+function matchesDateScope(store) {
+  if (state.filters.date === "all") {
+    return true;
+  }
+
+  const date = nextRelevantDate(store);
+  if (!date) {
+    return state.filters.date !== "today" && state.filters.date !== "week";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((date - today) / 86400000);
+
+  if (state.filters.date === "today") {
+    return diffDays === 0;
+  }
+  if (state.filters.date === "week") {
+    return diffDays >= 0 && diffDays <= 7;
+  }
+  if (state.filters.date === "late") {
+    return diffDays < 0;
+  }
+  if (state.filters.date === "future") {
+    return diffDays > 7;
+  }
+  return true;
+}
+
 function getFilteredStores() {
   return getRoleScopedStores().filter((store) => {
     const nextAction = sortedAppointments(store)[0]?.note || store.health || "";
-    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction}`.toLowerCase();
+    const stage = currentWorkflowStage(store);
+    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage}`.toLowerCase();
     const matchesSearch = haystack.includes(state.filters.search);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || store.owner === state.filters.owner;
-    return matchesSearch && matchesStatus && matchesOwner;
+    const matchesStage = state.filters.stage === "all" || stage === state.filters.stage;
+    const matchesType = state.filters.type === "all" || (store.shopType || "") === state.filters.type;
+    const matchesCity = state.filters.city === "all" || store.city === state.filters.city;
+    const matchesDate = matchesDateScope(store);
+    return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate;
   });
 }
 
@@ -1221,55 +1297,42 @@ function renderSummary() {
   const blockedCount = visibleStores.filter((store) => store.status === "blocked").length;
   const noRdvCount = visibleStores.filter((store) => store.appointments.length === 0).length;
   const inProgressCount = visibleStores.filter((store) => store.status === "in_progress").length;
+  const runCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).ltSwitchStatus === "Basculee").length;
+  const dosCount = visibleStores.filter((store) => store.shopType === "DOS").length;
+  const fosCount = visibleStores.filter((store) => store.shopType === "FOS").length;
+  const fosdosCount = visibleStores.filter((store) => store.shopType === "FOSDOS").length;
+  const validationItCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length;
+  const validationInfraCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length;
+  const riskCount = visibleStores.filter((store) => store.status === "blocked" || ensureStoreWorkflowData(store).networkSurveyStatus !== "OK").length;
   const mainTab = activeMainWorkspaceTab();
   const cardsByTab = {
     dashboard: [
-      { label: "Total magasins", value: visibleStores.length, note: "Vision globale parc", portion: 100 },
-      { label: "En deploiement", value: inProgressCount, note: "Projets actifs", portion: Math.round((inProgressCount / total) * 100) },
-      { label: "Bloques", value: blockedCount, note: "Priorites a traiter", portion: Math.round((blockedCount / total) * 100) },
-      { label: "A lancer", value: noRdvCount, note: "Actions a enclencher", portion: Math.round((noRdvCount / total) * 100) }
+      { label: "Total magasins", value: visibleStores.length, note: "Vision globale parc", portion: 100, filter: null },
+      { label: "DOS", value: dosCount, note: "Type magasin DOS", portion: Math.round((dosCount / total) * 100), filter: { key: "type", value: "DOS", tab: "stores" } },
+      { label: "FOS", value: fosCount, note: "Type magasin FOS", portion: Math.round((fosCount / total) * 100), filter: { key: "type", value: "FOS", tab: "stores" } },
+      { label: "FOSDOS", value: fosdosCount, note: "Type magasin FOSDOS", portion: Math.round((fosdosCount / total) * 100), filter: { key: "type", value: "FOSDOS", tab: "stores" } },
+      { label: "En deploiement", value: inProgressCount, note: "Projets actifs", portion: Math.round((inProgressCount / total) * 100), filter: { key: "status", value: "in_progress", tab: "stores" } },
+      { label: "En RUN", value: runCount, note: "Exploitation et SAV", portion: Math.round((runCount / total) * 100), filter: { key: "stage", value: "RUN", tab: "stores" } },
+      { label: "Clotures", value: doneCount, note: "Projets finalises", portion: Math.round((doneCount / total) * 100), filter: { key: "status", value: "done", tab: "stores" } },
+      { label: "Bloques", value: blockedCount, note: "Dossiers a debloquer", portion: Math.round((blockedCount / total) * 100), filter: { key: "status", value: "blocked", tab: "stores" } }
     ],
     timeline: [
-      { label: "Interventions cette semaine", value: visibleStores.filter((store) => sortedAppointments(store).length).length, note: "Planning global", portion: Math.round((visibleStores.filter((store) => sortedAppointments(store).length).length / total) * 100) },
-      { label: "Etapes en cours", value: inProgressCount, note: "Suivi temps reel", portion: Math.round((inProgressCount / total) * 100) },
-      { label: "Retards planning", value: blockedCount, note: "Risque projet", portion: Math.round((blockedCount / total) * 100) },
-      { label: "Pre-visites a faire", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus !== "OK").length, note: "Preparation terrain", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus !== "OK").length / total) * 100) }
-    ],
-    activities: [
-      { label: "Actions TWEM", value: visibleStores.filter((store) => store.owner).length, note: "Pilotage central", portion: 100 },
-      { label: "Validations IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Reste a valider", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length / total) * 100) },
-      { label: "Urgences", value: blockedCount, note: "Escalade immediate", portion: Math.round((blockedCount / total) * 100) },
-      { label: "Historique du jour", value: state.activities.length, note: "Journal activites", portion: 100 }
-    ],
-    deployment: [
-      { label: "Pre-visites", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus === "OK").length, note: "Terrain verifie", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus === "OK").length / total) * 100) },
-      { label: "Installations", value: inProgressCount, note: "Chantiers ouverts", portion: Math.round((inProgressCount / total) * 100) },
-      { label: "GO / NO GO", value: visibleStores.filter((store) => store.status !== "blocked").length, note: "Eligibles chantier", portion: Math.round((visibleStores.filter((store) => store.status !== "blocked").length / total) * 100) },
-      { label: "Blocages", value: blockedCount, note: "A lever avant install", portion: Math.round((blockedCount / total) * 100) }
-    ],
-    migration: [
-      { label: "A migrer", value: visibleStores.length, note: "Parc TELEPO", portion: 100 },
-      { label: "Planifies", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).destinyInstallDate).length, note: "Dates posees", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).destinyInstallDate).length / total) * 100) },
-      { label: "En cours", value: inProgressCount, note: "Migration active", portion: Math.round((inProgressCount / total) * 100) },
-      { label: "Termines", value: doneCount, note: "Migration cloturee", portion: Math.round((doneCount / total) * 100) }
+      { label: "Interventions planifiees", value: visibleStores.filter((store) => sortedAppointments(store).length).length, note: "Chronologie magasins", portion: Math.round((visibleStores.filter((store) => sortedAppointments(store).length).length / total) * 100), filter: null },
+      { label: "Validation IT", value: validationItCount, note: "VLAN / reseau a valider", portion: Math.round((validationItCount / total) * 100), filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
+      { label: "Validation infra", value: validationInfraCount, note: "Cablage / alarme", portion: Math.round((validationInfraCount / total) * 100), filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
+      { label: "Installations a risque", value: riskCount, note: "Points sensibles a traiter", portion: Math.round((riskCount / total) * 100), filter: { key: "status", value: "blocked", tab: "timeline" } }
     ],
     sav: [
-      { label: "Tickets ouverts", value: visibleStores.filter((store) => store.status !== "done").length, note: "Support en cours", portion: Math.round((visibleStores.filter((store) => store.status !== "done").length / total) * 100) },
-      { label: "Urgents", value: blockedCount, note: "Priorite rouge", portion: Math.round((blockedCount / total) * 100) },
-      { label: "Resolus", value: doneCount, note: "Tickets clotures", portion: Math.round((doneCount / total) * 100) },
-      { label: "SLA risques", value: visibleStores.filter((store) => store.status === "blocked" || store.status === "in_progress").length, note: "Surveillance delais", portion: Math.round((visibleStores.filter((store) => store.status === "blocked" || store.status === "in_progress").length / total) * 100) }
+      { label: "Tickets ouverts", value: visibleStores.filter((store) => store.status !== "done").length, note: "Support en cours", portion: Math.round((visibleStores.filter((store) => store.status !== "done").length / total) * 100), filter: { key: "status", value: "in_progress", tab: "sav" } },
+      { label: "Urgents", value: blockedCount, note: "Priorite rouge", portion: Math.round((blockedCount / total) * 100), filter: { key: "status", value: "blocked", tab: "sav" } },
+      { label: "Resolus", value: doneCount, note: "Historique conserve", portion: Math.round((doneCount / total) * 100), filter: { key: "status", value: "done", tab: "sav" } },
+      { label: "SLA a surveiller", value: inProgressCount + blockedCount, note: "Retards potentiels", portion: Math.round(((inProgressCount + blockedCount) / total) * 100), filter: null }
     ],
-    material: [
-      { label: "SIM actives", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).mobileCount, 0), note: "Parc mobile", portion: 100 },
-      { label: "Chargeurs", value: visibleStores.reduce((sum, store) => sum + Math.max(1, Math.ceil(getStoreQuantityPlan(store).mobileCount / 10)), 0), note: "Besoin logistique", portion: 100 },
-      { label: "Operateur a valider", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).mobileProviderChoice).length, note: "Telenet / Proximus", portion: Math.round((visibleStores.filter((store) => !ensureStoreWorkflowData(store).mobileProviderChoice).length / total) * 100) },
-      { label: "Materiel en attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "Commande incomplete", portion: Math.round((visibleStores.filter((store) => !store.poLicences).length / total) * 100) }
-    ],
-    billing: [
-      { label: "PO en attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "PO a regulariser", portion: Math.round((visibleStores.filter((store) => !store.poLicences).length / total) * 100) },
-      { label: "Facturation en cours", value: inProgressCount, note: "Validation finance", portion: Math.round((inProgressCount / total) * 100) },
-      { label: "Factures bloquees", value: blockedCount, note: "Elements manquants", portion: Math.round((blockedCount / total) * 100) },
-      { label: "Factures validees", value: doneCount, note: "Suivi comptable", portion: Math.round((doneCount / total) * 100) }
+    extensions: [
+      { label: "Reference extensions", value: extensionReferenceOptions.length, note: "Liste commune magasin / IT", portion: 100, filter: null },
+      { label: "Postes fixes", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).fixCount, 0), note: "Quota total fixe", portion: 100, filter: null },
+      { label: "Mobiles", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).mobileCount, 0), note: "Quota total mobile", portion: 100, filter: null },
+      { label: "Call / Panic", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).callButtonCount + getStoreQuantityPlan(store).panicCount, 0), note: "Lignes specifiques", portion: 100, filter: null }
     ],
     stores: [
       { label: t("summaryStores"), value: visibleStores.length, note: t("summaryStoresNote"), portion: 100 },
@@ -1283,26 +1346,117 @@ function renderSummary() {
   summaryGrid.innerHTML = "";
   cards.forEach((card) => {
     const article = document.createElement("article");
-    article.className = "panel summary-card";
     article.innerHTML = `
-      <div class="summary-card-layout">
-        <div class="summary-copy">
-          <span class="mini-label">${card.label}</span>
-          <strong>${card.value}</strong>
-          <span class="summary-note">${card.note}</span>
+      <button type="button" class="dashboard-kpi-button" ${card.filter ? `data-kpi-filter='${escapeHtml(JSON.stringify(card.filter))}'` : ""}>
+        <div class="panel summary-card">
+          <div class="summary-card-layout">
+            <div class="summary-copy">
+              <span class="mini-label">${card.label}</span>
+              <strong>${card.value}</strong>
+              <span class="summary-note">${card.note}</span>
+            </div>
+            <div class="mini-donut" style="--portion:${card.portion}%">
+              <span>${card.portion}%</span>
+            </div>
+          </div>
         </div>
-        <div class="mini-donut" style="--portion:${card.portion}%">
-          <span>${card.portion}%</span>
-        </div>
-      </div>
+      </button>
     `;
     summaryGrid.append(article);
   });
+
+  summaryGrid.querySelectorAll("[data-kpi-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const filter = JSON.parse(button.getAttribute("data-kpi-filter"));
+      if (filter?.tab) {
+        state.activeAdminTab = filter.tab;
+      }
+      if (filter?.key) {
+        state.filters[filter.key] = filter.value;
+      }
+      saveState();
+      render();
+    });
+  });
+
+  renderDashboardExtra(mainTab, visibleStores);
+}
+
+function renderDashboardExtra(mainTab, visibleStores) {
+  if (!dashboardExtra) {
+    return;
+  }
+
+  if (mainTab === "dashboard") {
+    dashboardExtra.classList.remove("hidden-panel");
+    dashboardExtra.innerHTML = `
+      <div class="dashboard-card-grid">
+        <article class="dashboard-card">
+          <h3>Statut projets</h3>
+          <div class="dashboard-chip-grid">
+            ${[
+              { label: "A lancer", value: visibleStores.filter((store) => store.status === "planned").length, note: "Dossiers a demarrer", filter: { key: "status", value: "planned", tab: "stores" } },
+              { label: "En attente infos", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Config magasin attendue", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
+              { label: "Validation IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Reseau / VLAN", filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
+              { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "Cablage / alarme", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
+              { label: "En cours", value: visibleStores.filter((store) => store.status === "in_progress").length, note: "Installations actives", filter: { key: "status", value: "in_progress", tab: "stores" } },
+              { label: "RUN", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).ltSwitchStatus === "Basculee").length, note: "Magasins en exploitation", filter: { key: "stage", value: "RUN", tab: "stores" } },
+              { label: "PO attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "Commandes a relancer", filter: { key: "status", value: "blocked", tab: "stores" } },
+              { label: "Tickets urgents", value: visibleStores.filter((store) => store.status === "blocked").length, note: "SAV prioritaire", filter: { key: "status", value: "blocked", tab: "sav" } }
+            ].map((chip) => `
+              <button type="button" class="dashboard-chip" data-kpi-filter='${escapeHtml(JSON.stringify(chip.filter))}'>
+                <span class="mini-label">${chip.label}</span>
+                <strong>${chip.value}</strong>
+                <small>${chip.note}</small>
+              </button>
+            `).join("")}
+          </div>
+        </article>
+        <article class="dashboard-card">
+          <h3>Actions en attente</h3>
+          <div class="dashboard-chip-grid">
+            ${[
+              { label: "Validation manager", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Attente retour magasin", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
+              { label: "Validation IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "A traiter par IT", filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
+              { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "A traiter par Infra", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
+              { label: "Actions TWEM", value: visibleStores.filter((store) => store.owner).length, note: "Pilotage central", filter: { key: "owner", value: state.filters.owner === "all" ? twemOptions[0] : state.filters.owner, tab: "stores" } }
+            ].map((chip) => `
+              <button type="button" class="dashboard-chip" data-kpi-filter='${escapeHtml(JSON.stringify(chip.filter))}'>
+                <span class="mini-label">${chip.label}</span>
+                <strong>${chip.value}</strong>
+                <small>${chip.note}</small>
+              </button>
+            `).join("")}
+          </div>
+        </article>
+      </div>
+    `;
+    dashboardExtra.querySelectorAll("[data-kpi-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = JSON.parse(button.getAttribute("data-kpi-filter"));
+        if (filter?.tab) {
+          state.activeAdminTab = filter.tab;
+        }
+        if (filter?.key) {
+          state.filters[filter.key] = filter.value;
+        }
+        saveState();
+        render();
+      });
+    });
+    return;
+  }
+
+  dashboardExtra.classList.add("hidden-panel");
+  dashboardExtra.innerHTML = "";
 }
 
 function syncSelectors() {
   languageSelect.value = state.language;
   const owners = [...new Set(getRoleScopedStores().map((store) => store.owner))].sort();
+  const types = [...new Set(getRoleScopedStores().map((store) => store.shopType).filter(Boolean))].sort();
+  const cities = [...new Set(getRoleScopedStores().map((store) => store.city).filter(Boolean))].sort();
+  const stages = [...new Set(getRoleScopedStores().map((store) => currentWorkflowStage(store)).filter(Boolean))].sort();
   ownerFilter.innerHTML = `<option value="all">${t("all")}</option>`;
   owners.forEach((owner) => {
     const option = document.createElement("option");
@@ -1310,6 +1464,18 @@ function syncSelectors() {
     option.textContent = owner;
     ownerFilter.append(option);
   });
+  ownerFilter.value = state.filters.owner;
+
+  typeFilter.innerHTML = `<option value="all">${t("all")}</option>${types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("")}`;
+  typeFilter.value = state.filters.type;
+
+  cityFilter.innerHTML = `<option value="all">${t("all")}</option>${cities.map((city) => `<option value="${escapeHtml(city)}">${escapeHtml(city)}</option>`).join("")}`;
+  cityFilter.value = state.filters.city;
+
+  stageFilter.innerHTML = `<option value="all">${state.language === "nl" ? "Alle" : "Toutes"}</option>${stages.map((stage) => `<option value="${escapeHtml(stage)}">${escapeHtml(stage)}</option>`).join("")}`;
+  stageFilter.value = state.filters.stage;
+
+  dateFilter.value = state.filters.date;
 
   activeUserSelect.innerHTML = state.people.map((person) => {
     const selected = person.name === state.activeUserName ? "selected" : "";
@@ -1680,6 +1846,13 @@ function ensureStoreWorkflowData(store) {
   }
 
   const defaults = {
+    currentPlatform: "Destiny",
+    targetPlatform: "TELEPO",
+    currentPhoneDate: "",
+    collectDate: "",
+    itValidationDate: "",
+    previsitDate: "",
+    transferDate: "",
     destinyInstallDate: "",
     destinyPmName: "",
     destinyPmEmail: "",
@@ -2156,11 +2329,15 @@ function nextActionForStore(store) {
 }
 
 function currentWorkflowStage(store) {
+  const workflow = ensureStoreWorkflowData(store);
   if (store.status === "blocked") return "Blocage chantier";
-  const manager = stepFor(store, "store_manager");
-  const installer = stepFor(store, "installer");
-  const electrician = stepFor(store, "electrician");
-  return [manager, installer, electrician].find((step) => step?.status === "in_progress")?.label || "A lancer";
+  if (!workflow.networkConfigConfirmed) return "Collecte infos";
+  if (workflow.vlan22Activated !== "Oui") return "Validation IT";
+  if (workflow.charlesRouxStatus !== "OK") return "Validation Infra";
+  if (workflow.networkSurveyStatus !== "OK") return "Pre-visite";
+  if (workflow.destinyInstallDone !== "Oui") return "Installation";
+  if (workflow.ltSwitchStatus === "Basculee") return "RUN";
+  return "A lancer";
 }
 
 function renderCompactStoreRows(stores, mapper) {
@@ -2171,21 +2348,88 @@ function renderCompactStoreRows(stores, mapper) {
 }
 
 function renderTimelineRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Etape actuelle", "Date etape", "Prochaine etape", "Date prevue", "Statut"]);
-  renderCompactStoreRows(stores, (store) => {
-    const appointments = sortedAppointments(store);
-    const nextAppointment = appointments[0];
-    return [
-      escapeHtml(store.code),
-      `<strong>${escapeHtml(store.name)}</strong>`,
-      escapeHtml(store.city),
-      escapeHtml(store.shopType || "-"),
-      escapeHtml(currentWorkflowStage(store)),
-      escapeHtml(formatDateTime(nextAppointment?.datetime || store.updatedAt)),
-      escapeHtml(nextActionForStore(store)),
-      escapeHtml(formatDateTime(nextAppointment?.datetime || "")),
-      `<span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>`
+  setMainTableHeaders(["Code magasin", "Magasin", "Ville", "Type", "Plateforme actuelle", "Date telephonie", "Etape actuelle", "Date etape", "Statut"]);
+  const rows = stores.map((store) => {
+    const workflow = ensureStoreWorkflowData(store);
+    const timelineSteps = [
+      {
+        date: workflow.currentPhoneDate || "15/03/2021",
+        label: "Telephonie actuelle",
+        status: workflow.currentPhoneDate ? "done" : "planned",
+        note: workflow.currentPlatform || "A confirmer"
+      },
+      {
+        date: workflow.collectDate || formatDateTime(store.updatedAt).split(" ")[0],
+        label: "Collecte",
+        status: store.status === "planned" ? "in_progress" : "done",
+        note: "Collecte infos magasin"
+      },
+      {
+        date: workflow.itValidationDate || formatDateTime(store.updatedAt).split(" ")[0],
+        label: "IT",
+        status: workflow.vlan22Activated === "Oui" ? "done" : (store.status === "blocked" ? "blocked" : "in_progress"),
+        note: "Validation reseau / VLAN"
+      },
+      {
+        date: workflow.previsitDate || "A confirmer",
+        label: "Pre-visite",
+        status: workflow.networkSurveyStatus === "OK" ? "done" : "planned",
+        note: workflow.networkSurveyStatus || "A planifier"
+      },
+      {
+        date: workflow.destinyInstallDate || "A confirmer",
+        label: "Install",
+        status: workflow.destinyInstallDone === "Oui" ? "done" : (store.status === "in_progress" ? "in_progress" : "planned"),
+        note: workflow.destinyPmName || "Intervention prevue"
+      },
+      {
+        date: workflow.transferDate || workflow.destinyInstallDate || "A confirmer",
+        label: "Transfert",
+        status: workflow.ltSwitchStatus === "Basculee" ? "done" : "planned",
+        note: workflow.targetPlatform || "TELEPO"
+      }
     ];
+
+    return `
+      <tr>
+        <td colspan="9">
+          <article class="timeline-store">
+            <div class="timeline-store-head">
+              <div>
+                <h3>${escapeHtml(store.name)} - ${escapeHtml(store.code)} - ${escapeHtml(store.manager || store.owner || "-")}</h3>
+                <div class="timeline-meta">
+                  <span>${escapeHtml(store.city)}</span>
+                  <span>${escapeHtml(store.shopType || "-")}</span>
+                  <span>Actuelle: ${escapeHtml(workflow.currentPlatform || "Destiny")}</span>
+                  <span>Cible: ${escapeHtml(workflow.targetPlatform || "TELEPO")}</span>
+                </div>
+              </div>
+              <span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>
+            </div>
+            <div class="timeline-strip">
+              ${timelineSteps.map((step) => `
+                <button type="button" class="timeline-step" data-timeline-open="${store.id}">
+                  <div class="timeline-dot ${escapeHtml(step.status)}"></div>
+                  <div class="timeline-step-date">${escapeHtml(step.date || "A confirmer")}</div>
+                  <div class="timeline-step-name">${escapeHtml(step.label)}</div>
+                  <div class="timeline-step-note">${escapeHtml(step.note || "")}</div>
+                </button>
+              `).join("")}
+            </div>
+          </article>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  projectTableBody.innerHTML = rows;
+  projectTableBody.querySelectorAll("[data-timeline-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const storeId = Number(button.getAttribute("data-timeline-open"));
+      state.activeAdminTab = "stores";
+      state.expandedStoreIds = new Set([storeId]);
+      render();
+    });
   });
 }
 
@@ -2200,8 +2444,17 @@ function renderDashboardRows(stores) {
     escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || "-"),
     `<span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>`,
     escapeHtml(nextActionForStore(store)),
-    storeQuickActions()
+    `<button type="button" class="mini-button" data-dashboard-open="${store.id}">Voir la fiche</button>`
   ]);
+
+  projectTableBody.querySelectorAll("[data-dashboard-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const storeId = Number(button.getAttribute("data-dashboard-open"));
+      state.activeAdminTab = "stores";
+      state.expandedStoreIds = new Set([storeId]);
+      render();
+    });
+  });
 }
 
 function renderActivitiesRows(stores) {
@@ -2278,43 +2531,61 @@ function renderSavRows(stores) {
   });
 }
 
-function renderMaterialRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "Postes fixes", "Mobiles", "SIM", "PUK", "Chargeurs", "Operateur", "Action"]);
-  renderCompactStoreRows(stores, (store) => {
+function renderExtensionsRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Quota fixe", "Quota mobile", "Choix ext.", "Derniere note", "Action"]);
+  projectTableBody.innerHTML = stores.map((store) => {
     const plan = getStoreQuantityPlan(store);
-    const workflow = ensureStoreWorkflowData(store);
-    return [
-      escapeHtml(store.code),
-      `<strong>${escapeHtml(store.name)}</strong>`,
-      String(plan.fixCount),
-      String(plan.mobileCount),
-      String(plan.mobileCount),
-      workflow.mobileCheckStatus === "OK" ? "Renseigne" : "A verifier",
-      escapeHtml(workflow.mobileChargerCount || String(Math.max(1, Math.ceil(plan.mobileCount / 10)))),
-      escapeHtml(workflow.mobileProviderChoice || "-"),
-      escapeHtml(nextActionForStore(store))
-    ];
-  });
-}
-
-function renderBillingRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "PO Licence", "PO HpDesk", "PO PM", "PO Renting", "Statut", "Entite", "Action"]);
-  renderCompactStoreRows(stores, (store) => [
-    escapeHtml(store.code),
-    `<strong>${escapeHtml(store.name)}</strong>`,
-    escapeHtml(store.poLicences || "-"),
-    escapeHtml(store.poHpDesk || "-"),
-    escapeHtml(store.poPm || "-"),
-    escapeHtml(store.poRentingHw || "-"),
-    `<span class="${badgeClass(store.poLicences ? "in_progress" : "blocked")}">${store.poLicences ? "En validation" : "PO manquant"}</span>`,
-    escapeHtml(store.shopSize || "Brico"),
-    escapeHtml(store.poLicences ? "Verifier facturation" : "Relancer PO")
-  ]);
+    return `
+      <tr>
+        <td colspan="9">
+          <article class="extensions-store">
+            <div class="extensions-store-head">
+              <h3>${escapeHtml(store.name)} - ${escapeHtml(store.code)}</h3>
+              <span class="cell-note">${escapeHtml(store.city)} | ${escapeHtml(store.shopType || "-")}</span>
+            </div>
+            <div class="extensions-store-body">
+              <table class="extensions-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Quota</th>
+                    <th>Choix disponibles</th>
+                    <th>Usage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Postes fixes</td>
+                    <td>${plan.fixCount}</td>
+                    <td>${escapeHtml(extensionReferenceOptions.slice(0, 6).join(", "))}</td>
+                    <td>Selection manager magasin</td>
+                  </tr>
+                  <tr>
+                    <td>Mobiles</td>
+                    <td>${plan.mobileCount}</td>
+                    <td>${escapeHtml(extensionReferenceOptions.slice(6, 10).join(", "))}</td>
+                    <td>Programmation IT / Destiny</td>
+                  </tr>
+                  <tr>
+                    <td>Call / Panic</td>
+                    <td>${plan.callButtonCount + plan.panicCount}</td>
+                    <td>${escapeHtml(extensionReferenceOptions.slice(10).join(", "))}</td>
+                    <td>Infrastructure / securite</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function renderStores() {
   const stores = getFilteredStores();
   projectTableBody.innerHTML = "";
+  const projectTable = document.querySelector(".project-table");
 
   if (!stores.length) {
     projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
@@ -2323,31 +2594,24 @@ function renderStores() {
 
   switch (activeMainWorkspaceTab()) {
     case "timeline":
+      projectTable?.classList.add("compact-rows-table");
       renderTimelineRows(stores);
       return;
-    case "activities":
-      renderActivitiesRows(stores);
-      return;
-    case "deployment":
-      renderDeploymentRows(stores);
-      return;
-    case "migration":
-      renderMigrationRows(stores);
-      return;
     case "sav":
+      projectTable?.classList.add("compact-rows-table");
       renderSavRows(stores);
       return;
-    case "material":
-      renderMaterialRows(stores);
-      return;
-    case "billing":
-      renderBillingRows(stores);
+    case "extensions":
+      projectTable?.classList.add("compact-rows-table");
+      renderExtensionsRows(stores);
       return;
     case "dashboard":
+      projectTable?.classList.add("compact-rows-table");
       renderDashboardRows(stores);
       return;
     case "stores":
     default:
+      projectTable?.classList.remove("compact-rows-table");
       setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
       renderStoreCards(stores);
   }
@@ -2634,6 +2898,9 @@ function renderAuthState() {
 
 function renderAdminTabs() {
   const user = currentUser();
+  if (!canAccessTab(state.activeAdminTab, user) || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
+    state.activeAdminTab = "dashboard";
+  }
   adminTabs.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const tab = button.getAttribute("data-admin-tab");
     const visible = state.pinValidated && canAccessTab(tab, user);
@@ -3995,8 +4262,12 @@ function applyStaticTranslations() {
   set("connectionLabel", t("connection"));
   set("searchLabel", t("search"));
   set("statusLabel", t("status"));
+  set("stageLabel", state.language === "nl" ? "Stap" : "Etape");
+  set("typeLabel", state.language === "nl" ? "Winkeltype" : "Type magasin");
+  set("cityLabelTop", state.language === "nl" ? "Stad / regio" : "Ville / region");
   set("ownerLabel", t("owner"));
   set("userViewLabel", t("userView"));
+  set("dateLabel", state.language === "nl" ? "Datum" : "Date");
   set("languageLabel", t("language"));
   set("planningTitle", t("planning"));
   set("thDetail", t("detail"));
@@ -4188,6 +4459,26 @@ statusFilter.addEventListener("change", (event) => {
 
 ownerFilter.addEventListener("change", (event) => {
   state.filters.owner = event.target.value;
+  renderStores();
+});
+
+stageFilter.addEventListener("change", (event) => {
+  state.filters.stage = event.target.value;
+  renderStores();
+});
+
+typeFilter.addEventListener("change", (event) => {
+  state.filters.type = event.target.value;
+  renderStores();
+});
+
+cityFilter.addEventListener("change", (event) => {
+  state.filters.city = event.target.value;
+  renderStores();
+});
+
+dateFilter.addEventListener("change", (event) => {
+  state.filters.date = event.target.value;
   renderStores();
 });
 
