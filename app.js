@@ -399,6 +399,8 @@ const state = {
   expandedStoreIds: new Set()
 };
 
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing"];
+
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
 const pinInput = document.querySelector("#pinInput");
@@ -808,10 +810,14 @@ function canAccessTab(tab, user = currentUser()) {
 }
 
 function panelForTab(tab) {
-  if (["dashboard", "timeline", "stores", "activities", "deployment", "migration", "sav", "material", "billing"].includes(tab)) {
+  if (mainWorkspaceTabs.includes(tab)) {
     return "dashboard";
   }
   return tab;
+}
+
+function activeMainWorkspaceTab() {
+  return mainWorkspaceTabs.includes(state.activeAdminTab) ? state.activeAdminTab : "dashboard";
 }
 
 function tabTitle(tab) {
@@ -1163,12 +1169,65 @@ function renderSummary() {
   const doneCount = visibleStores.filter((store) => store.status === "done").length;
   const blockedCount = visibleStores.filter((store) => store.status === "blocked").length;
   const noRdvCount = visibleStores.filter((store) => store.appointments.length === 0).length;
-  const cards = [
-    { label: t("summaryStores"), value: visibleStores.length, note: t("summaryStoresNote"), portion: 100 },
-    { label: t("summaryDone"), value: doneCount, note: t("summaryDoneNote"), portion: Math.round((doneCount / total) * 100) },
-    { label: t("summaryBlocked"), value: blockedCount, note: t("summaryBlockedNote"), portion: Math.round((blockedCount / total) * 100) },
-    { label: t("summaryNoAppointment"), value: noRdvCount, note: t("summaryNoAppointmentNote"), portion: Math.round((noRdvCount / total) * 100) }
-  ];
+  const inProgressCount = visibleStores.filter((store) => store.status === "in_progress").length;
+  const mainTab = activeMainWorkspaceTab();
+  const cardsByTab = {
+    dashboard: [
+      { label: "Total magasins", value: visibleStores.length, note: "Vision globale parc", portion: 100 },
+      { label: "En deploiement", value: inProgressCount, note: "Projets actifs", portion: Math.round((inProgressCount / total) * 100) },
+      { label: "Bloques", value: blockedCount, note: "Priorites a traiter", portion: Math.round((blockedCount / total) * 100) },
+      { label: "A lancer", value: noRdvCount, note: "Actions a enclencher", portion: Math.round((noRdvCount / total) * 100) }
+    ],
+    timeline: [
+      { label: "Interventions cette semaine", value: visibleStores.filter((store) => sortedAppointments(store).length).length, note: "Planning global", portion: Math.round((visibleStores.filter((store) => sortedAppointments(store).length).length / total) * 100) },
+      { label: "Etapes en cours", value: inProgressCount, note: "Suivi temps reel", portion: Math.round((inProgressCount / total) * 100) },
+      { label: "Retards planning", value: blockedCount, note: "Risque projet", portion: Math.round((blockedCount / total) * 100) },
+      { label: "Pre-visites a faire", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus !== "OK").length, note: "Preparation terrain", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus !== "OK").length / total) * 100) }
+    ],
+    activities: [
+      { label: "Actions TWEM", value: visibleStores.filter((store) => store.owner).length, note: "Pilotage central", portion: 100 },
+      { label: "Validations IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Reste a valider", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length / total) * 100) },
+      { label: "Urgences", value: blockedCount, note: "Escalade immediate", portion: Math.round((blockedCount / total) * 100) },
+      { label: "Historique du jour", value: state.activities.length, note: "Journal activites", portion: 100 }
+    ],
+    deployment: [
+      { label: "Pre-visites", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus === "OK").length, note: "Terrain verifie", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).mobileCheckStatus === "OK").length / total) * 100) },
+      { label: "Installations", value: inProgressCount, note: "Chantiers ouverts", portion: Math.round((inProgressCount / total) * 100) },
+      { label: "GO / NO GO", value: visibleStores.filter((store) => store.status !== "blocked").length, note: "Eligibles chantier", portion: Math.round((visibleStores.filter((store) => store.status !== "blocked").length / total) * 100) },
+      { label: "Blocages", value: blockedCount, note: "A lever avant install", portion: Math.round((blockedCount / total) * 100) }
+    ],
+    migration: [
+      { label: "A migrer", value: visibleStores.length, note: "Parc TELEPO", portion: 100 },
+      { label: "Planifies", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).destinyInstallDate).length, note: "Dates posees", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).destinyInstallDate).length / total) * 100) },
+      { label: "En cours", value: inProgressCount, note: "Migration active", portion: Math.round((inProgressCount / total) * 100) },
+      { label: "Termines", value: doneCount, note: "Migration cloturee", portion: Math.round((doneCount / total) * 100) }
+    ],
+    sav: [
+      { label: "Tickets ouverts", value: visibleStores.filter((store) => store.status !== "done").length, note: "Support en cours", portion: Math.round((visibleStores.filter((store) => store.status !== "done").length / total) * 100) },
+      { label: "Urgents", value: blockedCount, note: "Priorite rouge", portion: Math.round((blockedCount / total) * 100) },
+      { label: "Resolus", value: doneCount, note: "Tickets clotures", portion: Math.round((doneCount / total) * 100) },
+      { label: "SLA risques", value: visibleStores.filter((store) => store.status === "blocked" || store.status === "in_progress").length, note: "Surveillance delais", portion: Math.round((visibleStores.filter((store) => store.status === "blocked" || store.status === "in_progress").length / total) * 100) }
+    ],
+    material: [
+      { label: "SIM actives", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).mobileCount, 0), note: "Parc mobile", portion: 100 },
+      { label: "Chargeurs", value: visibleStores.reduce((sum, store) => sum + Math.max(1, Math.ceil(getStoreQuantityPlan(store).mobileCount / 10)), 0), note: "Besoin logistique", portion: 100 },
+      { label: "Operateur a valider", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).mobileProviderChoice).length, note: "Telenet / Proximus", portion: Math.round((visibleStores.filter((store) => !ensureStoreWorkflowData(store).mobileProviderChoice).length / total) * 100) },
+      { label: "Materiel en attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "Commande incomplete", portion: Math.round((visibleStores.filter((store) => !store.poLicences).length / total) * 100) }
+    ],
+    billing: [
+      { label: "PO en attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "PO a regulariser", portion: Math.round((visibleStores.filter((store) => !store.poLicences).length / total) * 100) },
+      { label: "Facturation en cours", value: inProgressCount, note: "Validation finance", portion: Math.round((inProgressCount / total) * 100) },
+      { label: "Factures bloquees", value: blockedCount, note: "Elements manquants", portion: Math.round((blockedCount / total) * 100) },
+      { label: "Factures validees", value: doneCount, note: "Suivi comptable", portion: Math.round((doneCount / total) * 100) }
+    ],
+    stores: [
+      { label: t("summaryStores"), value: visibleStores.length, note: t("summaryStoresNote"), portion: 100 },
+      { label: t("summaryDone"), value: doneCount, note: t("summaryDoneNote"), portion: Math.round((doneCount / total) * 100) },
+      { label: t("summaryBlocked"), value: blockedCount, note: t("summaryBlockedNote"), portion: Math.round((blockedCount / total) * 100) },
+      { label: t("summaryNoAppointment"), value: noRdvCount, note: t("summaryNoAppointmentNote"), portion: Math.round((noRdvCount / total) * 100) }
+    ]
+  };
+  const cards = cardsByTab[mainTab] || cardsByTab.dashboard;
 
   summaryGrid.innerHTML = "";
   cards.forEach((card) => {
@@ -1903,15 +1962,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded) {
   `;
 }
 
-function renderStores() {
-  const stores = getFilteredStores();
-  projectTableBody.innerHTML = "";
-
-  if (!stores.length) {
-    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
-    return;
-  }
-
+function renderStoreCards(stores) {
   stores.forEach((store, index) => {
     const manager = stepFor(store, "store_manager");
     const installer = stepFor(store, "installer");
@@ -2028,6 +2079,227 @@ function renderStores() {
   projectTableBody.querySelectorAll("[data-store-editor]").forEach((form) => {
     form.addEventListener("submit", handleStoreEditorSubmit);
   });
+}
+
+function setMainTableHeaders(headers) {
+  const ids = ["thDetail", "thStore", "thTwem", "thManager", "thPhone", "thElectrician", "thAppointment", "thStatus", "thIssue"];
+  ids.forEach((id, index) => {
+    const node = document.getElementById(id);
+    if (node) {
+      node.textContent = headers[index] || "";
+    }
+  });
+}
+
+function storeQuickActions() {
+  return '<div class="cell-stack"><span class="badge badge-done">Voir</span><span class="badge badge-planned">Relancer</span><span class="badge badge-progress">Valider</span></div>';
+}
+
+function nextActionForStore(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  if (store.status === "blocked") return "Deblocage projet";
+  if (!workflow.networkConfigConfirmed) return "Validation manager config";
+  if (workflow.vlan22Activated !== "Oui") return "Validation IT / VLAN22";
+  if (workflow.destinyInstallDone !== "Oui") return "Installation Destiny";
+  return workflow.ltSwitchStatus === "Basculee" ? "RUN / SAV" : "Bascule plateforme";
+}
+
+function currentWorkflowStage(store) {
+  if (store.status === "blocked") return "Blocage chantier";
+  const manager = stepFor(store, "store_manager");
+  const installer = stepFor(store, "installer");
+  const electrician = stepFor(store, "electrician");
+  return [manager, installer, electrician].find((step) => step?.status === "in_progress")?.label || "A lancer";
+}
+
+function renderCompactStoreRows(stores, mapper) {
+  projectTableBody.innerHTML = stores.map((store, index) => {
+    const cells = mapper(store, index);
+    return `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+  }).join("");
+}
+
+function renderTimelineRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Etape actuelle", "Date etape", "Prochaine etape", "Date prevue", "Statut"]);
+  renderCompactStoreRows(stores, (store) => {
+    const appointments = sortedAppointments(store);
+    const nextAppointment = appointments[0];
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      escapeHtml(store.city),
+      escapeHtml(store.shopType || "-"),
+      escapeHtml(currentWorkflowStage(store)),
+      escapeHtml(formatDateTime(nextAppointment?.datetime || store.updatedAt)),
+      escapeHtml(nextActionForStore(store)),
+      escapeHtml(formatDateTime(nextAppointment?.datetime || "")),
+      `<span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>`
+    ];
+  });
+}
+
+function renderDashboardRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
+  renderCompactStoreRows(stores, (store) => [
+    escapeHtml(store.code),
+    `<strong>${escapeHtml(store.name)}</strong>`,
+    escapeHtml(store.city),
+    escapeHtml(store.shopType || "-"),
+    escapeHtml(store.manager || "-"),
+    escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || "-"),
+    `<span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>`,
+    escapeHtml(nextActionForStore(store)),
+    storeQuickActions()
+  ]);
+}
+
+function renderActivitiesRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Activite", "Responsable", "Priorite", "SLA", "Etat", "Historique", "Action"]);
+  renderCompactStoreRows(stores, (store) => {
+    const lastActivity = state.activities.find((activity) => activity.storeName === store.name);
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      escapeHtml(lastActivity?.comment || currentWorkflowStage(store)),
+      escapeHtml(lastActivity?.confirmedBy || store.owner),
+      store.status === "blocked" ? '<span class="badge badge-blocked">Urgent</span>' : '<span class="badge badge-progress">Normal</span>',
+      store.status === "blocked" ? "J+1" : "J+3",
+      `<span class="${badgeClass(lastActivity?.result === "issue" ? "blocked" : store.status)}">${escapeHtml(lastActivity?.result === "issue" ? "Probleme" : statusLabel(store.status))}</span>`,
+      escapeHtml(formatDateTime(lastActivity?.createdAt || store.updatedAt)),
+      `<span class="cell-note">${escapeHtml(nextActionForStore(store))}</span>`
+    ];
+  });
+}
+
+function renderDeploymentRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Phase", "Pre-visite", "Install", "Destiny", "Blocage", "GO / NO GO", "Action"]);
+  renderCompactStoreRows(stores, (store) => {
+    const workflow = ensureStoreWorkflowData(store);
+    const goNoGo = workflow.vlan22Activated === "Oui" && workflow.charlesRouxStatus === "OK" && store.status !== "blocked";
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      escapeHtml(currentWorkflowStage(store)),
+      escapeHtml(workflow.mobileCheckStatus || "-"),
+      escapeHtml(workflow.destinyInstallDone || "Non"),
+      escapeHtml(workflow.destinyTicketRef || "-"),
+      `<span class="cell-note">${escapeHtml(store.health || "-")}</span>`,
+      goNoGo ? '<span class="badge badge-done">GO</span>' : '<span class="badge badge-blocked">NO GO</span>',
+      escapeHtml(nextActionForStore(store))
+    ];
+  });
+}
+
+function renderMigrationRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Actuelle", "Cible", "Date transfert", "Etape", "Statut", "Risque", "Action"]);
+  renderCompactStoreRows(stores, (store) => {
+    const workflow = ensureStoreWorkflowData(store);
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      escapeHtml(workflow.currentPlatform || "Destiny"),
+      escapeHtml(workflow.targetPlatform || "TELEPO"),
+      escapeHtml(workflow.destinyInstallDate || "-"),
+      escapeHtml(currentWorkflowStage(store)),
+      `<span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>`,
+      escapeHtml(store.status === "blocked" ? "Eleve" : store.status === "in_progress" ? "Moyen" : "Faible"),
+      escapeHtml(nextActionForStore(store))
+    ];
+  });
+}
+
+function renderSavRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Ticket", "Priorite", "Ouverture", "Resolution", "Etat", "Responsable", "Action"]);
+  renderCompactStoreRows(stores, (store, index) => {
+    const ticketId = `SAV-${store.code}-${index + 1}`;
+    const urgent = store.status === "blocked";
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      escapeHtml(ticketId),
+      urgent ? '<span class="badge badge-blocked">Urgent</span>' : '<span class="badge badge-progress">Standard</span>',
+      escapeHtml(formatDateTime(store.updatedAt)),
+      escapeHtml(urgent ? "-" : formatDateTime(new Date(Date.now() + 2 * 86400000).toISOString())),
+      `<span class="${badgeClass(urgent ? "blocked" : "in_progress")}">${urgent ? "Ouvert" : "Suivi"}</span>`,
+      escapeHtml(store.owner),
+      escapeHtml(store.health || "Surveillance RUN")
+    ];
+  });
+}
+
+function renderMaterialRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Postes fixes", "Mobiles", "SIM", "PUK", "Chargeurs", "Operateur", "Action"]);
+  renderCompactStoreRows(stores, (store) => {
+    const plan = getStoreQuantityPlan(store);
+    const workflow = ensureStoreWorkflowData(store);
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      String(plan.fixCount),
+      String(plan.mobileCount),
+      String(plan.mobileCount),
+      workflow.mobileCheckStatus === "OK" ? "Renseigne" : "A verifier",
+      escapeHtml(workflow.mobileChargerCount || String(Math.max(1, Math.ceil(plan.mobileCount / 10)))),
+      escapeHtml(workflow.mobileProviderChoice || "-"),
+      escapeHtml(nextActionForStore(store))
+    ];
+  });
+}
+
+function renderBillingRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "PO Licence", "PO HpDesk", "PO PM", "PO Renting", "Statut", "Entite", "Action"]);
+  renderCompactStoreRows(stores, (store) => [
+    escapeHtml(store.code),
+    `<strong>${escapeHtml(store.name)}</strong>`,
+    escapeHtml(store.poLicences || "-"),
+    escapeHtml(store.poHpDesk || "-"),
+    escapeHtml(store.poPm || "-"),
+    escapeHtml(store.poRentingHw || "-"),
+    `<span class="${badgeClass(store.poLicences ? "in_progress" : "blocked")}">${store.poLicences ? "En validation" : "PO manquant"}</span>`,
+    escapeHtml(store.shopSize || "Brico"),
+    escapeHtml(store.poLicences ? "Verifier facturation" : "Relancer PO")
+  ]);
+}
+
+function renderStores() {
+  const stores = getFilteredStores();
+  projectTableBody.innerHTML = "";
+
+  if (!stores.length) {
+    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
+    return;
+  }
+
+  switch (activeMainWorkspaceTab()) {
+    case "timeline":
+      renderTimelineRows(stores);
+      return;
+    case "activities":
+      renderActivitiesRows(stores);
+      return;
+    case "deployment":
+      renderDeploymentRows(stores);
+      return;
+    case "migration":
+      renderMigrationRows(stores);
+      return;
+    case "sav":
+      renderSavRows(stores);
+      return;
+    case "material":
+      renderMaterialRows(stores);
+      return;
+    case "billing":
+      renderBillingRows(stores);
+      return;
+    case "dashboard":
+      renderDashboardRows(stores);
+      return;
+    case "stores":
+    default:
+      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
+      renderStoreCards(stores);
+  }
 }
 
 function renderActivities() {
@@ -2693,9 +2965,15 @@ async function loadRemoteState() {
     listAllAppwriteDocuments(appwriteSettingsCollectionId)
   ]);
 
-  state.stores = storeDocuments.map(normalizeAppwriteStore);
-  state.activities = activityDocuments.map(normalizeAppwriteActivity);
-  state.people = peopleDocuments.map(normalizeAppwritePerson);
+  state.stores = storeDocuments.length
+    ? storeDocuments.map(normalizeAppwriteStore)
+    : (state.stores.length ? state.stores : clone(demoStores));
+  state.activities = activityDocuments.length
+    ? activityDocuments.map(normalizeAppwriteActivity)
+    : (state.activities.length ? state.activities : clone(demoActivities));
+  state.people = peopleDocuments.length
+    ? peopleDocuments.map(normalizeAppwritePerson)
+    : (state.people.length ? state.people : clone(initialPeople).map(hydrateAccessProfile));
 
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
@@ -2708,9 +2986,9 @@ async function loadRemoteState() {
     state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
   } else {
-    state.roleOptions = [...defaultRoleOptions];
-    state.toolItems = [];
-    state.accessOverrides = [];
+    state.roleOptions = state.roleOptions?.length ? state.roleOptions : [...defaultRoleOptions];
+    state.toolItems = state.toolItems || [];
+    state.accessOverrides = state.accessOverrides || [];
   }
 
   if (!state.people.some((person) => person.name === state.activeUserName)) {
