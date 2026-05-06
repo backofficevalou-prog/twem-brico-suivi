@@ -1028,6 +1028,26 @@ function currentUser() {
   return state.people.find((person) => person.name === state.activeUserName) || null;
 }
 
+function enforcePresentationBypass() {
+  if (!presentationBypassUser) {
+    return;
+  }
+
+  const fallbackPeople = demoPinPeople();
+  const bypassPerson = state.people.find((person) => person.name === presentationBypassUser)
+    || fallbackPeople.find((person) => person.name === presentationBypassUser);
+
+  if (bypassPerson && !state.people.some((person) => person.name === presentationBypassUser)) {
+    state.people.unshift(hydrateAccessProfile(bypassPerson));
+  }
+
+  state.activeUserName = presentationBypassUser;
+  state.pinValidated = true;
+  if (!state.activeAdminTab) {
+    state.activeAdminTab = "dashboard";
+  }
+}
+
 function isSupAdmin(user = currentUser()) {
   return user?.role === "supadmin_twem";
 }
@@ -3443,8 +3463,11 @@ function renderConnectionStatus() {
 }
 
 function renderPinGate() {
-  const user = currentUser();
   const bypassActive = Boolean(presentationBypassUser);
+  if (bypassActive) {
+    enforcePresentationBypass();
+  }
+  const user = currentUser();
   pinGate?.classList.toggle("hidden-panel", state.pinValidated || bypassActive);
   if (pinFeedback && !state.pinValidated) {
     pinFeedback.textContent = user ? `Dernier profil charge: ${user.name}` : "";
@@ -4029,6 +4052,7 @@ async function loadRemoteState() {
       state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
     }
 
+    enforcePresentationBypass();
     ensureRoleVisibilityConfig();
     saveState();
     return;
@@ -4080,6 +4104,7 @@ async function loadRemoteState() {
     state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
+  enforcePresentationBypass();
   ensureRoleVisibilityConfig();
   saveState();
 }
@@ -4379,6 +4404,7 @@ async function completeAppwriteMagicSession() {
 
 async function loadAppwriteSessionUser() {
   if (!appwriteAccount) {
+    enforcePresentationBypass();
     return;
   }
 
@@ -4392,10 +4418,12 @@ async function loadAppwriteSessionUser() {
       state.activeUserName = matchedPerson.name;
     }
     state.connectionState = "connected";
+    enforcePresentationBypass();
   } catch (error) {
     const code = Number(error?.code || error?.response?.code || 0);
     if (code === 401) {
       state.connectionState = "ready";
+      enforcePresentationBypass();
       return;
     }
     throw error;
@@ -5479,8 +5507,12 @@ async function handleLogout() {
   if (isSupabaseMode && supabaseClient) {
     await supabaseClient.auth.signOut();
   }
-  state.pinValidated = false;
-  state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
+  if (presentationBypassUser) {
+    enforcePresentationBypass();
+  } else {
+    state.pinValidated = false;
+    state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
+  }
   state.activeAdminTab = "dashboard";
   saveState();
   render();
@@ -5570,12 +5602,7 @@ async function init() {
   state.contactSearch = stored.contactSearch || "";
   document.documentElement.lang = state.language;
   ensureRoleVisibilityConfig();
-
-  if (presentationBypassUser) {
-    state.activeUserName = presentationBypassUser;
-    state.pinValidated = true;
-    state.activeAdminTab = "dashboard";
-  }
+  enforcePresentationBypass();
 
   if (isSupabaseMode && supabaseClient) {
     try {
@@ -5610,6 +5637,7 @@ async function init() {
     }
   }
 
+  enforcePresentationBypass();
   ensureValidActiveTab();
   render();
 }
