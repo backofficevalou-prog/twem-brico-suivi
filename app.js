@@ -3823,7 +3823,9 @@ async function handlePinSubmit(event) {
   event.preventDefault();
   const submittedPin = normalizePin(pinInput?.value);
   const pinCandidates = mergePeopleWithPinFallback(state.people);
-  const matchedPerson = pinCandidates.find((person) => normalizePin(person.pin) === submittedPin);
+  const emergencyCandidates = demoPinPeople();
+  const matchedPerson = pinCandidates.find((person) => normalizePin(person.pin) === submittedPin)
+    || emergencyCandidates.find((person) => normalizePin(person.pin) === submittedPin);
 
   if (!matchedPerson || !loginAllowedForPerson(matchedPerson)) {
     if (pinFeedback) {
@@ -3847,14 +3849,17 @@ async function handlePinSubmit(event) {
 
   state.people = mergePeopleWithPinFallback(state.people);
   const currentStatePerson = state.people.find((person) => (person.email || person.name).toLowerCase() === (matchedPerson.email || matchedPerson.name).toLowerCase());
+  const hydratedMatch = hydrateAccessProfile(matchedPerson);
   if (currentStatePerson) {
-    currentStatePerson.loginHistory = matchedPerson.loginHistory;
-    currentStatePerson.pin = matchedPerson.pin;
-    currentStatePerson.pinStatus = matchedPerson.pinStatus;
+    currentStatePerson.loginHistory = hydratedMatch.loginHistory;
+    currentStatePerson.pin = hydratedMatch.pin;
+    currentStatePerson.pinStatus = hydratedMatch.pinStatus;
+  } else {
+    state.people.push(hydratedMatch);
   }
 
   if (hasRemoteData()) {
-    await syncPersonToRemote(currentStatePerson || matchedPerson);
+    await syncPersonToRemote(currentStatePerson || hydratedMatch);
   }
   saveState();
   render();
