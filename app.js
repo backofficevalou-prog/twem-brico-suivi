@@ -458,6 +458,35 @@ const demoActivities = [
   { id: "act-2", storeName: "Brico Anderlecht", result: "ok", comment: "Rendez-vous confirme et intervention en cours", confirmedBy: "terrain@twem.be", createdAt: "2026-04-22T08:21:00Z" }
 ];
 
+const demoTickets = [
+  {
+    id: "sav-1",
+    storeId: 3,
+    storeCode: "BRI-003",
+    storeName: "Brico Liege Rocourt",
+    requesterName: "M. Lambert",
+    targetService: "Destiny",
+    concern: "Poste caisse ne recoit pas les appels",
+    initialNote: "Le magasin remonte un souci apres installation, impossible de recevoir les appels entrants sur un poste caisse.",
+    status: "open",
+    createdAt: "2026-04-22T08:05:00Z",
+    updates: [
+      {
+        id: "sav-1-u1",
+        authorName: "Valou",
+        createdAt: "2026-04-22T08:20:00Z",
+        note: "Analyse TWEM lancee, verification demandee a Destiny et Infra."
+      },
+      {
+        id: "sav-1-u2",
+        authorName: "Equipe Telephonie B",
+        createdAt: "2026-04-22T09:10:00Z",
+        note: "Controle en cours sur le routage et la configuration du poste."
+      }
+    ]
+  }
+];
+
 const statusLabels = {
   planned: "A commencer",
   in_progress: "En cours",
@@ -526,6 +555,7 @@ const state = {
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
   contactSearch: "",
+  tickets: [],
   filters: {
     search: "",
     status: "all",
@@ -863,6 +893,7 @@ function localUiState() {
   return {
     stores: state.stores,
     activities: state.activities,
+    tickets: state.tickets,
     people: state.people,
     activeUserName: state.activeUserName,
     language: state.language,
@@ -880,6 +911,7 @@ function loadState() {
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
+      tickets: clone(demoTickets),
       people: demoPinPeople(),
       activeUserName: "Emir",
       language: "fr",
@@ -896,6 +928,7 @@ function loadState() {
     return {
       stores: parsed.stores || clone(demoStores),
       activities: parsed.activities || clone(demoActivities),
+      tickets: parsed.tickets || clone(demoTickets),
       people: mergePeopleWithPinFallback((parsed.people || []).map((person) => ({
         language: "fr",
         storeCode: "",
@@ -913,6 +946,7 @@ function loadState() {
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
+      tickets: clone(demoTickets),
       people: demoPinPeople(),
       activeUserName: "Emir",
       language: "fr",
@@ -1038,12 +1072,12 @@ function editableZonesForRole(role) {
   const map = {
     supadmin_twem: ["all"],
     admin_twem: ["all"],
-    supmanager: ["appointments", "project_prep", "problem_notes", "brico_feedback", "status_admin", "configuration_request"],
-    manager: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes"],
-    telephonie_destiny: ["appointments", "order_articles", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "status_admin"],
-    it: ["appointments", "external_prep", "network_config", "store_posts"],
-    infra: ["appointments", "external_prep", "problem_notes"],
-    default: ["appointments"]
+    supmanager: ["appointments", "project_prep", "problem_notes", "brico_feedback", "status_admin", "configuration_request", "sav_ticket"],
+    manager: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
+    telephonie_destiny: ["appointments", "order_articles", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "status_admin", "sav_ticket"],
+    it: ["appointments", "external_prep", "network_config", "store_posts", "sav_ticket"],
+    infra: ["appointments", "external_prep", "problem_notes", "sav_ticket"],
+    default: ["appointments", "sav_ticket"]
   };
   return map[String(role || "").toLowerCase()] || map.default;
 }
@@ -1443,10 +1477,10 @@ function renderSummary() {
       { label: "Installations a risque", value: riskCount, note: "Points sensibles a traiter", portion: Math.round((riskCount / total) * 100), filter: { key: "status", value: "blocked", tab: "timeline" } }
     ],
     sav: [
-      { label: "Tickets ouverts", value: visibleStores.filter((store) => store.status !== "done").length, note: "Support en cours", portion: Math.round((visibleStores.filter((store) => store.status !== "done").length / total) * 100), filter: { key: "status", value: "in_progress", tab: "sav" } },
-      { label: "Urgents", value: blockedCount, note: "Priorite rouge", portion: Math.round((blockedCount / total) * 100), filter: { key: "status", value: "blocked", tab: "sav" } },
-      { label: "Resolus", value: doneCount, note: "Historique conserve", portion: Math.round((doneCount / total) * 100), filter: { key: "status", value: "done", tab: "sav" } },
-      { label: "SLA a surveiller", value: inProgressCount + blockedCount, note: "Retards potentiels", portion: Math.round(((inProgressCount + blockedCount) / total) * 100), filter: null }
+      { label: "Tickets ouverts", value: getFilteredTickets().filter((ticket) => ticket.status === "open").length, note: "Demandes a traiter", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status === "open").length * 20), filter: { key: "status", value: "in_progress", tab: "sav" } },
+      { label: "En cours", value: getFilteredTickets().filter((ticket) => ticket.status === "in_progress").length, note: "Suivis en traitement", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status === "in_progress").length * 20), filter: { key: "status", value: "in_progress", tab: "sav" } },
+      { label: "Clotures", value: getFilteredTickets().filter((ticket) => ticket.status === "closed").length, note: "Historique conserve", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status === "closed").length * 20), filter: { key: "status", value: "done", tab: "sav" } },
+      { label: "A surveiller", value: getFilteredTickets().filter((ticket) => ticket.status !== "closed").length, note: "Tickets encore actifs", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status !== "closed").length * 20), filter: null }
     ],
     extensions: [
       { label: "Reference extensions", value: extensionCatalogRows.length, note: "Liste commune magasin / IT", portion: 100, filter: null },
@@ -2370,6 +2404,10 @@ function renderStoreCards(stores) {
               </div>
 
               <div class="editor-grid">
+                ${buildSavCard(store)}
+              </div>
+
+              <div class="editor-grid">
                 <article class="editor-card" data-access-zone="status_admin">
                   <h3>Statut global</h3>
                   <div class="two-col">
@@ -2422,6 +2460,18 @@ function renderStoreCards(stores) {
 
   projectTableBody.querySelectorAll("[data-store-editor]").forEach((form) => {
     form.addEventListener("submit", handleStoreEditorSubmit);
+  });
+
+  projectTableBody.querySelectorAll("[data-sav-create]").forEach((button) => {
+    button.addEventListener("click", handleSavCreate);
+  });
+
+  projectTableBody.querySelectorAll("[data-sav-update]").forEach((button) => {
+    button.addEventListener("click", handleSavUpdate);
+  });
+
+  projectTableBody.querySelectorAll("[data-sav-toggle-close]").forEach((button) => {
+    button.addEventListener("click", handleSavToggleClose);
   });
 }
 
@@ -2632,22 +2682,58 @@ function renderMigrationRows(stores) {
   });
 }
 
-function renderSavRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "Ticket", "Priorite", "Ouverture", "Resolution", "Etat", "Responsable", "Action"]);
-  renderCompactStoreRows(stores, (store, index) => {
-    const ticketId = `SAV-${store.code}-${index + 1}`;
-    const urgent = store.status === "blocked";
-    return [
-      escapeHtml(store.code),
-      `<strong>${escapeHtml(store.name)}</strong>`,
-      escapeHtml(ticketId),
-      urgent ? '<span class="badge badge-blocked">Urgent</span>' : '<span class="badge badge-progress">Standard</span>',
-      escapeHtml(formatDateTime(store.updatedAt)),
-      escapeHtml(urgent ? "-" : formatDateTime(new Date(Date.now() + 2 * 86400000).toISOString())),
-      `<span class="${badgeClass(urgent ? "blocked" : "in_progress")}">${urgent ? "Ouvert" : "Suivi"}</span>`,
-      escapeHtml(store.owner),
-      escapeHtml(store.health || "Surveillance RUN")
-    ];
+function renderSavRows() {
+  setMainTableHeaders(["Code", "Magasin", "Ticket", "Demandeur", "Service", "Ouverture", "Etat", "Dernier suivi", "Action"]);
+  const filteredTickets = getFilteredTickets();
+
+  if (!filteredTickets.length) {
+    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun ticket SAV ne correspond aux filtres.</td></tr>';
+    return;
+  }
+
+  projectTableBody.innerHTML = filteredTickets.map((ticket) => {
+    const store = state.stores.find((item) => item.id === ticket.storeId);
+    const latestUpdate = [...(ticket.updates || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    return `
+      <tr>
+        <td>${escapeHtml(ticket.storeCode || store?.code || "-")}</td>
+        <td><strong>${escapeHtml(ticket.storeName || store?.name || "-")}</strong></td>
+        <td>
+          <div class="cell-stack">
+            <strong>${escapeHtml(ticket.id)}</strong>
+            <span class="cell-note">${escapeHtml(ticket.concern || "-")}</span>
+          </div>
+        </td>
+        <td>${escapeHtml(ticket.requesterName || "-")}</td>
+        <td>${escapeHtml(ticket.targetService || "-")}</td>
+        <td>${escapeHtml(formatDateTime(ticket.createdAt))}</td>
+        <td><span class="${ticketBadgeClass(ticket.status)}">${escapeHtml(ticketStatusLabel(ticket.status))}</span></td>
+        <td>${escapeHtml(latestUpdate ? `${formatDateTime(latestUpdate.createdAt)} - ${latestUpdate.authorName}` : "Demande initiale")}</td>
+        <td>
+          <div class="sav-table-actions">
+            <button type="button" class="mini-button" data-sav-open-store="${ticket.storeId}">Voir fiche</button>
+            <select class="sav-inline-select" data-sav-row-status="${ticket.id}">
+              ${renderOptions(ticketStatusOptions, ticket.status)}
+            </select>
+            <button type="button" class="mini-button" data-sav-row-apply="${ticket.id}">Mettre a jour</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  projectTableBody.querySelectorAll("[data-sav-open-store]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const storeId = Number(button.getAttribute("data-sav-open-store"));
+      state.activeAdminTab = "stores";
+      state.expandedStoreIds = new Set([storeId]);
+      saveState();
+      render();
+    });
+  });
+
+  projectTableBody.querySelectorAll("[data-sav-row-apply]").forEach((button) => {
+    button.addEventListener("click", handleSavRowStatusUpdate);
   });
 }
 
@@ -2710,6 +2796,163 @@ function renderExtensionsRows(stores) {
         </article>
       </td>
     </tr>
+  `;
+}
+
+const ticketStatusOptions = [
+  { value: "open", label: "Ouvert" },
+  { value: "in_progress", label: "En cours" },
+  { value: "closed", label: "Cloture" }
+];
+
+function ticketStatusLabel(status) {
+  const labels = {
+    open: "Ouvert",
+    in_progress: "En cours",
+    closed: "Cloture"
+  };
+  return labels[status] || status;
+}
+
+function ticketBadgeClass(status) {
+  const map = {
+    open: "badge badge-planned",
+    in_progress: "badge badge-progress",
+    closed: "badge badge-done"
+  };
+  return map[status] || "badge badge-planned";
+}
+
+function ticketsForStore(storeId) {
+  return state.tickets
+    .filter((ticket) => String(ticket.storeId) === String(storeId))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function getFilteredTickets() {
+  const visibleStoreIds = new Set(getFilteredStores().map((store) => String(store.id)));
+  const search = state.filters.search;
+  return state.tickets
+    .filter((ticket) => visibleStoreIds.has(String(ticket.storeId)))
+    .filter((ticket) => {
+      if (!search) {
+        return true;
+      }
+      const haystack = [
+        ticket.storeCode,
+        ticket.storeName,
+        ticket.requesterName,
+        ticket.targetService,
+        ticket.concern,
+        ticket.initialNote,
+        ...(ticket.updates || []).map((update) => `${update.authorName} ${update.note}`)
+      ].join(" ").toLowerCase();
+      return haystack.includes(search);
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function buildSavCard(store) {
+  const storeTickets = ticketsForStore(store.id);
+  const requesterName = currentUser()?.name || state.activeUserName || store.manager || "-";
+  return `
+    <article class="editor-card full-span-card sav-ticket-card" data-access-zone="sav_ticket">
+      <h3>Demande SAV / ticket</h3>
+      <p>Tout acteur du magasin peut creer une demande. La demande initiale reste intacte, puis le suivi se fait juste en dessous avec historique date et signe.</p>
+
+      <div class="three-col sav-request-grid">
+        <label>
+          <span>N de magasin</span>
+          <input type="text" value="${escapeHtml(store.code)}" readonly>
+        </label>
+        <label>
+          <span>Nom du magasin</span>
+          <input type="text" value="${escapeHtml(store.name)}" readonly>
+        </label>
+        <label>
+          <span>Demandeur</span>
+          <input type="text" value="${escapeHtml(requesterName)}" readonly>
+        </label>
+      </div>
+
+      <div class="two-col">
+        <label>
+          <span>Service a mobiliser</span>
+          <select name="new_ticket_service">
+            ${renderOptions(["TWEM", "Destiny", "IT", "Infra", "Magasin", "Autre"], "Destiny")}
+          </select>
+        </label>
+        <label>
+          <span>Ce que ca concerne</span>
+          <input type="text" name="new_ticket_concern" placeholder="Ex: poste caisse, GSM, transfert, VLAN, accueil">
+        </label>
+      </div>
+
+      <label>
+        <span>Note explicative libre</span>
+        <textarea name="new_ticket_note" rows="4" placeholder="Decris le probleme, le besoin ou le contexte de la demande SAV"></textarea>
+      </label>
+
+      <div class="editor-actions sav-request-actions">
+        <span class="validation-text" data-sav-feedback="${store.id}"></span>
+        <button type="button" data-sav-create="${store.id}">Confirmer / envoyer</button>
+      </div>
+
+      <div class="sav-history-stack">
+        ${storeTickets.length ? storeTickets.map((ticket) => buildTicketThread(store, ticket)).join("") : '<div class="empty-state sav-empty">Aucun ticket SAV pour ce magasin pour le moment.</div>'}
+      </div>
+    </article>
+  `;
+}
+
+function buildTicketThread(store, ticket) {
+  const updates = [...(ticket.updates || [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  return `
+    <article class="sav-thread-card">
+      <div class="sav-thread-head">
+        <div>
+          <strong>${escapeHtml(ticket.id)} - ${escapeHtml(ticket.concern || "Sans objet")}</strong>
+          <div class="cell-note">Demande initiale par ${escapeHtml(ticket.requesterName || "-")} le ${escapeHtml(formatDateTime(ticket.createdAt))} - ${escapeHtml(ticket.targetService || "Service a definir")}</div>
+        </div>
+        <span class="${ticketBadgeClass(ticket.status)}">${escapeHtml(ticketStatusLabel(ticket.status))}</span>
+      </div>
+
+      <div class="sav-thread-request">
+        <div class="sav-thread-label">Demande initiale</div>
+        <div class="sav-thread-box">${escapeHtml(ticket.initialNote || "-")}</div>
+      </div>
+
+      <div class="sav-thread-updates">
+        <div class="sav-thread-label">Historique de traitement</div>
+        ${updates.length ? updates.map((update) => `
+          <div class="sav-update-item">
+            <div class="sav-update-meta">${escapeHtml(update.authorName || "-")} - ${escapeHtml(formatDateTime(update.createdAt))}</div>
+            <div class="sav-thread-box">${escapeHtml(update.note || "-")}</div>
+          </div>
+        `).join("") : '<div class="empty-state sav-empty">Aucun suivi ajoute pour le moment.</div>'}
+      </div>
+
+      <div class="sav-thread-actions">
+        <label class="sav-thread-note">
+          <span>Nouveau suivi</span>
+          <textarea name="ticket_update_note_${ticket.id}" rows="3" placeholder="Ajoute ici le suivi, la reponse, la correction ou l etat d avancement"></textarea>
+        </label>
+        <div class="sav-thread-control">
+          <label>
+            <span>Statut du ticket</span>
+            <select name="ticket_status_${ticket.id}">
+              ${renderOptions(ticketStatusOptions, ticket.status)}
+            </select>
+          </label>
+          <div class="sav-thread-buttons">
+            <button type="button" class="mini-button" data-sav-update="${ticket.id}" data-sav-store="${store.id}">Ajouter le suivi</button>
+            <button type="button" class="mini-button" data-sav-toggle-close="${ticket.id}" data-sav-store="${store.id}">
+              ${ticket.status === "closed" ? "Reouvrir" : "Cloturer"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -3194,7 +3437,8 @@ function zoneLabel(value) {
     destiny_closure: "Cloture installation Destiny",
     brico_feedback: "Retour Brico / bascule",
     problem_notes: "Probleme / notes",
-    status_admin: "Statut global"
+    status_admin: "Statut global",
+    sav_ticket: "SAV / tickets"
   };
   return labels[value] || value;
 }
@@ -4099,6 +4343,161 @@ async function handleStoreEditorSubmit(event) {
   }
   saveState();
   state.expandedStoreIds.delete(storeId);
+  render();
+}
+
+function handleSavCreate(event) {
+  const button = event.currentTarget;
+  const storeId = Number(button.getAttribute("data-sav-create"));
+  const form = button.closest("[data-store-editor]");
+  const feedback = form?.querySelector(`[data-sav-feedback="${storeId}"]`);
+  const store = state.stores.find((item) => item.id === storeId);
+  if (!form || !store) {
+    return;
+  }
+
+  const concern = form.querySelector('[name="new_ticket_concern"]').value.trim();
+  const initialNote = form.querySelector('[name="new_ticket_note"]').value.trim();
+  const targetService = form.querySelector('[name="new_ticket_service"]').value;
+  if (!concern || !initialNote) {
+    if (feedback) {
+      feedback.textContent = "Le sujet et la note du ticket sont obligatoires.";
+    }
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const ticket = {
+    id: `SAV-${store.code}-${Date.now()}`,
+    storeId: store.id,
+    storeCode: store.code,
+    storeName: store.name,
+    requesterName: currentUser()?.name || state.activeUserName || store.manager || "-",
+    targetService,
+    concern,
+    initialNote,
+    status: "open",
+    createdAt: now,
+    updates: []
+  };
+
+  state.tickets.unshift(ticket);
+  state.activities.unshift({
+    id: `sav-create-${Date.now()}`,
+    storeName: store.name,
+    result: "issue",
+    comment: `Creation SAV ${concern}`,
+    confirmedBy: ticket.requesterName,
+    createdAt: now
+  });
+
+  form.querySelector('[name="new_ticket_concern"]').value = "";
+  form.querySelector('[name="new_ticket_note"]').value = "";
+  form.querySelector('[name="new_ticket_service"]').value = "Destiny";
+  if (feedback) {
+    feedback.textContent = "Ticket SAV cree.";
+  }
+  saveState();
+  render();
+}
+
+function handleSavUpdate(event) {
+  const button = event.currentTarget;
+  const ticketId = button.getAttribute("data-sav-update");
+  const ticket = state.tickets.find((entry) => entry.id === ticketId);
+  const form = button.closest("[data-store-editor]");
+  if (!ticket || !form) {
+    return;
+  }
+
+  const noteField = form.querySelector(`[name="ticket_update_note_${ticketId}"]`);
+  const statusField = form.querySelector(`[name="ticket_status_${ticketId}"]`);
+  const nextNote = noteField?.value.trim() || "";
+  const nextStatus = statusField?.value || ticket.status;
+
+  if (!nextNote && nextStatus === ticket.status) {
+    return;
+  }
+
+  if (nextNote) {
+    ticket.updates.push({
+      id: `${ticket.id}-u-${Date.now()}`,
+      authorName: currentUser()?.name || state.activeUserName || "-",
+      createdAt: new Date().toISOString(),
+      note: nextNote
+    });
+  }
+
+  ticket.status = nextStatus;
+  if (noteField) {
+    noteField.value = "";
+  }
+
+  state.activities.unshift({
+    id: `sav-update-${Date.now()}`,
+    storeName: ticket.storeName,
+    result: ticket.status === "closed" ? "ok" : "issue",
+    comment: `Suivi SAV ${ticket.concern} - ${ticketStatusLabel(ticket.status)}`,
+    confirmedBy: currentUser()?.name || state.activeUserName || "-",
+    createdAt: new Date().toISOString()
+  });
+
+  saveState();
+  render();
+}
+
+function handleSavToggleClose(event) {
+  const button = event.currentTarget;
+  const ticketId = button.getAttribute("data-sav-toggle-close");
+  const ticket = state.tickets.find((entry) => entry.id === ticketId);
+  if (!ticket) {
+    return;
+  }
+
+  const nextStatus = ticket.status === "closed" ? "open" : "closed";
+  ticket.status = nextStatus;
+  ticket.updates.push({
+    id: `${ticket.id}-u-${Date.now()}`,
+    authorName: currentUser()?.name || state.activeUserName || "-",
+    createdAt: new Date().toISOString(),
+    note: nextStatus === "closed" ? "Ticket cloture." : "Ticket reouvert."
+  });
+
+  state.activities.unshift({
+    id: `sav-status-${Date.now()}`,
+    storeName: ticket.storeName,
+    result: nextStatus === "closed" ? "ok" : "issue",
+    comment: `Ticket SAV ${nextStatus === "closed" ? "cloture" : "reouvert"} - ${ticket.concern}`,
+    confirmedBy: currentUser()?.name || state.activeUserName || "-",
+    createdAt: new Date().toISOString()
+  });
+
+  saveState();
+  render();
+}
+
+function handleSavRowStatusUpdate(event) {
+  const button = event.currentTarget;
+  const ticketId = button.getAttribute("data-sav-row-apply");
+  const ticket = state.tickets.find((entry) => entry.id === ticketId);
+  if (!ticket) {
+    return;
+  }
+  const statusField = projectTableBody.querySelector(`[data-sav-row-status="${ticketId}"]`);
+  const nextStatus = statusField?.value || ticket.status;
+  if (nextStatus === ticket.status) {
+    return;
+  }
+
+  ticket.status = nextStatus;
+  ticket.updates.push({
+    id: `${ticket.id}-u-${Date.now()}`,
+    authorName: currentUser()?.name || state.activeUserName || "-",
+    createdAt: new Date().toISOString(),
+    note: `Statut change vers ${ticketStatusLabel(nextStatus)} depuis la vue SAV.`
+  });
+
+  saveState();
   render();
 }
 

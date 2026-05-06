@@ -864,6 +864,101 @@ button {
   margin-top: 12px;
 }
 
+.sav-request-grid,
+.sav-thread-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.sav-request-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.sav-request-actions {
+  margin-top: 14px;
+}
+
+.sav-history-stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sav-thread-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffdf8;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.sav-thread-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.sav-thread-label,
+.sav-update-meta {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sav-thread-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.sav-thread-updates {
+  display: grid;
+  gap: 10px;
+}
+
+.sav-update-item {
+  display: grid;
+  gap: 6px;
+}
+
+.sav-thread-actions {
+  grid-template-columns: minmax(0, 1.3fr) minmax(220px, 0.7fr);
+  align-items: end;
+}
+
+.sav-thread-note {
+  display: grid;
+  gap: 6px;
+}
+
+.sav-thread-control {
+  display: grid;
+  gap: 10px;
+}
+
+.sav-thread-buttons,
+.sav-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sav-inline-select {
+  min-width: 126px;
+}
+
+.sav-empty {
+  margin: 0;
+}
+
 .pilot-grid {
   margin-bottom: 14px;
 }
