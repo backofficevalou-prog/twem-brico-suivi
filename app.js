@@ -2113,6 +2113,16 @@ function getGsmRows(store) {
   return workflow.gsmRows;
 }
 
+function gsmModelOptions() {
+  return [
+    "A confirmer",
+    "Hammer LT",
+    "Yealink W59R",
+    "Gigaset R700H",
+    "Autre"
+  ];
+}
+
 function defaultIntervenantRows() {
   return [
     { id: "it", slotName: "IT", note: "Preparation technique" },
@@ -2161,7 +2171,8 @@ function buildStorePilotSkeleton(store) {
   `;
 }
 
-function buildNetworkConfigSkeleton(store) {
+function buildNetworkConfigSkeleton(store, options = {}) {
+  const { showConfirmBar = true } = options;
   const workflow = ensureStoreWorkflowData(store);
   const rows = getNetworkConfigRows(store);
   const groupedRows = rows.reduce((accumulator, row) => {
@@ -2235,10 +2246,12 @@ function buildNetworkConfigSkeleton(store) {
         <p class="posts-skeleton-intro">Le responsable magasin remplit cette partie pour permettre a l IT de programmer les appareils avant installation.</p>
         <input type="hidden" name="network_config_confirmed" value="${workflow.networkConfigConfirmed ? "1" : "0"}">
         ${workflow.networkConfigConfirmed ? summaryContent : editableContent}
-        <div class="network-confirm-bar">
-          <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Le magasin remplit ses choix puis confirme en bas du module."}</span>
-          <button type="button" class="mini-button" data-network-confirm="${store.id}">${workflow.networkConfigConfirmed ? "Choix confirmes" : "Confirmer vos choix"}</button>
-        </div>
+        ${showConfirmBar ? `
+          <div class="network-confirm-bar">
+            <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Le magasin remplit ses choix puis confirme en bas du module."}</span>
+            <button type="button" class="mini-button" data-network-confirm="${store.id}">${workflow.networkConfigConfirmed ? "Choix confirmes" : "Confirmer vos choix"}</button>
+          </div>
+        ` : ""}
       </div>
     </details>
   `;
@@ -2521,7 +2534,7 @@ function buildConfigurationHubCard(store) {
             <textarea name="greeting_notes" rows="5">${escapeHtml(workflow.greetingNotes)}</textarea>
           </label>
         </div>
-        ${buildNetworkConfigSkeleton(store)}
+        ${buildNetworkConfigSkeleton(store, { showConfirmBar: false })}
       </article>
     </div>
   `;
@@ -2532,37 +2545,58 @@ function buildEquipmentCards(store) {
   const gsmRows = getGsmRows(store);
   return `
     <div class="editor-grid section-anchor" id="section-equipment">
-      <article class="editor-card full-span-card" data-access-zone="store_posts">
+      <article class="editor-card full-span-card grouped-card" data-access-zone="store_posts">
         <h3>GSM / SIM</h3>
-        <div class="compact-table-wrap">
-          <table class="compact-table">
-            <thead>
-              <tr>
-                <th>Modele appareil</th>
-                <th>Numero mobile</th>
-                <th>Reseau mobile</th>
-                <th>ICCID</th>
-                <th>Code PUK</th>
-                <th>Extension liee</th>
-                <th>Utilisateur</th>
-                <th>Groupe appel</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${gsmRows.map((row) => `
-                <tr>
-                  <td><input type="text" name="gsm_model_${escapeHtml(row.id)}" value="${escapeHtml(row.model || "")}"></td>
-                  <td><input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}"></td>
-                  <td><input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}"></td>
-                  <td><input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}"></td>
-                  <td><input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}"></td>
-                  <td><input type="text" name="gsm_extension_${escapeHtml(row.id)}" value="${escapeHtml(row.extensionLinked || "")}"></td>
-                  <td><input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}"></td>
-                  <td><input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}"></td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+        <div class="device-stack">
+          ${gsmRows.map((row, index) => `
+            <article class="network-category">
+              <div class="network-category-head">
+                <h4>GSM ${index + 1}</h4>
+                <span>${escapeHtml(row.user || row.mobileNumber || "A definir")}</span>
+              </div>
+              <div class="network-rows">
+                <div class="network-row gsm-row">
+                  <label>
+                    <span>Modele appareil</span>
+                    <select name="gsm_model_${escapeHtml(row.id)}">
+                      ${gsmModelOptions().map((option) => `<option value="${escapeHtml(option)}" ${row.model === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Extension liee</span>
+                    <select name="gsm_extension_${escapeHtml(row.id)}">
+                      <option value="">Choisir une extension</option>
+                      ${extensionReferenceOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Utilisateur</span>
+                    <input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}">
+                  </label>
+                  <label>
+                    <span>Numero mobile</span>
+                    <input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}">
+                  </label>
+                  <label>
+                    <span>Reseau mobile</span>
+                    <input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}">
+                  </label>
+                  <label>
+                    <span>ICCID</span>
+                    <input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}">
+                  </label>
+                  <label>
+                    <span>Code PUK</span>
+                    <input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}">
+                  </label>
+                  <label>
+                    <span>Groupe appel</span>
+                    <input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}">
+                  </label>
+                </div>
+              </div>
+            </article>
+          `).join("")}
         </div>
       </article>
       <article class="editor-card">
@@ -2589,16 +2623,23 @@ function buildEquipmentCards(store) {
         </div>
       </article>
       <article class="editor-card">
-        <h3>Cascades / groupes d appel</h3>
-        <div class="two-col">
-          <label class="full-row">
-            <span>Groupes d appel</span>
-            <textarea name="call_groups_note" rows="4" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
-          </label>
-          <label class="full-row">
-            <span>Cascades</span>
-            <textarea name="cascade_note" rows="4" placeholder="Ex: si non reponse, renvoi vers permanence">${escapeHtml(workflow.cascadeNote)}</textarea>
-          </label>
+        <h3>Groupes d appel</h3>
+        <label>
+          <span>Groupes d appel</span>
+          <textarea name="call_groups_note" rows="6" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
+        </label>
+      </article>
+      <article class="editor-card">
+        <h3>Cascades</h3>
+        <label>
+          <span>Cascades</span>
+          <textarea name="cascade_note" rows="6" placeholder="Ex: si non reponse, renvoi vers permanence">${escapeHtml(workflow.cascadeNote)}</textarea>
+        </label>
+      </article>
+      <article class="editor-card full-span-card">
+        <div class="network-confirm-bar">
+          <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Les choix telephonie sont complets ? Confirme-les ici en fin de parcours."}</span>
+          <button type="button" class="mini-button" data-network-confirm="${store.id}">${workflow.networkConfigConfirmed ? "Choix confirmes" : "Confirmer vos choix"}</button>
         </div>
       </article>
     </div>
