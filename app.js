@@ -27,6 +27,123 @@ const extensionReferenceOptions = [
   "923 - safe room",
   "924 - drive in till zone"
 ];
+const extensionCatalogRows = [
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "900", label: "Zaagmachine", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "901", label: "tuin", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "902", label: "verf", oldNumber: "", language: "fr_BE", item: "", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "903", label: "keukens", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "904", label: "tegels", oldNumber: "", language: "fr_BE", item: "F3008", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "905", label: "decoratie maatwerk", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "906", label: "hout  buitenschrijnwerk of vloeren", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "907", label: "", oldNumber: "", language: "fr_BE", item: "", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "908", label: "", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "909", label: "", oldNumber: "", language: "fr_BE", item: "F3008", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "910", label: "", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "911", label: "", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "912", label: "", oldNumber: "", language: "fr_BE", item: "", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "913", label: "", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "914", label: "", oldNumber: "", language: "fr_BE", item: "F3008", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "915", label: "", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "916", label: "", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "917", label: "", oldNumber: "", language: "fr_BE", item: "", activation: "" },
+  { category: "Bouton Panique", model: "HELIOS IP Verso1 B PoE", number: "922", label: "FRONT END EVACUATION", oldNumber: "", language: "fr_BE", item: "F3009", activation: "" },
+  { category: "Bouton Panique", model: "HELIOS IP Verso1 B PoE", number: "923", label: "SAFE ROOM", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Bouton Panique", model: "HELIOS IP Verso1 B PoE", number: "924", label: "DRIVE IN till zone", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Bouton Panique", model: "HELIOS IP Verso1 B PoE", number: "925", label: "SAFE ROOM DRIVE IN   Front end overval", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Fixed", model: "VVX250", number: "400", label: "Refter", oldNumber: "", language: "fr_BE", item: "D1121", activation: "" },
+  { category: "Fixed", model: "VVX250", number: "444", label: "Urgence/Red phone", oldNumber: "", language: "fr_BE", item: "D1101", activation: "" },
+  { category: "Fixed", model: "VVX411 ou 450 + MOD", number: "200", label: "Centrale", oldNumber: "", language: "fr_BE", item: "D1105", activation: "" },
+  { category: "Fixed", model: "VVX250", number: "205", label: "Koffer", oldNumber: "", language: "fr_BE", item: "D1107", activation: "" },
+  { category: "Flash light", model: "ALGO 8128 SIP FLASH", number: "931", label: "SAFE ROOM(Coffre/ koffer safe room)", oldNumber: "", language: "fr_BE", item: "F3008", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "201", label: "Onthaal winkel", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "202", label: "Kassaverantwoordelijke", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "210", label: "Zelfscan", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "211", label: "Kassa 2+3", oldNumber: "", language: "fr_BE", item: "D1109", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "213", label: "Kassa 4+5", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "220", label: "Kassa bouw", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "701", label: "Winkelassistente", oldNumber: "", language: "fr_BE", item: "D1101", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "700", label: "Directeur", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "705", label: "SVB", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "710", label: "CS1 / techniek", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "720", label: "CS2 / decoratie - verf - verlichting", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "730", label: "CS3 / deco san - rangement", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "740", label: "CS4 / tuin - bouw", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "750", label: "CS5 / hout -  tegels", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "610", label: "RR gereedschappen", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "217", label: "Till 7", oldNumber: "", language: "fr_BE", item: "D1114", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "611", label: "RR elect - loodgieterij", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "620", label: "RR verf", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "621", label: "RR decoratie", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "622", label: "", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "630", label: "RR decor san - rengement", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "640", label: "RR bouw", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "641", label: "RR tuin", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "650", label: "RR hout", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "651", label: "RR tegels", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "300", label: "Verf", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "305", label: "Decoratie", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "320", label: "Gereedschappen", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "330", label: "Elect / Loodgieterij", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "335", label: "Verlichting", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "340", label: "Decor san 1", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "350", label: "Tegels", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "355", label: "Decor san 2", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "380", label: "Tuin 1", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "385", label: "Tuin 2", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "500", label: "Goederenreceptie", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "520", label: "Bouw", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "535", label: "Hout 1", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "540", label: "Hout 2", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "570", label: "Klantendienst 1", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "575", label: "Klantendienst 2", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "810", label: "BALISAGE", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "325", label: "STORAGE DECOR(Rangemant Décor/opberging)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "212", label: "Till 2", oldNumber: "", language: "fr_BE", item: "D1110", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "214", label: "Till 4", oldNumber: "", language: "fr_BE", item: "D1112", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "310", label: "DECO 1", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "345", label: "SANITARY(Sanitaire/sanitair)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "360", label: "PLUMBING(Plomberie/loodgieterij)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "370", label: "TOOLS(Outillage/gereedschap)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "501", label: "MERCHANDISE RECEPTION 2 (Réception 2)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Fixed", model: "VVX250", number: "503", label: "MERCHANDISE RECEPTION(Réception/Receptie)", oldNumber: "", language: "fr_BE", item: "D1102", activation: "" },
+  { category: "Fixed", model: "VVX250", number: "505", label: "NIGHT MERCHANDISE RECEPTION[Sas du nuit/nachtsas)", oldNumber: "", language: "fr_BE", item: "D1107", activation: "" },
+  { category: "Flash light", model: "ALGO 8128 SIP FLASH", number: "930", label: "BRICO SERVICE", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
+  { category: "Flash light", model: "ALGO 8128 SIP FLASH", number: "932", label: "SAFE ROOM DRIVE IN(coffre/koffer drive in )", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Flash light", model: "ALGO 8128 SIP FLASH", number: "933", label: "MERCHANDISE RECEPTION", oldNumber: "", language: "fr_BE", item: "F3008", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "203", label: "TILL ASSISTANTS(Assistantes caisses)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "215", label: "Till 5", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "216", label: "Till 6", oldNumber: "", language: "fr_BE", item: "D1113", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "221", label: "TILL TENT (Caisse Chap)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "760", label: "CS6/ chef 6", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "612", label: "RR 3 from   chef 1", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "631", label: "RR 2  from  chef 3", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "632", label: "RR 3  from  chef 3", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "642", label: "RR 3  from  chef 4", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "652", label: "RR 3  from  chef 5", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "660", label: "RR 1  from  chef 6", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "661", label: "RR 2  from  chef 6", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "662", label: "RR 3  from  chef 6", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "315", label: "DECO 2", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "375", label: "ELECTRICAL TOOLS(Outillage electrique/elektrisch gereedschap)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "390", label: "GARDEN 3", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "555", label: "INFO POINT", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "510", label: "BRICO SERVICE", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "515", label: "RENTAL SERVICE(verhuur dienst)", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "525", label: "BATI 2(Bati 2)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "530", label: "BATI 3(Bati 3)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "545", label: "WOOD 3 (Bois 3)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "560", label: "ZRM 1", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "565", label: "ZRM 2", oldNumber: "", language: "", item: "", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "580", label: "CLIENT COMPATIBILITY(Comptabilité clients)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "800", label: "PERMANENCE(Permanent)", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "not done", label: "Gardes I", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "not done", label: "Gardes II", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "not done", label: "Nettoyage", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "not done", label: "CNE", oldNumber: "", language: "fr_BE", item: "D1111", activation: "NO" },
+  { category: "Mobile", model: "HAmerLT", number: "not done", label: "SETCA", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "not done", label: "Informatique", oldNumber: "", language: "fr_BE", item: "D1111", activation: "" },
+  { category: "Mobile", model: "HAmerLT", number: "850", label: "PLACEMENT SERVICE(Société placement/plaatsing dienst)", oldNumber: "", language: "", item: "", activation: "" }
+];
 const defaultRoleOptions = [
   "supadmin_twem",
   "admin_twem",
@@ -1329,7 +1446,7 @@ function renderSummary() {
       { label: "SLA a surveiller", value: inProgressCount + blockedCount, note: "Retards potentiels", portion: Math.round(((inProgressCount + blockedCount) / total) * 100), filter: null }
     ],
     extensions: [
-      { label: "Reference extensions", value: extensionReferenceOptions.length, note: "Liste commune magasin / IT", portion: 100, filter: null },
+      { label: "Reference extensions", value: extensionCatalogRows.length, note: "Liste commune magasin / IT", portion: 100, filter: null },
       { label: "Postes fixes", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).fixCount, 0), note: "Quota total fixe", portion: 100, filter: null },
       { label: "Mobiles", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).mobileCount, 0), note: "Quota total mobile", portion: 100, filter: null },
       { label: "Call / Panic", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).callButtonCount + getStoreQuantityPlan(store).panicCount, 0), note: "Lignes specifiques", portion: 100, filter: null }
@@ -2532,54 +2649,65 @@ function renderSavRows(stores) {
 }
 
 function renderExtensionsRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Quota fixe", "Quota mobile", "Choix ext.", "Derniere note", "Action"]);
-  projectTableBody.innerHTML = stores.map((store) => {
-    const plan = getStoreQuantityPlan(store);
-    return `
-      <tr>
-        <td colspan="9">
-          <article class="extensions-store">
-            <div class="extensions-store-head">
-              <h3>${escapeHtml(store.name)} - ${escapeHtml(store.code)}</h3>
-              <span class="cell-note">${escapeHtml(store.city)} | ${escapeHtml(store.shopType || "-")}</span>
-            </div>
-            <div class="extensions-store-body">
-              <table class="extensions-table">
-                <thead>
+  setMainTableHeaders(["Categorie", "Modele", "Numero", "Libelle", "Langue", "Item", "Activation", "Ancien", "Usage"]);
+  const filteredExtensions = extensionCatalogRows.filter((row) => {
+    const search = state.filters.search;
+    if (!search) {
+      return true;
+    }
+    const haystack = `${row.category} ${row.model} ${row.number} ${row.label} ${row.language} ${row.item} ${row.activation}`.toLowerCase();
+    return haystack.includes(search);
+  });
+
+  if (!filteredExtensions.length) {
+    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucune extension ne correspond a la recherche.</td></tr>';
+    return;
+  }
+
+  projectTableBody.innerHTML = `
+    <tr>
+      <td colspan="9">
+        <article class="extensions-store">
+          <div class="extensions-store-head">
+            <h3>Reference complete des extensions disponibles</h3>
+            <span class="cell-note">${filteredExtensions.length} ligne(s) du tableau ConfigVoIPExt</span>
+          </div>
+          <div class="extensions-store-body">
+            <table class="extensions-table">
+              <thead>
+                <tr>
+                  <th>Categorie</th>
+                  <th>Modele</th>
+                  <th>Numero</th>
+                  <th>Libelle / lieu</th>
+                  <th>Langue</th>
+                  <th>Item</th>
+                  <th>Activation</th>
+                  <th>Ancien n°</th>
+                  <th>Usage</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredExtensions.map((row) => `
                   <tr>
-                    <th>Type</th>
-                    <th>Quota</th>
-                    <th>Choix disponibles</th>
-                    <th>Usage</th>
+                    <td>${escapeHtml(row.category || "-")}</td>
+                    <td>${escapeHtml(row.model || "-")}</td>
+                    <td><strong>${escapeHtml(row.number || "-")}</strong></td>
+                    <td>${escapeHtml(row.label || "-")}</td>
+                    <td>${escapeHtml(row.language || "-")}</td>
+                    <td>${escapeHtml(row.item || "-")}</td>
+                    <td>${escapeHtml(row.activation || "-")}</td>
+                    <td>${escapeHtml(row.oldNumber || "-")}</td>
+                    <td>${escapeHtml(row.category === "Mobile" ? "Choix magasin / mobile" : row.category.includes("Bouton") ? "Securite / appel" : "Poste fixe / accueil")}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Postes fixes</td>
-                    <td>${plan.fixCount}</td>
-                    <td>${escapeHtml(extensionReferenceOptions.slice(0, 6).join(", "))}</td>
-                    <td>Selection manager magasin</td>
-                  </tr>
-                  <tr>
-                    <td>Mobiles</td>
-                    <td>${plan.mobileCount}</td>
-                    <td>${escapeHtml(extensionReferenceOptions.slice(6, 10).join(", "))}</td>
-                    <td>Programmation IT / Destiny</td>
-                  </tr>
-                  <tr>
-                    <td>Call / Panic</td>
-                    <td>${plan.callButtonCount + plan.panicCount}</td>
-                    <td>${escapeHtml(extensionReferenceOptions.slice(10).join(", "))}</td>
-                    <td>Infrastructure / securite</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </article>
-        </td>
-      </tr>
-    `;
-  }).join("");
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </td>
+    </tr>
+  `;
 }
 
 function renderStores() {
