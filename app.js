@@ -570,7 +570,7 @@ const state = {
   expandedStoreIds: new Set()
 };
 
-const presentationBypassUser = "";
+const presentationBypassUser = "Valou";
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
 const adminWorkspaceTabs = ["contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"];
