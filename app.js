@@ -5636,6 +5636,28 @@ tabExportButton?.addEventListener("click", exportJsonData);
 
 async function init() {
   const stored = loadState();
+  const presentationMode = Boolean(presentationBypassUser);
+  if (presentationMode) {
+    state.stores = clone(demoStores);
+    state.activities = clone(demoActivities);
+    state.people = demoPinPeople();
+    state.activeUserName = presentationBypassUser;
+    state.language = stored.language || "fr";
+    state.activeAdminTab = "dashboard";
+    state.pinValidated = true;
+    state.toolItems = stored.toolItems || [];
+    state.accessOverrides = stored.accessOverrides || [];
+    state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
+    state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
+    state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
+    state.contactSearch = stored.contactSearch || "";
+    state.connectionState = "fallback";
+    document.documentElement.lang = state.language;
+    ensureRoleVisibilityConfig();
+    render();
+    return;
+  }
+
   state.stores = stored.stores;
   state.activities = stored.activities;
   state.people = stored.people;
