@@ -492,6 +492,29 @@ function hydrateAccessProfile(person) {
   };
 }
 
+function demoPinPeople() {
+  return clone(initialPeople).map(hydrateAccessProfile);
+}
+
+function mergePeopleWithPinFallback(people = []) {
+  const byKey = new Map();
+  const sourcePeople = [
+    ...demoPinPeople(),
+    ...people.map(hydrateAccessProfile)
+  ];
+
+  sourcePeople.forEach((person) => {
+    const key = (person.email || person.name || person.id || "").toLowerCase();
+    if (!key) {
+      return;
+    }
+    const existing = byKey.get(key);
+    byKey.set(key, existing ? hydrateAccessProfile({ ...existing, ...person }) : hydrateAccessProfile(person));
+  });
+
+  return [...byKey.values()];
+}
+
 function hasRemoteData() {
   return isSupabaseMode || hasAppwriteDataConfig;
 }
@@ -685,7 +708,7 @@ function loadState() {
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
-      people: clone(initialPeople).map(hydrateAccessProfile),
+      people: demoPinPeople(),
       activeUserName: "Emir",
       language: "fr",
       activeAdminTab: "dashboard",
@@ -701,11 +724,11 @@ function loadState() {
     return {
       stores: parsed.stores || clone(demoStores),
       activities: parsed.activities || clone(demoActivities),
-      people: (parsed.people || clone(initialPeople)).map((person) => hydrateAccessProfile({
+      people: mergePeopleWithPinFallback((parsed.people || []).map((person) => ({
         language: "fr",
         storeCode: "",
         ...person
-      })),
+      }))),
       activeUserName: parsed.activeUserName || "Emir",
       language: parsed.language || "fr",
       activeAdminTab: parsed.activeAdminTab || "dashboard",
@@ -718,7 +741,7 @@ function loadState() {
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
-      people: clone(initialPeople).map(hydrateAccessProfile),
+      people: demoPinPeople(),
       activeUserName: "Emir",
       language: "fr",
       activeAdminTab: "dashboard",
@@ -2972,8 +2995,8 @@ async function loadRemoteState() {
     ? activityDocuments.map(normalizeAppwriteActivity)
     : (state.activities.length ? state.activities : clone(demoActivities));
   state.people = peopleDocuments.length
-    ? peopleDocuments.map(normalizeAppwritePerson)
-    : (state.people.length ? state.people : clone(initialPeople).map(hydrateAccessProfile));
+    ? mergePeopleWithPinFallback(peopleDocuments.map(normalizeAppwritePerson))
+    : (state.people.length ? mergePeopleWithPinFallback(state.people) : demoPinPeople());
 
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
@@ -3773,7 +3796,8 @@ function loginAllowedForPerson(person) {
 async function handlePinSubmit(event) {
   event.preventDefault();
   const submittedPin = normalizePin(pinInput?.value);
-  const matchedPerson = state.people.find((person) => normalizePin(person.pin) === submittedPin);
+  const pinCandidates = mergePeopleWithPinFallback(state.people);
+  const matchedPerson = pinCandidates.find((person) => normalizePin(person.pin) === submittedPin);
 
   if (!matchedPerson || !loginAllowedForPerson(matchedPerson)) {
     if (pinFeedback) {
@@ -3795,8 +3819,16 @@ async function handlePinSubmit(event) {
     pinFeedback.textContent = "";
   }
 
+  state.people = mergePeopleWithPinFallback(state.people);
+  const currentStatePerson = state.people.find((person) => (person.email || person.name).toLowerCase() === (matchedPerson.email || matchedPerson.name).toLowerCase());
+  if (currentStatePerson) {
+    currentStatePerson.loginHistory = matchedPerson.loginHistory;
+    currentStatePerson.pin = matchedPerson.pin;
+    currentStatePerson.pinStatus = matchedPerson.pinStatus;
+  }
+
   if (hasRemoteData()) {
-    await syncPersonToRemote(matchedPerson);
+    await syncPersonToRemote(currentStatePerson || matchedPerson);
   }
   saveState();
   render();
