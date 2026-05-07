@@ -154,6 +154,73 @@ const defaultRoleOptions = [
   "infra",
   "intervenant"
 ];
+const defaultAutomations = [
+  {
+    id: "store_update_alert",
+    category: "notifications",
+    title: "Alerte quand il y a du nouveau dans un magasin",
+    description: "Prévenir automatiquement les personnes liées à un magasin lorsqu'une nouvelle activité, un rendez-vous, un blocage ou un ticket est ajouté.",
+    active: true,
+    trigger: "Nouvel élément ou mise à jour importante dans une fiche magasin",
+    recipients: "Toutes les personnes liées au magasin",
+    channels: "Mail avec lien direct",
+    responseDelayHours: 0,
+    escalationHours: 0,
+    repeatHours: 0,
+    linkTarget: "Lien vers l'élément concerné",
+    languageMode: "Langue du contact",
+    notes: "Option recommandée: ne pas renvoyer l'alerte à la personne qui vient de créer l'élément."
+  },
+  {
+    id: "new_person_welcome",
+    category: "access",
+    title: "Création personne → envoi lien app + PIN",
+    description: "Lorsqu'un nouveau contact est créé, lui envoyer automatiquement l'accès à l'application avec son code PIN dans la bonne langue.",
+    active: true,
+    trigger: "Création d'une nouvelle personne active",
+    recipients: "Le nouveau contact uniquement",
+    channels: "Mail d'accueil FR/NL",
+    responseDelayHours: 0,
+    escalationHours: 0,
+    repeatHours: 0,
+    linkTarget: "Lien vers l'application",
+    languageMode: "FR / NL selon la fiche contact",
+    notes: "Inclure le texte d'introduction chantier, le lien vers l'application et le PIN personnel."
+  },
+  {
+    id: "no_response_escalation",
+    category: "followup",
+    title: "Action sans réponse → relance + escalade",
+    description: "Surveiller les éléments qui attendent une réponse et relancer automatiquement jusqu'à escalade TWEM.",
+    active: true,
+    trigger: "Élément de fiche magasin en attente d'action ou de réponse",
+    recipients: "Personne concernée puis Valou / TWEM",
+    channels: "Mail + alerte TWEM",
+    responseDelayHours: 24,
+    escalationHours: 24,
+    repeatHours: 12,
+    linkTarget: "Lien vers la fiche magasin",
+    languageMode: "Langue de la personne relancée",
+    notes: "Après 24h: rappel. Si toujours rien: alerte Valou pour appel/SMS. Ensuite mail toutes les 12h tant qu'il n'y a pas de réaction."
+  }
+];
+const futureAutomationIdeas = [
+  {
+    id: "install_reminder",
+    title: "Rappel avant installation",
+    description: "Envoyer automatiquement un rappel J-2 et J-1 avant une installation planifiée."
+  },
+  {
+    id: "daily_blocked_digest",
+    title: "Digest quotidien des blocages",
+    description: "Envoyer chaque matin à TWEM la liste condensée des magasins bloqués ou à risque."
+  },
+  {
+    id: "manager_validation_followup",
+    title: "Relance validation magasin après installation",
+    description: "Relancer le manager si l'installation n'est pas validée dans les 24h."
+  }
+];
 const visibilityTabCatalog = [
   {
     key: "dashboard",
@@ -656,6 +723,7 @@ const state = {
   toolItems: [],
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
+  automations: clone(defaultAutomations),
   roleVisibilityConfig: {},
   visibilityEditorRole: "supadmin_twem",
   contactSearch: "",
@@ -706,6 +774,9 @@ const activeUserSelect = document.querySelector("#activeUserSelect");
 const emailInput = document.querySelector("#emailInput");
 const logoutButton = document.querySelector("#logoutButton");
 const reportArchiveList = document.querySelector("#reportArchiveList");
+const automationOverview = document.querySelector("#automationOverview");
+const automationList = document.querySelector("#automationList");
+const automationFutureList = document.querySelector("#automationFutureList");
 const twemWorkspace = document.querySelector("#twemWorkspace");
 const workspaceSidebar = document.querySelector("#workspaceSidebar");
 const workspaceShell = document.querySelector(".workspace-shell");
@@ -1015,6 +1086,7 @@ function localUiState() {
     toolItems: state.toolItems,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
+    automations: state.automations,
     roleVisibilityConfig: state.roleVisibilityConfig,
     visibilityEditorRole: state.visibilityEditorRole,
     contactSearch: state.contactSearch
@@ -1035,6 +1107,7 @@ function loadState() {
         toolItems: [],
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
+        automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
         contactSearch: ""
@@ -1058,6 +1131,7 @@ function loadState() {
         toolItems: parsed.toolItems || [],
         accessOverrides: parsed.accessOverrides || [],
         roleOptions: parsed.roleOptions || [...defaultRoleOptions],
+        automations: normalizedAutomations(parsed.automations),
         roleVisibilityConfig: parsed.roleVisibilityConfig || {},
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
         contactSearch: parsed.contactSearch || ""
@@ -1074,6 +1148,7 @@ function loadState() {
         toolItems: [],
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
+        automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
         contactSearch: ""
@@ -1083,6 +1158,16 @@ function loadState() {
 
 function saveState() {
   window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
+}
+
+function normalizedAutomations(list) {
+  return defaultAutomations.map((baseItem) => {
+    const stored = Array.isArray(list) ? list.find((entry) => entry.id === baseItem.id) : null;
+    return {
+      ...baseItem,
+      ...(stored || {})
+    };
+  });
 }
 
 function t(key) {
@@ -3816,6 +3901,121 @@ function renderActivities() {
   });
 }
 
+function automationCategoryLabel(category) {
+  const isNl = state.language === "nl";
+  const labels = {
+    notifications: isNl ? "Notificaties" : "Notifications",
+    access: isNl ? "Toegang" : "Acces utilisateurs",
+    followup: isNl ? "Herinneringen / escalaties" : "Relances / escalades"
+  };
+  return labels[category] || category;
+}
+
+function renderAutomations() {
+  if (!automationOverview || !automationList || !automationFutureList) {
+    return;
+  }
+
+  const activeCount = state.automations.filter((item) => item.active).length;
+  const escalationCount = state.automations.filter((item) => Number(item.repeatHours || 0) > 0 || Number(item.escalationHours || 0) > 0).length;
+  const mailCount = state.automations.filter((item) => String(item.channels || "").toLowerCase().includes("mail")).length;
+
+  automationOverview.innerHTML = `
+    <article class="automation-stat">
+      <strong>${activeCount}</strong>
+      <span>${state.language === "nl" ? "actief" : "actives"}</span>
+    </article>
+    <article class="automation-stat">
+      <strong>${mailCount}</strong>
+      <span>${state.language === "nl" ? "mails" : "mails"}</span>
+    </article>
+    <article class="automation-stat">
+      <strong>${escalationCount}</strong>
+      <span>${state.language === "nl" ? "escalaties" : "escalades"}</span>
+    </article>
+  `;
+
+  const categories = ["notifications", "access", "followup"];
+  automationList.innerHTML = categories.map((category) => {
+    const items = state.automations.filter((entry) => entry.category === category);
+    return `
+      <section class="automation-group">
+        <div class="automation-group-head">
+          <div>
+            <h4>${escapeHtml(automationCategoryLabel(category))}</h4>
+            <p>${escapeHtml(category === "followup"
+              ? "Suivi des actions attendues, rappels et escalades."
+              : category === "access"
+                ? "Acces utilisateur, PIN et communication de bienvenue."
+                : "Mails et alertes relies a la vie d un magasin.")}</p>
+          </div>
+        </div>
+        <div class="automation-cards">
+          ${items.map((item) => `
+            <article class="automation-card">
+              <div class="automation-card-head">
+                <div>
+                  <h5>${escapeHtml(item.title)}</h5>
+                  <p>${escapeHtml(item.description)}</p>
+                </div>
+                <label class="automation-switch">
+                  <input type="checkbox" data-automation-id="${escapeHtml(item.id)}" data-automation-field="active" ${item.active ? "checked" : ""}>
+                  <span>${item.active ? (state.language === "nl" ? "Actief" : "Active") : (state.language === "nl" ? "Uit" : "Inactive")}</span>
+                </label>
+              </div>
+              <div class="automation-grid">
+                <label class="automation-field automation-field-wide">
+                  <span>${state.language === "nl" ? "Trigger" : "Declencheur"}</span>
+                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="trigger" value="${escapeHtml(item.trigger)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Ontvangers" : "Destinataires"}</span>
+                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="recipients" value="${escapeHtml(item.recipients)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Kanaal" : "Canal"}</span>
+                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="channels" value="${escapeHtml(item.channels)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Lien cible" : "Lien cible"}</span>
+                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="linkTarget" value="${escapeHtml(item.linkTarget)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Taal" : "Langue"}</span>
+                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="languageMode" value="${escapeHtml(item.languageMode)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Herinnering (u)" : "Relance (h)"}</span>
+                  <input type="number" min="0" step="1" data-automation-id="${escapeHtml(item.id)}" data-automation-field="responseDelayHours" value="${escapeHtml(item.responseDelayHours)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Escalatie (u)" : "Escalade (h)"}</span>
+                  <input type="number" min="0" step="1" data-automation-id="${escapeHtml(item.id)}" data-automation-field="escalationHours" value="${escapeHtml(item.escalationHours)}">
+                </label>
+                <label class="automation-field">
+                  <span>${state.language === "nl" ? "Herhaling (u)" : "Repetition (h)"}</span>
+                  <input type="number" min="0" step="1" data-automation-id="${escapeHtml(item.id)}" data-automation-field="repeatHours" value="${escapeHtml(item.repeatHours)}">
+                </label>
+                <label class="automation-field automation-field-wide">
+                  <span>${state.language === "nl" ? "Regel / note" : "Regle / note"}</span>
+                  <textarea rows="3" data-automation-id="${escapeHtml(item.id)}" data-automation-field="notes">${escapeHtml(item.notes)}</textarea>
+                </label>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  automationFutureList.innerHTML = futureAutomationIdeas.map((item) => `
+    <article class="automation-future-item">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${escapeHtml(item.description)}</span>
+    </article>
+  `).join("");
+}
+
 function renderPeopleList() {
   peopleList.innerHTML = "";
 
@@ -3973,6 +4173,33 @@ function renderRoleList() {
       render();
     });
   });
+}
+
+function handleAutomationFieldChange(event) {
+  const target = event.target;
+  const automationId = target?.getAttribute?.("data-automation-id");
+  const field = target?.getAttribute?.("data-automation-field");
+  if (!automationId || !field) {
+    return;
+  }
+
+  const item = state.automations.find((entry) => entry.id === automationId);
+  if (!item) {
+    return;
+  }
+
+  if (target.type === "checkbox") {
+    item[field] = target.checked;
+  } else if (target.type === "number") {
+    item[field] = Number(target.value || 0);
+  } else {
+    item[field] = target.value;
+  }
+
+  saveState();
+  if (field === "active") {
+    renderAutomations();
+  }
 }
 
 function renderConnectionStatus() {
@@ -4851,6 +5078,7 @@ function render() {
   renderSummary();
   renderStores();
   renderActivities();
+  renderAutomations();
   renderPeopleList();
   renderRoleList();
   renderPinAccessList();
@@ -5994,6 +6222,8 @@ peopleSearchInput.addEventListener("input", (event) => {
 });
 roleForm.addEventListener("submit", handleRoleSubmit);
 toolForm.addEventListener("submit", handleToolSubmit);
+automationList?.addEventListener("change", handleAutomationFieldChange);
+automationList?.addEventListener("input", handleAutomationFieldChange);
 visibilityOverrideForm?.addEventListener("submit", handleVisibilityOverrideSubmit);
 projectTableBody.addEventListener("click", handleNetworkConfirm);
 importButton.addEventListener("click", handleImportButtonClick);
@@ -6014,6 +6244,7 @@ async function init() {
   state.toolItems = stored.toolItems || [];
   state.accessOverrides = stored.accessOverrides || [];
   state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
+  state.automations = normalizedAutomations(stored.automations);
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";

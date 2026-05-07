@@ -388,13 +388,18 @@
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="automations">
-              <article class="admin-card">
-                <h3>Automatisations</h3>
-                <p>Zone de preparation pour les mails automatiques, relances et notifications.</p>
-                <div class="placeholder-list">
-                  <div class="placeholder-item">Mail de lancement chantier</div>
-                  <div class="placeholder-item">Alerte nouvel evenement sur magasin</div>
-                  <div class="placeholder-item">Mail de cloture magasin</div>
+              <article class="admin-card automation-shell">
+                <div class="automation-intro">
+                  <div>
+                    <h3>Automatisations</h3>
+                    <p>Déclencheurs, relances et notifications automatiques du chantier. La V1 se concentre sur les actions vraiment utiles au terrain.</p>
+                  </div>
+                  <div id="automationOverview" class="automation-overview"></div>
+                </div>
+                <div id="automationList" class="automation-list"></div>
+                <div class="automation-future-shell">
+                  <h4>A prévoir ensuite</h4>
+                  <div id="automationFutureList" class="automation-future-list"></div>
                 </div>
               </article>
             </section>
