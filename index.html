@@ -136,7 +136,7 @@
             <div class="toolbar-actions">
               <button type="button" id="importButton">Import fichier</button>
               <button type="button" id="reportButton">Creation / impression rapport</button>
-              <input type="file" id="importInput" hidden accept=".json,.csv">
+              <input type="file" id="importInput" hidden accept=".json,.csv,.xls,.xlsx">
             </div>
           </section>
 
@@ -486,45 +486,47 @@
                 <div class="import-export-grid">
                   <article class="import-card">
                     <h4>Importer des magasins</h4>
-                    <p>Injecter un fichier JSON de magasins et de structure applicative.</p>
+                    <p>Injecter un fichier XLS / XLSX de magasins ou une sauvegarde JSON complete.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportStoresButton">Importer magasins</button>
                     </div>
                   </article>
                   <article class="import-card">
                     <h4>Importer des extensions</h4>
-                    <p>Charger un catalogue d extensions en JSON ou CSV simple.</p>
+                    <p>Charger un catalogue d extensions en XLS / XLSX, CSV ou JSON.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportExtensionsButton">Importer extensions</button>
                     </div>
                   </article>
                   <article class="import-card">
-                    <h4>Exporter les donnees</h4>
-                    <p>Sortir une sauvegarde complete de l etat courant.</p>
+                    <h4>Sauvegarde technique</h4>
+                    <p>Garder un export JSON complet en secours technique.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabExportButton" class="secondary-button">Exporter JSON</button>
                     </div>
                   </article>
                   <article class="import-card">
                     <h4>Exporter les magasins</h4>
-                    <p>Sortir un tableau lisible des magasins et de leur statut.</p>
+                    <p>Sortir un tableau lisible des magasins en XLSX ou en PDF.</p>
                     <div class="import-export-actions">
-                      <button type="button" id="tabExportStoresButton" class="secondary-button">Exporter magasins CSV</button>
+                      <button type="button" id="tabExportStoresXlsxButton" class="secondary-button">Exporter magasins XLSX</button>
+                      <button type="button" id="tabExportStoresPdfButton" class="secondary-button">Exporter magasins PDF</button>
                     </div>
                   </article>
                   <article class="import-card">
                     <h4>Exporter les extensions</h4>
-                    <p>Sortir le catalogue complet des extensions disponibles.</p>
+                    <p>Sortir le catalogue complet des extensions en XLSX ou en PDF.</p>
                     <div class="import-export-actions">
-                      <button type="button" id="tabExportExtensionsButton" class="secondary-button">Exporter extensions CSV</button>
+                      <button type="button" id="tabExportExtensionsXlsxButton" class="secondary-button">Exporter extensions XLSX</button>
+                      <button type="button" id="tabExportExtensionsPdfButton" class="secondary-button">Exporter extensions PDF</button>
                     </div>
                   </article>
                   <article class="import-card import-help-card">
                     <h4>Format attendu</h4>
                     <ul class="import-help-list">
-                      <li>Magasins: JSON de sauvegarde ou export complet de l app</li>
-                      <li>Extensions: JSON ou CSV avec colonnes categorie, modele, numero, libelle...</li>
-                      <li>Le vrai XLS pourra etre ajoute ensuite sur cette base</li>
+                      <li>Magasins: XLS / XLSX avec colonnes code, nom, ville, type, responsable...</li>
+                      <li>Extensions: XLS / XLSX ou CSV avec categorie, modele, numero, libelle...</li>
+                      <li>JSON reste disponible uniquement comme sauvegarde technique</li>
                     </ul>
                   </article>
                 </div>
@@ -564,6 +566,9 @@
     );
   </script>
   <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js?v=20260507b"></script>

@@ -770,8 +770,10 @@ const tabImportButton = document.querySelector("#tabImportButton");
 const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
 const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
-const tabExportStoresButton = document.querySelector("#tabExportStoresButton");
-const tabExportExtensionsButton = document.querySelector("#tabExportExtensionsButton");
+const tabExportStoresXlsxButton = document.querySelector("#tabExportStoresXlsxButton");
+const tabExportStoresPdfButton = document.querySelector("#tabExportStoresPdfButton");
+const tabExportExtensionsXlsxButton = document.querySelector("#tabExportExtensionsXlsxButton");
+const tabExportExtensionsPdfButton = document.querySelector("#tabExportExtensionsPdfButton");
 const importExportHistoryMeta = document.querySelector("#importExportHistoryMeta");
 const importExportHistoryList = document.querySelector("#importExportHistoryList");
 const modeBadge = document.querySelector("#modeBadge");
@@ -5239,6 +5241,57 @@ function buildCsv(rows) {
   return rows.map((row) => row.map(csvEscape).join(";")).join("\n");
 }
 
+function xlsxAvailable() {
+  return typeof window.XLSX !== "undefined";
+}
+
+function pdfAvailable() {
+  return Boolean(window.jspdf?.jsPDF);
+}
+
+function exportRowsToXlsx(rows, fileName, sheetName) {
+  if (!xlsxAvailable()) {
+    throw new Error("Bibliotheque XLSX indisponible.");
+  }
+  const worksheet = window.XLSX.utils.aoa_to_sheet(rows);
+  const workbook = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  window.XLSX.writeFile(workbook, fileName);
+}
+
+function exportRowsToPdf(title, headers, bodyRows, fileName) {
+  if (!pdfAvailable()) {
+    throw new Error("Bibliotheque PDF indisponible.");
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(title, 14, 16);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Genere le ${formatDateTime(new Date().toISOString())}`, 14, 23);
+  doc.autoTable({
+    head: [headers],
+    body: bodyRows,
+    startY: 28,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [255, 243, 174], textColor: [50, 50, 50] },
+    margin: { left: 10, right: 10 }
+  });
+  doc.save(fileName);
+}
+
+function readWorkbookRows(file, arrayBuffer) {
+  if (!xlsxAvailable()) {
+    throw new Error("Bibliotheque XLSX indisponible.");
+  }
+  const workbook = window.XLSX.read(arrayBuffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  return window.XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+}
+
 function exportJsonData() {
   const payload = {
     stores: state.stores,
@@ -5260,7 +5313,7 @@ function exportJsonData() {
   recordImportExportHistory("export", "Export JSON complet", "Sauvegarde complete de l etat courant.");
 }
 
-function exportStoresCsv() {
+function exportStoresXlsx() {
   const rows = [
     ["Code", "Nom", "Ville", "Type", "Responsable TWEM", "Manager", "Statut", "Etape", "Prochaine action"]
   ];
@@ -5277,15 +5330,37 @@ function exportStoresCsv() {
       nextActionForStore(store)
     ]);
   });
-  downloadTextFile(
-    buildCsv(rows),
-    `twem-brico-magasins-${new Date().toISOString().slice(0, 10)}.csv`,
-    "text/csv;charset=utf-8"
+  exportRowsToXlsx(
+    rows,
+    `twem-brico-magasins-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    "Magasins"
   );
-  recordImportExportHistory("export", "Export magasins CSV", `${rows.length - 1} magasin(s) exporte(s).`);
+  recordImportExportHistory("export", "Export magasins XLSX", `${rows.length - 1} magasin(s) exporte(s).`);
 }
 
-function exportExtensionsCsv() {
+function exportStoresPdf() {
+  const headers = ["Code", "Nom", "Ville", "Type", "Responsable TWEM", "Manager", "Statut", "Etape", "Prochaine action"];
+  const bodyRows = getRoleScopedStores().map((store) => ([
+    store.code,
+    store.name,
+    store.city,
+    store.shopType,
+    store.owner,
+    store.manager,
+    store.status,
+    stageForStore(store),
+    nextActionForStore(store)
+  ]));
+  exportRowsToPdf(
+    "Magasins TWEM Brico",
+    headers,
+    bodyRows,
+    `twem-brico-magasins-${new Date().toISOString().slice(0, 10)}.pdf`
+  );
+  recordImportExportHistory("export", "Export magasins PDF", `${bodyRows.length} magasin(s) exporte(s).`);
+}
+
+function exportExtensionsXlsx() {
   const rows = [
     ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation"]
   ];
@@ -5301,12 +5376,33 @@ function exportExtensionsCsv() {
       row.activation
     ]);
   });
-  downloadTextFile(
-    buildCsv(rows),
-    `twem-brico-extensions-${new Date().toISOString().slice(0, 10)}.csv`,
-    "text/csv;charset=utf-8"
+  exportRowsToXlsx(
+    rows,
+    `twem-brico-extensions-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    "Extensions"
   );
-  recordImportExportHistory("export", "Export extensions CSV", `${extensionCatalogRows.length} extension(s) exportee(s).`);
+  recordImportExportHistory("export", "Export extensions XLSX", `${extensionCatalogRows.length} extension(s) exportee(s).`);
+}
+
+function exportExtensionsPdf() {
+  const headers = ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation"];
+  const bodyRows = extensionCatalogRows.map((row) => ([
+    row.category,
+    row.model,
+    row.number,
+    row.label,
+    row.oldNumber,
+    row.language,
+    row.item,
+    row.activation
+  ]));
+  exportRowsToPdf(
+    "Catalogue extensions TWEM Brico",
+    headers,
+    bodyRows,
+    `twem-brico-extensions-${new Date().toISOString().slice(0, 10)}.pdf`
+  );
+  recordImportExportHistory("export", "Export extensions PDF", `${bodyRows.length} extension(s) exportee(s).`);
 }
 
 function parseDelimitedText(raw) {
@@ -5347,12 +5443,53 @@ function importExtensionRows(rows) {
   })));
 }
 
+function importStoresRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error("Aucune ligne magasin exploitable.");
+  }
+
+  const nextStores = rows.map((row, index) => {
+    const code = row.code || row["code magasin"] || row.store_code || row.store || `MAG-${index + 1}`;
+    const name = row.name || row.magasin || row.store_name || `Magasin ${index + 1}`;
+    const city = row.city || row.ville || row.region || "";
+    const shopType = row.type || row["type magasin"] || row.shop_type || "DOS";
+    const owner = row.owner || row["responsable twem"] || row.twem || twemOptions[0];
+    const manager = row.manager || row["responsable magasin"] || row.responsable || "";
+    const status = row.status || row["statut global"] || "planned";
+    const updatedAt = new Date().toISOString();
+    return {
+      id: Date.now() + index,
+      code,
+      shopNumber: row.shopnumber || row["store nr"] || row.numero || code,
+      name,
+      city,
+      address: row.address || row.adresse || "",
+      shopType,
+      shopSize: row.shopsize || row["type shop"] || "",
+      poLicences: row.po_licence || row["po licence"] || "",
+      poHpDesk: row.po_hpdesk || row["po hpdesk"] || "",
+      poPm: row.po_pm || row["po pm"] || "",
+      poRentingHw: row.po_renting || row["po renting"] || "",
+      owner,
+      manager,
+      status,
+      health: row.health || "",
+      updatedAt,
+      steps: clone(demoStores[0]?.steps || []),
+      appointments: []
+    };
+  });
+
+  state.stores = nextStores;
+}
+
 function handleImportInputChange(event) {
   const file = event.target.files?.[0];
   if (!file) {
     return;
   }
 
+  const useBinaryReader = file.name.toLowerCase().endsWith(".xls") || file.name.toLowerCase().endsWith(".xlsx");
   const reader = new FileReader();
   reader.onload = async () => {
     try {
@@ -5362,10 +5499,12 @@ function handleImportInputChange(event) {
           const payload = JSON.parse(String(reader.result));
           const rows = Array.isArray(payload) ? payload : (payload.extensions || payload.rows || []);
           importExtensionRows(rows);
+        } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
+          importExtensionRows(readWorkbookRows(file, reader.result));
         } else if (fileName.endsWith(".csv")) {
           importExtensionRows(parseDelimitedText(reader.result));
         } else {
-          throw new Error("Format extension non supporte. Utilise JSON ou CSV.");
+          throw new Error("Format extension non supporte. Utilise XLS/XLSX, CSV ou JSON.");
         }
         recordImportExportHistory("import", "Import extensions", file.name);
         saveState();
@@ -5375,8 +5514,18 @@ function handleImportInputChange(event) {
         await importJsonData(payload);
         recordImportExportHistory("import", "Import magasins / donnees", file.name);
         window.alert(t("importDone"));
+      } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
+        importStoresRows(readWorkbookRows(file, reader.result));
+        if (hasRemoteData()) {
+          await syncAllRemoteState();
+          await loadRemoteState();
+        }
+        recordImportExportHistory("import", "Import magasins XLS/XLSX", file.name);
+        saveState();
+        render();
+        window.alert("Import magasins termine.");
       } else {
-        window.alert("Pour les magasins, utilise encore un export JSON complet de l application.");
+        window.alert("Pour les magasins, utilise XLS/XLSX ou JSON.");
       }
     } catch (error) {
       window.alert(`${t("importError")}: ${error.message}`);
@@ -5385,7 +5534,11 @@ function handleImportInputChange(event) {
       state.importMode = "stores";
     }
   };
-  reader.readAsText(file);
+  if (useBinaryReader) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
 }
 
 function buildReportHtml() {
@@ -6443,8 +6596,10 @@ tabImportButton?.addEventListener("click", handleImportButtonClick);
 tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", exportJsonData);
-tabExportStoresButton?.addEventListener("click", exportStoresCsv);
-tabExportExtensionsButton?.addEventListener("click", exportExtensionsCsv);
+tabExportStoresXlsxButton?.addEventListener("click", exportStoresXlsx);
+tabExportStoresPdfButton?.addEventListener("click", exportStoresPdf);
+tabExportExtensionsXlsxButton?.addEventListener("click", exportExtensionsXlsx);
+tabExportExtensionsPdfButton?.addEventListener("click", exportExtensionsPdf);
 
 async function init() {
   const stored = loadState();
