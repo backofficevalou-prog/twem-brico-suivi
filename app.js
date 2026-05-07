@@ -149,6 +149,7 @@ const defaultRoleOptions = [
   "admin_twem",
   "supmanager",
   "manager",
+  "magasin",
   "telephonie_destiny",
   "it",
   "infra",
@@ -487,7 +488,7 @@ const translations = {
 };
 
 const initialPeople = [
-  { id: "p1", name: "Emir", role: "supadmin_twem", phone: "0470 00 00 01", email: "emir@twem.be", storeCode: "", language: "fr" },
+  { id: "p1", name: "Emir", role: "admin_twem", phone: "0470 00 00 01", email: "emir@twem.be", storeCode: "", language: "fr" },
   { id: "p2", name: "Valou", role: "supadmin_twem", phone: "0470 00 00 02", email: "valou@twem.be", storeCode: "", language: "fr" },
   { id: "p3", name: "M. Dupont", role: "manager", phone: "0470 00 00 03", email: "anderlecht@brico.be", storeCode: "BRI-001", language: "fr" },
   { id: "p4", name: "Mme Martin", role: "manager", phone: "0470 00 00 04", email: "wavre@brico.be", storeCode: "BRI-002", language: "fr" },
@@ -500,7 +501,7 @@ const initialPeople = [
 ];
 
 const defaultPinProfiles = {
-  p1: { pin: "111111", allowedStoreCodes: ["*"], accessibleTabs: ["*"], accessibleBlocks: ["*"], pinStatus: "active" },
+  p1: { pin: "111111", allowedStoreCodes: ["*"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations", "pin-access", "import-export", "visibility"], accessibleBlocks: ["*"], pinStatus: "active" },
   p2: { pin: "222222", allowedStoreCodes: ["*"], accessibleTabs: ["*"], accessibleBlocks: ["*"], pinStatus: "active" },
   p3: { pin: "300001", allowedStoreCodes: ["BRI-001"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
   p4: { pin: "300002", allowedStoreCodes: ["BRI-002"], accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions"], accessibleBlocks: ["configuration", "network_config", "appointments", "problem_notes", "brico_feedback"], pinStatus: "active" },
@@ -834,22 +835,23 @@ function clone(value) {
 }
 
 function hydrateAccessProfile(person) {
+  const normalizedPerson = normalizeCoreRole(person);
   const defaults = defaultPinProfiles[person.id] || {};
   return {
     pin: "",
-    allowedStoreCodes: person.storeCode ? [person.storeCode] : ["*"],
-    accessibleTabs: ["dashboard", "timeline", "stores"],
+    allowedStoreCodes: normalizedPerson.storeCode ? [normalizedPerson.storeCode] : ["*"],
+    accessibleTabs: defaultTabsForRole(normalizedPerson.role).includes("*") ? ["*"] : defaultTabsForRole(normalizedPerson.role),
     accessibleBlocks: ["appointments", "problem_notes"],
     pinStatus: "active",
     pinCreatedAt: "2026-05-06T00:00:00Z",
     pinExpiresAt: "",
     loginHistory: [],
-    ...person,
+    ...normalizedPerson,
     ...defaults,
-    allowedStoreCodes: Array.isArray(person.allowedStoreCodes) ? person.allowedStoreCodes : (defaults.allowedStoreCodes || (person.storeCode ? [person.storeCode] : ["*"])),
-    accessibleTabs: Array.isArray(person.accessibleTabs) ? person.accessibleTabs : (defaults.accessibleTabs || ["dashboard", "timeline", "stores"]),
-    accessibleBlocks: Array.isArray(person.accessibleBlocks) ? person.accessibleBlocks : (defaults.accessibleBlocks || ["appointments", "problem_notes"]),
-    loginHistory: Array.isArray(person.loginHistory) ? person.loginHistory : []
+    allowedStoreCodes: Array.isArray(normalizedPerson.allowedStoreCodes) ? normalizedPerson.allowedStoreCodes : (defaults.allowedStoreCodes || (normalizedPerson.storeCode ? [normalizedPerson.storeCode] : ["*"])),
+    accessibleTabs: Array.isArray(normalizedPerson.accessibleTabs) ? normalizedPerson.accessibleTabs : (defaults.accessibleTabs || (defaultTabsForRole(normalizedPerson.role).includes("*") ? ["*"] : defaultTabsForRole(normalizedPerson.role))),
+    accessibleBlocks: Array.isArray(normalizedPerson.accessibleBlocks) ? normalizedPerson.accessibleBlocks : (defaults.accessibleBlocks || ["appointments", "problem_notes"]),
+    loginHistory: Array.isArray(normalizedPerson.loginHistory) ? normalizedPerson.loginHistory : []
   };
 }
 
@@ -1130,7 +1132,7 @@ function loadState() {
       activeAdminTab: parsed.activeAdminTab || "dashboard",
         toolItems: parsed.toolItems || [],
         accessOverrides: parsed.accessOverrides || [],
-        roleOptions: parsed.roleOptions || [...defaultRoleOptions],
+        roleOptions: normalizedRoleOptions(parsed.roleOptions),
         automations: normalizedAutomations(parsed.automations),
         roleVisibilityConfig: parsed.roleVisibilityConfig || {},
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
@@ -1170,6 +1172,10 @@ function normalizedAutomations(list) {
   });
 }
 
+function normalizedRoleOptions(list) {
+  return [...new Set([...(Array.isArray(list) ? list : []), ...defaultRoleOptions])];
+}
+
 function t(key) {
   return translations[state.language]?.[key] || translations.fr[key] || key;
 }
@@ -1182,12 +1188,25 @@ function currentUser() {
   return state.people.find((person) => person.name === state.activeUserName) || null;
 }
 
+function normalizeCoreRole(person) {
+  if (!person || typeof person !== "object") {
+    return person;
+  }
+  const normalized = { ...person };
+  if (normalized.name === "Valou") {
+    normalized.role = "supadmin_twem";
+  } else if (normalized.name === "Emir" && normalized.role === "supadmin_twem") {
+    normalized.role = "admin_twem";
+  }
+  return normalized;
+}
+
 function isSupAdmin(user = currentUser()) {
-  return user?.role === "supadmin_twem";
+  return Boolean(user && user.role === "supadmin_twem" && user.name === "Valou");
 }
 
 function isAdminTwem(user = currentUser()) {
-  return user?.role === "admin_twem";
+  return Boolean(user && (user.role === "admin_twem" || isSupAdmin(user)));
 }
 
 function isTwemUser() {
@@ -1196,7 +1215,7 @@ function isTwemUser() {
 }
 
 function canSeeAllStores(user = currentUser()) {
-  return Boolean(user && user.role !== "manager");
+  return Boolean(user && !["manager", "supmanager", "magasin"].includes(user.role));
 }
 
 function allowedStoresForUser(user = currentUser()) {
@@ -1222,6 +1241,7 @@ function defaultTabsForRole(role) {
     admin_twem: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
     supmanager: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations"],
     manager: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
     telephonie_destiny: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
     it: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
     infra: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
@@ -1281,6 +1301,7 @@ function editableZonesForRole(role) {
     admin_twem: ["all"],
     supmanager: ["appointments", "project_prep", "problem_notes", "brico_feedback", "status_admin", "configuration_request", "sav_ticket"],
     manager: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
+    magasin: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
     telephonie_destiny: ["appointments", "order_articles", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "status_admin", "sav_ticket"],
     it: ["appointments", "external_prep", "network_config", "store_posts", "sav_ticket"],
     infra: ["appointments", "external_prep", "problem_notes", "sav_ticket"],
@@ -1324,7 +1345,7 @@ function canEditZone(store, zone) {
 function isNetworkConfigLockedForUser(store) {
   const user = currentUser();
   const workflow = ensureStoreWorkflowData(store);
-  return Boolean(user && user.role === "manager" && workflow.networkConfigConfirmed);
+  return Boolean(user && ["manager", "magasin"].includes(user.role) && workflow.networkConfigConfirmed);
 }
 
 function getRoleScopedStores() {
@@ -1411,6 +1432,7 @@ function roleLabel(role) {
     admin_twem: "Admin TWEM",
     supmanager: "SupManager",
     manager: "Manager magasin",
+    magasin: "Magasin",
     telephonie_destiny: "Telephonie / Destiny",
     it: "IT",
     infra: "Infra",
@@ -4641,9 +4663,7 @@ async function loadRemoteState() {
     }));
 
     state.people = contactsResult.data.map(normalizeRemotePerson);
-    state.roleOptions = [
-      ...new Set([...defaultRoleOptions, ...rolesResult.data.map((role) => role.name)])
-    ];
+    state.roleOptions = normalizedRoleOptions(rolesResult.data.map((role) => role.name));
 
     const { data: authData } = await supabaseClient.auth.getSession();
     const sessionPerson = roleValueFromSession(authData.session);
@@ -4685,16 +4705,11 @@ async function loadRemoteState() {
 
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
-    state.roleOptions = [
-      ...new Set([
-        ...defaultRoleOptions,
-        ...parseJsonField(settingsDocument.role_options_json, [])
-      ])
-    ];
+    state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
   } else {
-    state.roleOptions = state.roleOptions?.length ? state.roleOptions : [...defaultRoleOptions];
+    state.roleOptions = state.roleOptions?.length ? normalizedRoleOptions(state.roleOptions) : [...defaultRoleOptions];
     state.toolItems = state.toolItems || [];
     state.accessOverrides = state.accessOverrides || [];
   }
@@ -5106,7 +5121,7 @@ async function importJsonData(payload) {
     state.accessOverrides = payload.accessOverrides;
   }
   if (Array.isArray(payload.roleOptions)) {
-    state.roleOptions = payload.roleOptions;
+    state.roleOptions = normalizedRoleOptions(payload.roleOptions);
   }
   if (payload.roleVisibilityConfig && typeof payload.roleVisibilityConfig === "object") {
     state.roleVisibilityConfig = payload.roleVisibilityConfig;
@@ -6243,7 +6258,7 @@ async function init() {
   state.pinValidated = false;
   state.toolItems = stored.toolItems || [];
   state.accessOverrides = stored.accessOverrides || [];
-  state.roleOptions = stored.roleOptions || [...defaultRoleOptions];
+  state.roleOptions = normalizedRoleOptions(stored.roleOptions);
   state.automations = normalizedAutomations(stored.automations);
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
