@@ -1,5 +1,5 @@
 window.APP_CONFIG = {
-  mode: "appwrite",
+  mode: "demo",
   supabaseUrl: "",
   supabaseAnonKey: "",
   appwriteEndpoint: "https://fra.cloud.appwrite.io/v1",
