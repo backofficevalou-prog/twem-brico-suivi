@@ -480,18 +480,63 @@
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="import-export">
-              <article class="admin-card">
+              <article class="admin-card import-export-shell">
                 <h3>Import / Export</h3>
-                <p>Base de travail centralisee pour importer magasins, extensions, puis exporter les vues par onglet.</p>
-                <div class="import-export-actions">
-                  <button type="button" id="tabImportButton">Importer</button>
-                  <button type="button" id="tabExportButton" class="secondary-button">Exporter</button>
+                <p>Base de travail centralisee pour injecter les donnees utiles, sortir des exports propres et garder une trace des operations.</p>
+                <div class="import-export-grid">
+                  <article class="import-card">
+                    <h4>Importer des magasins</h4>
+                    <p>Injecter un fichier JSON de magasins et de structure applicative.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="tabImportStoresButton">Importer magasins</button>
+                    </div>
+                  </article>
+                  <article class="import-card">
+                    <h4>Importer des extensions</h4>
+                    <p>Charger un catalogue d extensions en JSON ou CSV simple.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="tabImportExtensionsButton">Importer extensions</button>
+                    </div>
+                  </article>
+                  <article class="import-card">
+                    <h4>Exporter les donnees</h4>
+                    <p>Sortir une sauvegarde complete de l etat courant.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="tabExportButton" class="secondary-button">Exporter JSON</button>
+                    </div>
+                  </article>
+                  <article class="import-card">
+                    <h4>Exporter les magasins</h4>
+                    <p>Sortir un tableau lisible des magasins et de leur statut.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="tabExportStoresButton" class="secondary-button">Exporter magasins CSV</button>
+                    </div>
+                  </article>
+                  <article class="import-card">
+                    <h4>Exporter les extensions</h4>
+                    <p>Sortir le catalogue complet des extensions disponibles.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="tabExportExtensionsButton" class="secondary-button">Exporter extensions CSV</button>
+                    </div>
+                  </article>
+                  <article class="import-card import-help-card">
+                    <h4>Format attendu</h4>
+                    <ul class="import-help-list">
+                      <li>Magasins: JSON de sauvegarde ou export complet de l app</li>
+                      <li>Extensions: JSON ou CSV avec colonnes categorie, modele, numero, libelle...</li>
+                      <li>Le vrai XLS pourra etre ajoute ensuite sur cette base</li>
+                    </ul>
+                  </article>
                 </div>
-                <div class="placeholder-list compact-placeholder-list">
-                  <div class="placeholder-item">Import des magasins</div>
-                  <div class="placeholder-item">Export de l etat courant</div>
-                  <div class="placeholder-item">Import liste extensions</div>
-                  <div class="placeholder-item">Validation et controle des doublons</div>
+                <article class="admin-card import-history-card">
+                  <div class="import-history-head">
+                    <h4>Historique import / export</h4>
+                    <span id="importExportHistoryMeta" class="cell-note">Aucune operation pour le moment.</span>
+                  </div>
+                  <div id="importExportHistoryList" class="simple-list"></div>
+                </article>
+                <div class="hidden-panel">
+                  <button type="button" id="tabImportButton">Importer</button>
                 </div>
               </article>
             </section>

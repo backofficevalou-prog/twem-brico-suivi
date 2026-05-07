@@ -728,6 +728,8 @@ const state = {
   roleVisibilityConfig: {},
   visibilityEditorRole: "supadmin_twem",
   contactSearch: "",
+  importMode: "stores",
+  importExportHistory: [],
   tickets: [],
   filters: {
     search: "",
@@ -765,7 +767,13 @@ const importButton = document.querySelector("#importButton");
 const importInput = document.querySelector("#importInput");
 const reportButton = document.querySelector("#reportButton");
 const tabImportButton = document.querySelector("#tabImportButton");
+const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
+const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
+const tabExportStoresButton = document.querySelector("#tabExportStoresButton");
+const tabExportExtensionsButton = document.querySelector("#tabExportExtensionsButton");
+const importExportHistoryMeta = document.querySelector("#importExportHistoryMeta");
+const importExportHistoryList = document.querySelector("#importExportHistoryList");
 const modeBadge = document.querySelector("#modeBadge");
 const connectionBadge = document.querySelector("#connectionBadge");
 const syncMessage = document.querySelector("#syncMessage");
@@ -1091,7 +1099,8 @@ function localUiState() {
     automations: state.automations,
     roleVisibilityConfig: state.roleVisibilityConfig,
     visibilityEditorRole: state.visibilityEditorRole,
-    contactSearch: state.contactSearch
+    contactSearch: state.contactSearch,
+    importExportHistory: state.importExportHistory
   };
 }
 
@@ -1112,7 +1121,8 @@ function loadState() {
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
-        contactSearch: ""
+        contactSearch: "",
+        importExportHistory: []
       };
   }
 
@@ -1136,7 +1146,8 @@ function loadState() {
         automations: normalizedAutomations(parsed.automations),
         roleVisibilityConfig: parsed.roleVisibilityConfig || {},
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
-        contactSearch: parsed.contactSearch || ""
+        contactSearch: parsed.contactSearch || "",
+        importExportHistory: parsed.importExportHistory || []
       };
   } catch {
     return {
@@ -1153,7 +1164,8 @@ function loadState() {
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
-        contactSearch: ""
+        contactSearch: "",
+        importExportHistory: []
       };
   }
 }
@@ -1174,6 +1186,19 @@ function normalizedAutomations(list) {
 
 function normalizedRoleOptions(list) {
   return [...new Set([...(Array.isArray(list) ? list : []), ...defaultRoleOptions])];
+}
+
+function recordImportExportHistory(type, label, detail = "") {
+  state.importExportHistory.unshift({
+    id: `io-${Date.now()}`,
+    type,
+    label,
+    detail,
+    author: currentUser()?.name || state.activeUserName || "-",
+    createdAt: new Date().toISOString()
+  });
+  state.importExportHistory = state.importExportHistory.slice(0, 20);
+  saveState();
 }
 
 function t(key) {
@@ -4197,6 +4222,36 @@ function renderRoleList() {
   });
 }
 
+function renderImportExportHistory() {
+  if (!importExportHistoryList || !importExportHistoryMeta) {
+    return;
+  }
+
+  const count = state.importExportHistory.length;
+  importExportHistoryMeta.textContent = count
+    ? `${count} operation(s) memorisee(s)`
+    : "Aucune operation pour le moment.";
+
+  if (!count) {
+    importExportHistoryList.innerHTML = '<div class="empty-state">Aucun import ou export enregistre.</div>';
+    return;
+  }
+
+  importExportHistoryList.innerHTML = state.importExportHistory.map((item) => `
+    <article class="simple-item import-history-item">
+      <div class="import-history-top">
+        <strong>${escapeHtml(item.label)}</strong>
+        <span>${escapeHtml(formatDateTime(item.createdAt))}</span>
+      </div>
+      <div class="import-history-meta">
+        <span class="${item.type === "export" ? "status-pill pill-done" : "status-pill pill-progress"}">${item.type === "export" ? "Export" : "Import"}</span>
+        <span>${escapeHtml(item.author)}</span>
+      </div>
+      <div class="cell-note">${escapeHtml(item.detail || "-")}</div>
+    </article>
+  `).join("");
+}
+
 function handleAutomationFieldChange(event) {
   const target = event.target;
   const automationId = target?.getAttribute?.("data-automation-id");
@@ -5096,6 +5151,7 @@ function render() {
   renderAutomations();
   renderPeopleList();
   renderRoleList();
+  renderImportExportHistory();
   renderPinAccessList();
   renderToolList();
   renderVisibilityEditor();
@@ -5110,6 +5166,9 @@ async function importJsonData(payload) {
   if (Array.isArray(payload.activities)) {
     state.activities = payload.activities;
   }
+  if (Array.isArray(payload.tickets)) {
+    state.tickets = payload.tickets;
+  }
   if (Array.isArray(payload.people)) {
     state.people = payload.people.map((person) => hydrateAccessProfile({
       language: "fr",
@@ -5122,6 +5181,12 @@ async function importJsonData(payload) {
   }
   if (Array.isArray(payload.roleOptions)) {
     state.roleOptions = normalizedRoleOptions(payload.roleOptions);
+  }
+  if (Array.isArray(payload.toolItems)) {
+    state.toolItems = payload.toolItems;
+  }
+  if (Array.isArray(payload.automations)) {
+    state.automations = normalizedAutomations(payload.automations);
   }
   if (payload.roleVisibilityConfig && typeof payload.roleVisibilityConfig === "object") {
     state.roleVisibilityConfig = payload.roleVisibilityConfig;
@@ -5141,7 +5206,37 @@ async function importJsonData(payload) {
 }
 
 function handleImportButtonClick() {
+  state.importMode = "stores";
   importInput.click();
+}
+
+function triggerImport(mode) {
+  state.importMode = mode;
+  importInput.click();
+}
+
+function downloadTextFile(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(value) {
+  const stringValue = String(value ?? "");
+  if (/[",;\n]/.test(stringValue)) {
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+  return stringValue;
+}
+
+function buildCsv(rows) {
+  return rows.map((row) => row.map(csvEscape).join(";")).join("\n");
 }
 
 function exportJsonData() {
@@ -5157,15 +5252,99 @@ function exportJsonData() {
     activeUserName: state.activeUserName,
     exportedAt: new Date().toISOString()
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `twem-brico-export-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadTextFile(
+    JSON.stringify(payload, null, 2),
+    `twem-brico-export-${new Date().toISOString().slice(0, 10)}.json`,
+    "application/json"
+  );
+  recordImportExportHistory("export", "Export JSON complet", "Sauvegarde complete de l etat courant.");
+}
+
+function exportStoresCsv() {
+  const rows = [
+    ["Code", "Nom", "Ville", "Type", "Responsable TWEM", "Manager", "Statut", "Etape", "Prochaine action"]
+  ];
+  getRoleScopedStores().forEach((store) => {
+    rows.push([
+      store.code,
+      store.name,
+      store.city,
+      store.shopType,
+      store.owner,
+      store.manager,
+      store.status,
+      stageForStore(store),
+      nextActionForStore(store)
+    ]);
+  });
+  downloadTextFile(
+    buildCsv(rows),
+    `twem-brico-magasins-${new Date().toISOString().slice(0, 10)}.csv`,
+    "text/csv;charset=utf-8"
+  );
+  recordImportExportHistory("export", "Export magasins CSV", `${rows.length - 1} magasin(s) exporte(s).`);
+}
+
+function exportExtensionsCsv() {
+  const rows = [
+    ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation"]
+  ];
+  extensionCatalogRows.forEach((row) => {
+    rows.push([
+      row.category,
+      row.model,
+      row.number,
+      row.label,
+      row.oldNumber,
+      row.language,
+      row.item,
+      row.activation
+    ]);
+  });
+  downloadTextFile(
+    buildCsv(rows),
+    `twem-brico-extensions-${new Date().toISOString().slice(0, 10)}.csv`,
+    "text/csv;charset=utf-8"
+  );
+  recordImportExportHistory("export", "Export extensions CSV", `${extensionCatalogRows.length} extension(s) exportee(s).`);
+}
+
+function parseDelimitedText(raw) {
+  const lines = String(raw || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) {
+    return [];
+  }
+  const separator = lines[0].includes(";") ? ";" : ",";
+  const headers = lines[0].split(separator).map((item) => item.trim().toLowerCase());
+  return lines.slice(1).map((line) => {
+    const cols = line.split(separator).map((item) => item.trim());
+    const entry = {};
+    headers.forEach((header, index) => {
+      entry[header] = cols[index] || "";
+    });
+    return entry;
+  });
+}
+
+function importExtensionRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error("Aucune ligne extension exploitable.");
+  }
+
+  extensionCatalogRows.splice(0, extensionCatalogRows.length, ...rows.map((row, index) => ({
+    category: row.category || row.categorie || row.type || "Extension",
+    model: row.model || row.modele || "",
+    number: row.number || row.numero || row.extension || `EXT-${index + 1}`,
+    label: row.label || row.libelle || row.lieu || "",
+    oldNumber: row.old_number || row["ancien numero"] || row.ancien_numero || "",
+    language: row.language || row.langue || "",
+    item: row.item || "",
+    activation: row.activation || ""
+  })));
 }
 
 function handleImportInputChange(event) {
@@ -5177,17 +5356,33 @@ function handleImportInputChange(event) {
   const reader = new FileReader();
   reader.onload = async () => {
     try {
-      if (file.name.toLowerCase().endsWith(".json")) {
+      const fileName = file.name.toLowerCase();
+      if (state.importMode === "extensions") {
+        if (fileName.endsWith(".json")) {
+          const payload = JSON.parse(String(reader.result));
+          const rows = Array.isArray(payload) ? payload : (payload.extensions || payload.rows || []);
+          importExtensionRows(rows);
+        } else if (fileName.endsWith(".csv")) {
+          importExtensionRows(parseDelimitedText(reader.result));
+        } else {
+          throw new Error("Format extension non supporte. Utilise JSON ou CSV.");
+        }
+        recordImportExportHistory("import", "Import extensions", file.name);
+        saveState();
+        render();
+      } else if (fileName.endsWith(".json")) {
         const payload = JSON.parse(String(reader.result));
         await importJsonData(payload);
+        recordImportExportHistory("import", "Import magasins / donnees", file.name);
         window.alert(t("importDone"));
       } else {
-        window.alert(t("csvPending"));
+        window.alert("Pour les magasins, utilise encore un export JSON complet de l application.");
       }
     } catch (error) {
       window.alert(`${t("importError")}: ${error.message}`);
     } finally {
       importInput.value = "";
+      state.importMode = "stores";
     }
   };
   reader.readAsText(file);
@@ -6245,7 +6440,11 @@ importButton.addEventListener("click", handleImportButtonClick);
 importInput.addEventListener("change", handleImportInputChange);
 reportButton.addEventListener("click", handleReportButtonClick);
 tabImportButton?.addEventListener("click", handleImportButtonClick);
+tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
+tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", exportJsonData);
+tabExportStoresButton?.addEventListener("click", exportStoresCsv);
+tabExportExtensionsButton?.addEventListener("click", exportExtensionsCsv);
 
 async function init() {
   const stored = loadState();
@@ -6263,6 +6462,7 @@ async function init() {
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";
+  state.importExportHistory = stored.importExportHistory || [];
   document.documentElement.lang = state.language;
 
   if (presentationBypassUser) {

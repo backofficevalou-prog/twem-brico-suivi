@@ -2120,6 +2120,58 @@ button {
   gap: 10px;
 }
 
+.import-export-shell,
+.import-export-grid,
+.import-history-card {
+  display: grid;
+  gap: 14px;
+}
+
+.import-export-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.import-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffdfa;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.import-card h4,
+.import-history-head h4 {
+  margin: 0;
+}
+
+.import-card p,
+.import-help-list {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.import-help-list {
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.import-history-head,
+.import-history-top,
+.import-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.import-history-item {
+  gap: 8px;
+}
+
 .compact-placeholder-list {
   gap: 6px;
 }
@@ -2137,6 +2189,10 @@ button {
   .automation-overview,
   .automation-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-export-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   .automation-field-wide {
@@ -2291,6 +2347,7 @@ button {
   .dashboard-chip-grid,
   .automation-overview,
   .automation-grid,
+  .import-export-grid,
   .timeline-strip {
     grid-template-columns: 1fr;
   }
