@@ -1098,6 +1098,8 @@ button {
   background: #fff;
   margin-top: 14px;
   overflow: hidden;
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .posts-skeleton summary {
@@ -1139,12 +1141,13 @@ button {
 
 .posts-table-wrap {
   overflow-x: auto;
+  width: 100%;
 }
 
 .posts-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  min-width: 100%;
 }
 
 .posts-table th,

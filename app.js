@@ -2598,6 +2598,11 @@ function buildEquipmentCards(store) {
             </article>
           `).join("")}
         </div>
+        ${isSupAdmin() ? `
+          <div class="posts-skeleton-actions">
+            <button type="button" class="mini-button" data-gsm-add="${store.id}">Ajouter un GSM</button>
+          </div>
+        ` : ""}
       </article>
       <article class="editor-card">
         <h3>Alarme</h3>
@@ -3211,6 +3216,10 @@ function renderStoreCards(stores) {
 
   projectTableBody.querySelectorAll("[data-sav-toggle-close]").forEach((button) => {
     button.addEventListener("click", handleSavToggleClose);
+  });
+
+  projectTableBody.querySelectorAll("[data-gsm-add]").forEach((button) => {
+    button.addEventListener("click", handleGsmAdd);
   });
 }
 
@@ -5380,6 +5389,32 @@ function handleSavToggleClose(event) {
     createdAt: new Date().toISOString()
   });
 
+  saveState();
+  render();
+}
+
+function handleGsmAdd(event) {
+  const button = event.currentTarget;
+  const storeId = Number(button.getAttribute("data-gsm-add"));
+  const store = state.stores.find((entry) => entry.id === storeId);
+  if (!store) {
+    return;
+  }
+
+  const workflow = ensureStoreWorkflowData(store);
+  const rows = getGsmRows(store);
+  rows.push({
+    id: `gsm-${Date.now()}`,
+    model: "",
+    mobileNumber: "",
+    mobileNetwork: "",
+    iccid: "",
+    puk: "",
+    extensionLinked: "",
+    user: "",
+    callGroup: ""
+  });
+  workflow.gsmRows = rows;
   saveState();
   render();
 }
