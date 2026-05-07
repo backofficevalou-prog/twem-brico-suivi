@@ -33,7 +33,31 @@ L application tourne en deux modes:
 6. Dans Supabase:
    - activer l auth par email magic link
    - executer `supabase/schema.sql`
-7. Deployer le dossier sur Netlify.
+7. Deployer le dossier sur Netlify ou GitHub Pages.
+
+## GitHub Pages
+
+Le repo contient maintenant un workflow GitHub Actions pour publier automatiquement le front sur GitHub Pages.
+
+Activation:
+
+1. Aller dans GitHub > `Settings` > `Pages`
+2. Dans `Build and deployment`, choisir `GitHub Actions`
+3. Pousser sur `main`
+
+Le workflow publie:
+
+- `index.html`
+- `styles.css`
+- `app.js`
+- `config.js`
+- `assets/`
+
+Important:
+
+- GitHub Pages met l interface en ligne hors local
+- si `mode: "demo"` est actif, les donnees restent locales au navigateur
+- si `mode: "appwrite"` est actif, l app reste partagee mais depend de l etat du backend Appwrite
 
 ## Structure de donnees
 
