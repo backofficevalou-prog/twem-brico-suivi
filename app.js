@@ -399,7 +399,7 @@ const translations = {
     recentActivity: "Activite recente",
     reportWindowError: "Impossible d ouvrir la fenetre de rapport.",
     importDone: "Import JSON termine.",
-    csvPending: "Le support CSV n est pas encore branche. Utilise un fichier JSON pour l instant.",
+    csvPending: "Utilise XLS/XLSX ou CSV pour les magasins, et XLS/XLSX, CSV ou JSON pour les extensions.",
     importError: "Import impossible",
     demoMode: "Demo locale",
     local: "Local",
@@ -479,7 +479,7 @@ const translations = {
     recentActivity: "Recente activiteit",
     reportWindowError: "Onmogelijk om het rapportvenster te openen.",
     importDone: "JSON-import voltooid.",
-    csvPending: "CSV wordt nog niet ondersteund. Gebruik voorlopig een JSON-bestand.",
+    csvPending: "Gebruik XLS/XLSX of CSV voor winkels, en XLS/XLSX, CSV of JSON voor extensies.",
     importError: "Import mislukt",
     demoMode: "Lokale demo",
     local: "Lokaal",
@@ -5524,8 +5524,18 @@ function handleImportInputChange(event) {
         saveState();
         render();
         window.alert("Import magasins termine.");
+      } else if (fileName.endsWith(".csv")) {
+        importStoresRows(parseDelimitedText(reader.result));
+        if (hasRemoteData()) {
+          await syncAllRemoteState();
+          await loadRemoteState();
+        }
+        recordImportExportHistory("import", "Import magasins CSV", file.name);
+        saveState();
+        render();
+        window.alert("Import magasins termine.");
       } else {
-        window.alert("Pour les magasins, utilise XLS/XLSX ou JSON.");
+        window.alert("Pour les magasins, utilise XLS/XLSX, CSV ou JSON.");
       }
     } catch (error) {
       window.alert(`${t("importError")}: ${error.message}`);
