@@ -736,6 +736,7 @@ const state = {
   automations: clone(defaultAutomations),
   roleVisibilityConfig: {},
   visibilityEditorRole: "supadmin_twem",
+  roleViewUnlocked: false,
   contactSearch: "",
   importMode: "stores",
   importExportHistory: [],
@@ -793,6 +794,7 @@ const syncMessage = document.querySelector("#syncMessage");
 const authState = document.querySelector("#authState");
 const authForm = document.querySelector("#authForm");
 const activeUserSelect = document.querySelector("#activeUserSelect");
+const quickReturnViewButton = document.querySelector("#quickReturnViewButton");
 const emailInput = document.querySelector("#emailInput");
 const logoutButton = document.querySelector("#logoutButton");
 const reportArchiveList = document.querySelector("#reportArchiveList");
@@ -1158,6 +1160,7 @@ function localUiState() {
     automations: state.automations,
     roleVisibilityConfig: state.roleVisibilityConfig,
     visibilityEditorRole: state.visibilityEditorRole,
+    roleViewUnlocked: state.roleViewUnlocked,
     contactSearch: state.contactSearch,
     importExportHistory: state.importExportHistory
   };
@@ -1180,6 +1183,7 @@ function loadState() {
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
+        roleViewUnlocked: false,
         contactSearch: "",
         importExportHistory: []
       };
@@ -1205,6 +1209,7 @@ function loadState() {
         automations: normalizedAutomations(parsed.automations),
         roleVisibilityConfig: parsed.roleVisibilityConfig || {},
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
+        roleViewUnlocked: Boolean(parsed.roleViewUnlocked),
         contactSearch: parsed.contactSearch || "",
         importExportHistory: parsed.importExportHistory || []
       };
@@ -1223,6 +1228,7 @@ function loadState() {
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
+        roleViewUnlocked: false,
         contactSearch: "",
         importExportHistory: []
       };
@@ -1278,6 +1284,10 @@ function preferredSupAdminViewName() {
     || state.people.find((person) => person.name === "Emir")?.name
     || state.activeUserName
     || "";
+}
+
+function canUseRoleSimulation() {
+  return state.roleViewUnlocked || isSupAdmin();
 }
 
 function normalizeCoreRole(person) {
@@ -4535,10 +4545,13 @@ function renderAuthState() {
   const sidebarVisible = state.pinValidated && (
     availableTabs.includes("*") || availableTabs.some((tab) => tab !== "dashboard")
   );
-  const debugViewVisible = isSupAdmin();
+  const debugViewVisible = canUseRoleSimulation();
 
   workspaceSidebar.classList.toggle("hidden-panel", !sidebarVisible);
   workspaceShell?.classList.toggle("without-sidebar", !sidebarVisible);
+  if (quickReturnViewButton) {
+    quickReturnViewButton.classList.toggle("hidden-panel", !debugViewVisible);
+  }
   if (userViewField) {
     userViewField.classList.toggle("hidden-panel", !debugViewVisible);
   }
@@ -4552,7 +4565,7 @@ function renderAuthState() {
 
 function renderAdminTabs() {
   const user = currentUser();
-  const debugViewVisible = isSupAdmin();
+  const debugViewVisible = canUseRoleSimulation();
   const canKeepCurrentTab = state.activeAdminTab === "visibility" ? debugViewVisible : canAccessTab(state.activeAdminTab, user);
   if (!canKeepCurrentTab || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
     state.activeAdminTab = "dashboard";
@@ -6884,6 +6897,7 @@ async function handlePinAccessSubmit(event) {
 
 function handleActiveUserChange(event) {
   state.activeUserName = event.target.value;
+  state.roleViewUnlocked = true;
   state.pinValidated = true;
   ensureValidActiveTab();
   saveState();
@@ -6892,6 +6906,7 @@ function handleActiveUserChange(event) {
 
 function handleResetUserView() {
   state.activeUserName = preferredSupAdminViewName();
+  state.roleViewUnlocked = false;
   state.pinValidated = true;
   ensureValidActiveTab();
   saveState();
@@ -7207,6 +7222,7 @@ visibilityRoleSelect?.addEventListener("change", (event) => {
   renderVisibilityEditor();
 });
 resetUserViewButton?.addEventListener("click", handleResetUserView);
+quickReturnViewButton?.addEventListener("click", handleResetUserView);
 pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
 pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
@@ -7252,6 +7268,7 @@ async function init() {
   state.automations = normalizedAutomations(stored.automations);
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
+  state.roleViewUnlocked = Boolean(stored.roleViewUnlocked);
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
   document.documentElement.lang = state.language;
