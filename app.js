@@ -5524,6 +5524,47 @@ function readWorkbookRows(file, arrayBuffer) {
   return window.XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 }
 
+function readStoresWorkbookRows(arrayBuffer) {
+  if (!xlsxAvailable()) {
+    throw new Error("Bibliotheque XLSX indisponible.");
+  }
+  const workbook = window.XLSX.read(arrayBuffer, { type: "array" });
+  const firstSheetName = workbook.SheetNames[0];
+  const secondSheetName = workbook.SheetNames[1];
+  const firstSheet = workbook.Sheets[firstSheetName];
+  const firstRows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+  if (!secondSheetName) {
+    return firstRows;
+  }
+
+  const secondSheet = workbook.Sheets[secondSheetName];
+  const secondRows = window.XLSX.utils.sheet_to_json(secondSheet, { defval: "" });
+  if (!Array.isArray(secondRows) || !secondRows.length) {
+    return firstRows;
+  }
+
+  const normalizeStoreKey = (value) => normalizeImportCell(value).replace(/\.0$/, "");
+  const telephonyByStore = new Map();
+
+  secondRows.forEach((row) => {
+    const key = normalizeStoreKey(row["Store NR"] || row.StoreNR || row.store_nr || row.store_nr_);
+    if (!key) {
+      return;
+    }
+    telephonyByStore.set(key, row);
+  });
+
+  return firstRows.map((row) => {
+    const key = normalizeStoreKey(row["Store NR"] || row.StoreNR || row.store_nr || row.store_nr_);
+    const telephonyRow = telephonyByStore.get(key) || {};
+    return {
+      ...row,
+      ...telephonyRow
+    };
+  });
+}
+
 function readExtensionWorkbookRows(arrayBuffer) {
   if (!xlsxAvailable()) {
     throw new Error("Bibliotheque XLSX indisponible.");
@@ -5968,7 +6009,7 @@ function handleImportInputChange(event) {
         recordImportExportHistory("import", "Import magasins / donnees", file.name);
         window.alert(t("importDone"));
       } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
-        importStoresRows(readWorkbookRows(file, reader.result));
+        importStoresRows(readStoresWorkbookRows(reader.result));
         saveState();
         render();
         const syncResult = await syncImportedStateIfPossible();
