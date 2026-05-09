@@ -2138,6 +2138,12 @@ function renderSummary() {
       { label: "Clotures", value: getFilteredTickets().filter((ticket) => ticket.status === "closed").length, note: "Historique conserve", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status === "closed").length * 20), filter: { key: "status", value: "done", tab: "sav" } },
       { label: "A surveiller", value: getFilteredTickets().filter((ticket) => ticket.status !== "closed").length, note: "Tickets encore actifs", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status !== "closed").length * 20), filter: null }
     ],
+    configuration: [
+      { label: "Configurations a traiter", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Choix magasin a confirmer", portion: Math.round((visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length / total) * 100), filter: null },
+      { label: "Preparation chantier", value: visibleStores.filter((store) => !["OK", "Oui"].includes(ensureStoreWorkflowData(store).charlesRouxStatus) || ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Pre-visite / infra / VLAN", portion: Math.round((visibleStores.filter((store) => !["OK", "Oui"].includes(ensureStoreWorkflowData(store).charlesRouxStatus) || ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length / total) * 100), filter: null },
+      { label: "GSM prevus", value: visibleStores.reduce((sum, store) => sum + getGsmRows(store).length, 0), note: "Parc mobile configure", portion: 100, filter: null },
+      { label: "Choix confirmes", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Configuration finalisee", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).networkConfigConfirmed).length / total) * 100), filter: null }
+    ],
     extensions: [
       { label: "Reference extensions", value: extensionCatalogRows.length, note: "Liste commune magasin / IT", portion: 100, filter: null },
       { label: "Postes fixes", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).fixCount, 0), note: "Quota total fixe", portion: 100, filter: null },
@@ -7085,10 +7091,17 @@ function handleAdminTabClick(event) {
   const button = event.target.closest("[data-admin-tab]");
   if (button) {
     const nextTab = button.getAttribute("data-admin-tab");
-    if (!canAccessTab(nextTab)) {
+    const canOpenVisibility = nextTab === "visibility" && (state.roleViewUnlocked || isSupAdmin() || ["Valou", "Emir"].includes(currentUser()?.name));
+    if (!canAccessTab(nextTab) && !canOpenVisibility) {
       return;
     }
     state.activeAdminTab = nextTab;
+    if (nextTab !== "configuration") {
+      state.expandedStoreIds = new Set();
+    }
+    if (window.location.hash?.startsWith("#section-")) {
+      history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
     saveState();
     render();
     return;
