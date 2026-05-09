@@ -1488,6 +1488,7 @@ function tabTitle(tab) {
     dashboard: "Dashboard",
     timeline: isNl ? "Tijdlijn / Planning" : "Timeline / Planning",
     stores: isNl ? "Winkels" : "Magasins",
+    configuration: isNl ? "Configuratie winkel" : "Configuration magasin",
     sav: "SAV / Tickets",
     extensions: "Extensions",
     contacts: isNl ? "Contacten" : "Contacts",
@@ -3501,7 +3502,6 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
           <button type="button" class="toggle-button" data-store-toggle="${store.id}">${isExpanded ? "-" : "+"}</button>
           <div class="store-info-title">
             <h3>${escapeHtml(store.name)}</h3>
-            ${mode === "configuration" ? `<button type="button" class="mini-button" data-open-config-store="${store.id}">Ouvrir la fiche</button>` : ""}
           </div>
         </div>
         ${buildStoreIdentityMeta(store)}
@@ -3518,129 +3518,92 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
   `;
 }
 
-function renderStoreCards(stores, mode = "stores") {
-  stores.forEach((store, index) => {
-    const manager = stepFor(store, "store_manager");
-    const installer = stepFor(store, "installer");
-    const electrician = stepFor(store, "electrician");
-    const appointments = sortedAppointments(store);
-    const appointmentSummary = appointments.length
-      ? appointments.map((appointment) => `
-          <div class="cell-stack">
-            <strong>${formatDateTime(appointment.datetime)}</strong>
-            <span class="${badgeClass(appointment.status)}">${appointment.status}</span>
-            <span class="cell-note">${escapeHtml(peopleLabel(appointment.people))}</span>
-          </div>
-        `).join("")
-      : '<div class="cell-stack"><strong>-</strong><span class="badge badge-planned">A fixer</span><span class="cell-note">-</span></div>';
-    const isExpanded = state.expandedStoreIds.has(store.id);
+function buildStoreDetailForm(store, mode = "stores") {
+  const detailContent = mode === "configuration"
+    ? `
+        ${buildStoreSectionNav("configuration")}
 
-    const heroRow = document.createElement("tr");
-    heroRow.className = "expanded-hero-row";
-    heroRow.innerHTML = `
-      <td colspan="9">
-        <div class="details-panel hero-panel">
-          ${buildStoreHero(store, manager, installer, electrician, isExpanded, mode)}
+        ${buildPreparationHubCard(store)}
+
+        ${buildConfigurationHubCard(store)}
+
+        ${buildEquipmentCards(store)}
+
+        <div class="editor-grid section-anchor" id="section-closing">
+          ${buildClosureWorkflowCard(store)}
         </div>
-      </td>
-    `;
-    projectTableBody.append(heroRow);
+      `
+    : `
+        ${buildStoreSectionNav("stores")}
 
-    if (isExpanded) {
-      const detailRow = document.createElement("tr");
-      detailRow.className = "details-row";
-      const detailContent = mode === "configuration"
-        ? `
-            ${buildStoreSectionNav("configuration")}
+        <div class="editor-grid section-anchor" id="section-quantities">
+          ${buildStorePilotSkeleton(store)}
+        </div>
 
-            <div class="editor-grid section-anchor" id="section-overview">
-              ${buildConfigurationSummaryCard(store)}
+        ${buildConfigurationSummaryCard(store)}
+
+        <div class="editor-grid section-anchor" id="section-overview">
+          ${buildStorePostsSkeleton(store)}
+        </div>
+
+        <div class="editor-grid section-anchor" id="section-closing">
+          ${buildClosureWorkflowCard(store)}
+        </div>
+
+        <div class="editor-grid">
+          <article class="editor-card full-span-card">
+            <h3>Ligne du temps</h3>
+            <p>Chronologie des rendez-vous programmes pour ce magasin.</p>
+            ${buildTimeline(store)}
+          </article>
+        </div>
+
+        <div class="editor-grid section-anchor" id="section-appointments">
+          ${buildAppointmentsEditor(store)}
+        </div>
+
+        <div class="editor-grid section-anchor" id="section-sav">
+          ${buildSavCard(store)}
+        </div>
+
+        <div class="editor-grid">
+          <article class="editor-card" data-access-zone="status_admin">
+            <h3>Statut global</h3>
+            <div class="two-col">
+              <label>
+                <span>Statut</span>
+                <select name="global_status">${renderOptions(globalStatusOptions, store.status)}</select>
+              </label>
+              <label>
+                <span>Responsable magasin</span>
+                <input type="text" name="manager" value="${escapeHtml(store.manager || "")}">
+              </label>
             </div>
-
-            ${buildPreparationHubCard(store)}
-
-            ${buildConfigurationHubCard(store)}
-
-            ${buildEquipmentCards(store)}
-
-            <div class="editor-grid section-anchor" id="section-closing">
-              ${buildClosureWorkflowCard(store)}
-            </div>
-          `
-        : `
-            ${buildStoreSectionNav("stores")}
-
-            <div class="editor-grid section-anchor" id="section-quantities">
-              ${buildStorePilotSkeleton(store)}
-            </div>
-
-            ${buildConfigurationSummaryCard(store)}
-
-            <div class="editor-grid section-anchor" id="section-overview">
-              ${buildStorePostsSkeleton(store)}
-            </div>
-
-            <div class="editor-grid section-anchor" id="section-closing">
-              ${buildClosureWorkflowCard(store)}
-            </div>
-
-            <div class="editor-grid">
-              <article class="editor-card full-span-card">
-                <h3>Ligne du temps</h3>
-                <p>Chronologie des rendez-vous programmes pour ce magasin.</p>
-                ${buildTimeline(store)}
-              </article>
-            </div>
-
-            <div class="editor-grid section-anchor" id="section-appointments">
-              ${buildAppointmentsEditor(store)}
-            </div>
-
-            <div class="editor-grid section-anchor" id="section-sav">
-              ${buildSavCard(store)}
-            </div>
-
-            <div class="editor-grid">
-              <article class="editor-card" data-access-zone="status_admin">
-                <h3>Statut global</h3>
-                <div class="two-col">
-                  <label>
-                    <span>Statut</span>
-                    <select name="global_status">${renderOptions(globalStatusOptions, store.status)}</select>
-                  </label>
-                  <label>
-                    <span>Responsable magasin</span>
-                    <input type="text" name="manager" value="${escapeHtml(store.manager || "")}">
-                  </label>
-                </div>
-              </article>
-              <article class="editor-card" data-access-zone="problem_notes">
-                <h3>Probleme / notes</h3>
-                <label>
-                  <span>Obligatoire si statut bloque</span>
-                  <textarea name="health" rows="4" placeholder="Decris le probleme a traiter">${escapeHtml(store.health || "")}</textarea>
-                </label>
-              </article>
-            </div>
-          `;
-        detailRow.innerHTML = `
-          <td colspan="9">
-            <div class="details-panel">
-            <form class="store-editor" data-store-editor="${store.id}">
-              ${detailContent}
-
-              <div class="editor-actions">
-                <span class="validation-text" data-validation="${store.id}"></span>
-                <button type="submit" data-store-submit>Enregistrer ce magasin</button>
-              </div>
-            </form>
-          </div>
-        </td>
+          </article>
+          <article class="editor-card" data-access-zone="problem_notes">
+            <h3>Probleme / notes</h3>
+            <label>
+              <span>Obligatoire si statut bloque</span>
+              <textarea name="health" rows="4" placeholder="Decris le probleme a traiter">${escapeHtml(store.health || "")}</textarea>
+            </label>
+          </article>
+        </div>
       `;
-      projectTableBody.append(detailRow);
-    }
-  });
 
+  return `
+    <div class="details-panel">
+      <form class="store-editor" data-store-editor="${store.id}">
+        ${detailContent}
+        <div class="editor-actions">
+          <span class="validation-text" data-validation="${store.id}"></span>
+          <button type="submit" data-store-submit>Enregistrer ce magasin</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function attachStoreInteractiveHandlers() {
   projectTableBody.querySelectorAll("[data-store-toggle]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-store-toggle"));
@@ -3684,9 +3647,85 @@ function renderStoreCards(stores, mode = "stores") {
       state.expandedStoreIds = new Set([storeId]);
       saveState();
       render();
-      window.location.hash = "#section-configuration";
+      window.location.hash = "#section-preparation";
     });
   });
+}
+
+function renderStoreCards(stores, mode = "stores") {
+  stores.forEach((store) => {
+    const manager = stepFor(store, "store_manager");
+    const installer = stepFor(store, "installer");
+    const electrician = stepFor(store, "electrician");
+    const appointments = sortedAppointments(store);
+    const appointmentSummary = appointments.length
+      ? appointments.map((appointment) => `
+          <div class="cell-stack">
+            <strong>${formatDateTime(appointment.datetime)}</strong>
+            <span class="${badgeClass(appointment.status)}">${appointment.status}</span>
+            <span class="cell-note">${escapeHtml(peopleLabel(appointment.people))}</span>
+          </div>
+        `).join("")
+      : '<div class="cell-stack"><strong>-</strong><span class="badge badge-planned">A fixer</span><span class="cell-note">-</span></div>';
+    const isExpanded = state.expandedStoreIds.has(store.id);
+
+    const heroRow = document.createElement("tr");
+    heroRow.className = "expanded-hero-row";
+    heroRow.innerHTML = `
+      <td colspan="9">
+        <div class="details-panel hero-panel">
+          ${buildStoreHero(store, manager, installer, electrician, isExpanded, mode)}
+        </div>
+      </td>
+    `;
+    projectTableBody.append(heroRow);
+
+    if (isExpanded) {
+      const detailRow = document.createElement("tr");
+      detailRow.className = "details-row";
+        detailRow.innerHTML = `
+          <td colspan="9">
+            ${buildStoreDetailForm(store, mode)}
+        </td>
+      `;
+      projectTableBody.append(detailRow);
+    }
+  });
+
+  attachStoreInteractiveHandlers();
+}
+
+function renderStoreOverviewRows(stores, mode = "stores") {
+  projectTableBody.innerHTML = "";
+  stores.forEach((store) => {
+    const isExpanded = state.expandedStoreIds.has(store.id);
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${escapeHtml(store.code)}</td>
+      <td><strong>${escapeHtml(store.name)}</strong></td>
+      <td>${escapeHtml(store.city || "-")}</td>
+      <td>${escapeHtml(store.shopType || "-")}</td>
+      <td>${escapeHtml(store.manager || "-")}</td>
+      <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
+      <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
+      <td>${escapeHtml(nextActionForStore(store))}</td>
+      <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer la fiche" : "Voir la fiche"}</button></td>
+    `;
+    projectTableBody.append(row);
+
+    if (isExpanded) {
+      const detailRow = document.createElement("tr");
+      detailRow.className = "details-row";
+      detailRow.innerHTML = `
+        <td colspan="9">
+          ${buildStoreDetailForm(store, mode)}
+        </td>
+      `;
+      projectTableBody.append(detailRow);
+    }
+  });
+
+  attachStoreInteractiveHandlers();
 }
 
 function setMainTableHeaders(headers) {
@@ -4198,15 +4237,15 @@ function renderStores() {
       renderDashboardRows(stores);
       return;
     case "configuration":
-      projectTable?.classList.remove("compact-rows-table");
-      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-      renderStoreCards(stores, "configuration");
+      projectTable?.classList.add("compact-rows-table");
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
+      renderStoreOverviewRows(stores, "configuration");
       return;
     case "stores":
     default:
-      projectTable?.classList.remove("compact-rows-table");
-      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-      renderStoreCards(stores, "stores");
+      projectTable?.classList.add("compact-rows-table");
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
+      renderStoreOverviewRows(stores, "stores");
   }
 }
 
