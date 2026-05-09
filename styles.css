@@ -904,6 +904,31 @@ button {
   gap: 12px;
 }
 
+.summary-recap-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-recap-item {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdfa;
+}
+
+.summary-recap-item h4,
+.summary-recap-item p {
+  margin: 0;
+}
+
+.recap-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .three-col-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -2222,6 +2247,7 @@ button {
   .override-row,
   .external-prep-grid,
   .network-row,
+  .summary-recap-grid,
   .store-focus-layout {
     grid-template-columns: 1fr;
   }

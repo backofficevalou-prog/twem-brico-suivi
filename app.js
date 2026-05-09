@@ -2652,17 +2652,23 @@ function buildStoreHeaderCards() {
   `;
 }
 
-function buildStoreSectionNav() {
-  const links = [
-    ["overview", "Vue d ensemble"],
-    ["quantities", "Quantites"],
-    ["preparation", "Preparation"],
-    ["configuration", "Configuration"],
-    ["equipment", "Equipements"],
-    ["appointments", "Rendez-vous"],
-    ["sav", "SAV"],
-    ["closing", "Cloture"]
-  ];
+function buildStoreSectionNav(mode = "stores") {
+  const links = mode === "configuration"
+    ? [
+        ["quantities", "Quantites"],
+        ["preparation", "Preparation"],
+        ["configuration", "Configuration"],
+        ["equipment", "Equipements"],
+        ["closing", "Cloture"]
+      ]
+    : [
+        ["overview", "Vue d ensemble"],
+        ["quantities", "Quantites"],
+        ["configuration-summary", "Preparation / config"],
+        ["appointments", "Rendez-vous"],
+        ["sav", "SAV"],
+        ["closing", "Cloture"]
+      ];
   return `
     <nav class="store-editor-nav">
       ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
@@ -2837,6 +2843,80 @@ function buildConfigurationHubCard(store) {
           </label>
         </div>
         ${buildNetworkConfigSkeleton(store, { showConfirmBar: false })}
+      </article>
+    </div>
+  `;
+}
+
+function buildPreparationConfigurationRecapCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const destinyReady = workflow.destinyInstallDate || workflow.destinyTicketRef || workflow.destinyPmName;
+  const preVisitDone = ["Termine", "Tous reseaux OK", "Certains reseaux manquants", "Aucun reseau mobile"].includes(workflow.networkSurveyStatus) || (workflow.firstVisitRemark || "").trim();
+  const externalPrepDone = workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" || workflow.cablingStatus === "OK";
+  const configConfirmed = Boolean(workflow.networkConfigConfirmed);
+  const extensionState = workflow.extensionConfigStatus || "En attente";
+  const gsmRows = getGsmRows(store);
+  const configuredGsm = gsmRows.filter((row) => row.model || row.mobileNumber || row.user || row.extensionLinked).length;
+  const groupsDone = (workflow.callGroupsNote || "").trim();
+  const cascadesDone = (workflow.cascadeNote || "").trim();
+  const alarmDone = workflow.alarmType || workflow.alarmCompany || workflow.alarmCentralPhone;
+
+  const statusChip = (done, doneLabel = "Fait", pendingLabel = "A faire") => `
+    <span class="${badgeClass(done ? "done" : "planned")}">${done ? doneLabel : pendingLabel}</span>
+  `;
+
+  return `
+    <div class="editor-grid section-anchor" id="section-configuration-summary">
+      <article class="editor-card full-span-card grouped-card" data-access-zone="configuration_request">
+        <div class="grouped-card-head">
+          <h3>Configuration et preparation</h3>
+          <p>Recapitulatif de la preparation chantier et des choix telephonie confirmes.</p>
+        </div>
+        <div class="summary-recap-grid">
+          <article class="summary-recap-item">
+            <h4>Coordination Destiny</h4>
+            ${statusChip(destinyReady)}
+            <p>${escapeHtml(workflow.destinyPmName || workflow.destinyTicketRef || "Aucune coordination encodee")}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>Pre-visite</h4>
+            ${statusChip(preVisitDone)}
+            <p>${escapeHtml(workflow.networkSurveyStatus || "A planifier")}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>Preparation externe</h4>
+            ${statusChip(externalPrepDone)}
+            <p>${escapeHtml(workflow.vlan22Activated || workflow.charlesRouxStatus || "A verifier")}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>Configuration magasin</h4>
+            ${statusChip(configConfirmed, "Confirmee", "En attente")}
+            <p>${escapeHtml(extensionState)}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>GSM / SIM</h4>
+            ${statusChip(configuredGsm > 0, `${configuredGsm} defini(s)`, "A definir")}
+            <p>${escapeHtml(`${gsmRows.length} GSM prevu(s)`)}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>Alarme</h4>
+            ${statusChip(Boolean(alarmDone))}
+            <p>${escapeHtml(workflow.alarmType || "A confirmer")}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>Groupes d appel</h4>
+            ${statusChip(Boolean(groupsDone))}
+            <p>${escapeHtml(groupsDone || "Non renseigne")}</p>
+          </article>
+          <article class="summary-recap-item">
+            <h4>Cascades</h4>
+            ${statusChip(Boolean(cascadesDone))}
+            <p>${escapeHtml(cascadesDone || "Non renseigne")}</p>
+          </article>
+        </div>
+        <div class="recap-actions">
+          <button type="button" class="mini-button" data-open-configuration="${store.id}">Ouvrir la configuration detaillee</button>
+        </div>
       </article>
     </div>
   `;
@@ -3382,7 +3462,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded) {
   `;
 }
 
-function renderStoreCards(stores) {
+function renderStoreCards(stores, mode = "stores") {
   stores.forEach((store, index) => {
     const manager = stepFor(store, "store_manager");
     const installer = stepFor(store, "installer");
@@ -3417,17 +3497,15 @@ function renderStoreCards(stores) {
           <td colspan="9">
             <div class="details-panel">
             <form class="store-editor" data-store-editor="${store.id}">
-              ${buildStoreSectionNav()}
+              ${buildStoreSectionNav(mode)}
 
               <div class="editor-grid section-anchor" id="section-quantities">
                 ${buildStorePilotSkeleton(store)}
               </div>
 
-              ${buildPreparationHubCard(store)}
-
-              ${buildConfigurationHubCard(store)}
-
-              ${buildEquipmentCards(store)}
+              ${mode === "configuration"
+                ? `${buildPreparationHubCard(store)}${buildConfigurationHubCard(store)}${buildEquipmentCards(store)}`
+                : buildPreparationConfigurationRecapCard(store)}
 
               <div class="editor-grid section-anchor" id="section-overview">
                 ${buildStorePostsSkeleton(store)}
@@ -3522,6 +3600,16 @@ function renderStoreCards(stores) {
 
   projectTableBody.querySelectorAll("[data-gsm-add]").forEach((button) => {
     button.addEventListener("click", handleGsmAdd);
+  });
+
+  projectTableBody.querySelectorAll("[data-open-configuration]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const storeId = Number(button.getAttribute("data-open-configuration"));
+      state.activeAdminTab = "stores";
+      state.expandedStoreIds = new Set([storeId]);
+      saveState();
+      render();
+    });
   });
 }
 
@@ -3646,7 +3734,7 @@ function renderTimelineRows(stores) {
   projectTableBody.querySelectorAll("[data-timeline-open]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-timeline-open"));
-      state.activeAdminTab = "configuration";
+      state.activeAdminTab = "stores";
       state.expandedStoreIds = new Set([storeId]);
       render();
     });
@@ -3670,7 +3758,7 @@ function renderDashboardRows(stores) {
   projectTableBody.querySelectorAll("[data-dashboard-open]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-dashboard-open"));
-      state.activeAdminTab = "configuration";
+      state.activeAdminTab = "stores";
       state.expandedStoreIds = new Set([storeId]);
       render();
     });
@@ -4078,13 +4166,13 @@ function renderStores() {
       renderTimelineRows(stores);
       return;
     case "stores":
-      projectTable?.classList.add("compact-rows-table");
-      renderStoreSummaryRows(stores);
-      return;
-    case "configuration":
       projectTable?.classList.remove("compact-rows-table");
       setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-      renderStoreCards(stores);
+      renderStoreCards(stores, "stores");
+      return;
+    case "configuration":
+      projectTable?.classList.add("compact-rows-table");
+      renderStoreSummaryRows(stores);
       return;
     case "sav":
       projectTable?.classList.add("compact-rows-table");
