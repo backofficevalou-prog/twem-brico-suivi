@@ -1287,7 +1287,7 @@ function preferredSupAdminViewName() {
 }
 
 function canUseRoleSimulation() {
-  return state.roleViewUnlocked || isSupAdmin();
+  return isSupAdmin();
 }
 
 function normalizeCoreRole(person) {
@@ -1444,7 +1444,7 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
     supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations"],
     manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
     magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
@@ -1467,6 +1467,9 @@ function accessibleTabsForUser(user = currentUser()) {
 }
 
 function canAccessTab(tab, user = currentUser()) {
+  if (tab === "visibility") {
+    return isSupAdmin(user);
+  }
   const tabs = accessibleTabsForUser(user);
   return tabs.includes("*") || tabs.includes(tab);
 }
@@ -1703,9 +1706,10 @@ function renderVisibilityEditor() {
     return;
   }
 
-  const availableRoles = [...new Set([...(state.roleOptions || []), ...defaultRoleOptions])];
+  const availableRoles = [...new Set([...(state.roleOptions || []), ...defaultRoleOptions])]
+    .filter((role) => isSupAdmin() || role !== "supadmin_twem");
   if (!availableRoles.includes(state.visibilityEditorRole)) {
-    state.visibilityEditorRole = availableRoles[0] || "supadmin_twem";
+    state.visibilityEditorRole = availableRoles[0] || "admin_twem";
   }
   const role = state.visibilityEditorRole;
   const config = ensureRoleVisibilityConfig(role);
