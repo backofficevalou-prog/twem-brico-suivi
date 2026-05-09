@@ -365,6 +365,59 @@ button {
   min-width: 104px;
 }
 
+.stores-summary-row td {
+  font-size: 0.92rem;
+}
+
+.stores-summary-row td:nth-child(1) {
+  width: 8%;
+}
+
+.stores-summary-row td:nth-child(2) {
+  width: 22%;
+}
+
+.stores-summary-row td:nth-child(3) {
+  width: 11%;
+}
+
+.stores-summary-row td:nth-child(4) {
+  width: 13%;
+}
+
+.stores-summary-row td:nth-child(5) {
+  width: 15%;
+}
+
+.stores-summary-row td:nth-child(6) {
+  width: 12%;
+}
+
+.stores-summary-row td:nth-child(7) {
+  width: 8%;
+}
+
+.stores-summary-row td:nth-child(8) {
+  width: 8%;
+}
+
+.stores-summary-row td:nth-child(9) {
+  width: 11%;
+  min-width: 112px;
+}
+
+.stores-summary-row .cell-note {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stores-summary-row .mini-button {
+  min-width: 96px;
+  padding: 10px 12px;
+}
+
 .dashboard-kpi-button {
   width: 100%;
   padding: 0;

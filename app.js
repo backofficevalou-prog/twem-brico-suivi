@@ -3701,7 +3701,8 @@ function renderStoreOverviewRows(stores, mode = "stores") {
     const isExpanded = state.expandedStoreIds.has(store.id);
     const row = document.createElement("tr");
     if (mode === "stores") {
-      const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
+      row.className = "stores-summary-row";
+      const addressBits = [store.address, store.city].filter(Boolean).join(" - ") || "-";
       const poBits = [
         store.poLicences ? `Licence ${store.poLicences}` : null,
         store.poPm ? `PM ${store.poPm}` : null
@@ -3730,6 +3731,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button></td>
       `;
     } else {
+      row.className = "configuration-summary-row";
       row.innerHTML = `
         <td>${escapeHtml(store.code)}</td>
         <td><strong>${escapeHtml(store.name)}</strong></td>
