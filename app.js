@@ -2184,6 +2184,22 @@ function buildAppointmentsEditor(store) {
 }
 
 function getStoreQuantityPlan(store) {
+  if (
+    Number.isFinite(Number(store.licenseCount))
+    || Number.isFinite(Number(store.fixCount))
+    || Number.isFinite(Number(store.mobileCount))
+    || Number.isFinite(Number(store.callButtonCount))
+    || Number.isFinite(Number(store.panicCount))
+  ) {
+    return {
+      licenseCount: Math.max(0, Number(store.licenseCount) || 0),
+      fixCount: Math.max(0, Number(store.fixCount) || 0),
+      mobileCount: Math.max(0, Number(store.mobileCount) || 0),
+      callButtonCount: Math.max(0, Number(store.callButtonCount) || 0),
+      panicCount: Math.max(0, Number(store.panicCount) || 0)
+    };
+  }
+
   const codeNumber = Number.parseInt(String(store.code).replace(/\D/g, ""), 10) || 0;
   const licenseCount = 8 + (codeNumber % 6);
   const fixCount = Math.max(2, Math.round(licenseCount * 0.6));
@@ -5471,41 +5487,114 @@ function importExtensionRows(rows) {
   })));
 }
 
+function normalizeImportCell(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function normalizeImportKey(key) {
+  return normalizeImportCell(key)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function normalizeImportRow(row) {
+  const normalized = {};
+  Object.entries(row || {}).forEach(([key, value]) => {
+    normalized[normalizeImportKey(key)] = value;
+  });
+  return normalized;
+}
+
+function readImportValue(row, keys, fallback = "") {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") {
+      return row[key];
+    }
+  }
+  return fallback;
+}
+
+function toImportNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function importStoresRows(rows) {
   if (!Array.isArray(rows) || !rows.length) {
     throw new Error("Aucune ligne magasin exploitable.");
   }
 
-  const nextStores = rows.map((row, index) => {
-    const code = row.code || row["code magasin"] || row.store_code || row.store || `MAG-${index + 1}`;
-    const name = row.name || row.magasin || row.store_name || `Magasin ${index + 1}`;
-    const city = row.city || row.ville || row.region || "";
-    const shopType = row.type || row["type magasin"] || row.shop_type || "DOS";
-    const owner = row.owner || row["responsable twem"] || row.twem || twemOptions[0];
-    const manager = row.manager || row["responsable magasin"] || row.responsable || "";
-    const status = row.status || row["statut global"] || "planned";
+  const nextStores = rows.map((rawRow, index) => {
+    const row = normalizeImportRow(rawRow);
+    const shopNumber = normalizeImportCell(readImportValue(row, ["store_nr", "shopnumber", "store_number", "numero", "store_nr_"], `${index + 1}`));
+    const code = normalizeImportCell(readImportValue(row, ["code", "code_magasin", "store_code"], shopNumber ? `BRI-${shopNumber}` : `MAG-${index + 1}`));
+    const name = normalizeImportCell(readImportValue(row, ["shop_name", "name", "magasin", "store_name"], `Magasin ${index + 1}`));
+    const city = normalizeImportCell(readImportValue(row, ["city", "ville", "commune", "region"], ""));
+    const street = normalizeImportCell(readImportValue(row, ["street", "adresse", "address"], ""));
+    const number = normalizeImportCell(readImportValue(row, ["n", "numero", "number"], ""));
+    const postalCode = normalizeImportCell(readImportValue(row, ["cp", "code_postal", "canton_postal"], ""));
+    const country = normalizeImportCell(readImportValue(row, ["country", "pays"], ""));
+    const address = [street, number].filter(Boolean).join(" ").trim();
+    const addressTail = [postalCode, city, country].filter(Boolean).join(" - ").trim();
+    const fullAddress = [address, addressTail].filter(Boolean).join(" - ");
+    const shopType = normalizeImportCell(readImportValue(row, ["type_shop", "type_magasin", "shop_type"], "DOS"));
+    const shopSize = normalizeImportCell(readImportValue(row, ["shop_type_2", "shopsize", "type_shop_2"], ""));
+    const owner = normalizeImportCell(readImportValue(row, ["owner", "responsable_twem", "twem"], twemOptions[0]));
+    const manager = normalizeImportCell(readImportValue(row, ["nom_manager", "manager", "responsable_magasin", "responsable"], ""));
+    const statusSource = normalizeImportCell(readImportValue(row, ["cloturer", "status", "statut_global"], "planned")).toLowerCase();
+    const status = statusSource.includes("done")
+      ? "done"
+      : statusSource.includes("block")
+        ? "blocked"
+        : statusSource.includes("progress") || statusSource.includes("cours")
+          ? "in_progress"
+          : "planned";
     const updatedAt = new Date().toISOString();
-    return {
+    const licenseCount = toImportNumber(readImportValue(row, ["license", "licenses", "license_count", "nb_licence", "nb_licenses"], 0));
+    const fixCount = toImportNumber(readImportValue(row, ["fix", "_fix", "nb_fix", "fix_count", "fixes"], 0));
+    const mobileCount = toImportNumber(readImportValue(row, ["mobile", "_mobile", "nb_mobile", "mobile_count"], 0));
+    const panicCount = toImportNumber(readImportValue(row, ["panic_button", "_panic_button", "nb_panic_button", "panic_count"], 0));
+    const callButtonCount = toImportNumber(readImportValue(row, ["call_button", "_call_button", "nb_call_button", "call_button_count"], 0));
+    const storeDraft = {
       id: Date.now() + index,
       code,
-      shopNumber: row.shopnumber || row["store nr"] || row.numero || code,
+      shopNumber,
       name,
       city,
-      address: row.address || row.adresse || "",
+      address: fullAddress,
       shopType,
-      shopSize: row.shopsize || row["type shop"] || "",
-      poLicences: row.po_licence || row["po licence"] || "",
-      poHpDesk: row.po_hpdesk || row["po hpdesk"] || "",
-      poPm: row.po_pm || row["po pm"] || "",
-      poRentingHw: row.po_renting || row["po renting"] || "",
+      shopSize,
+      poLicences: normalizeImportCell(readImportValue(row, ["po_licences", "po_licence", "po_licences_", "po_licence_"], "")),
+      poHpDesk: normalizeImportCell(readImportValue(row, ["po_hpdesk", "po_hp_desk"], "")),
+      poPm: normalizeImportCell(readImportValue(row, ["po_pm"], "")),
+      poRentingHw: normalizeImportCell(readImportValue(row, ["po_renting_hw", "po_renting"], "")),
       owner,
       manager,
       status,
-      health: row.health || "",
+      health: "",
       updatedAt,
       steps: clone(demoStores[0]?.steps || []),
-      appointments: []
+      appointments: [],
+      licenseCount,
+      fixCount,
+      mobileCount,
+      callButtonCount,
+      panicCount
     };
+    const workflow = ensureStoreWorkflowData(storeDraft);
+    workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
+    workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
+    workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
+
+    storeDraft.workflowData = workflow;
+    return storeDraft;
   });
 
   state.stores = nextStores;
