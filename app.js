@@ -1048,6 +1048,44 @@ function buildAppwriteSettingsDocument() {
   };
 }
 
+function isAppwriteRateLimitError(error) {
+  const code = Number(error?.code || error?.response?.code || 0);
+  const type = String(error?.type || error?.response?.type || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+  return code === 429 || type.includes("rate_limit") || message.includes("rate limit");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function withAppwriteRetry(task, options = {}) {
+  const {
+    retries = 4,
+    delayMs = 700
+  } = options;
+
+  let attempt = 0;
+  while (attempt <= retries) {
+    try {
+      return await task();
+    } catch (error) {
+      if (!isAppwriteRateLimitError(error) || attempt === retries) {
+        throw error;
+      }
+      await sleep(delayMs * (attempt + 1));
+      attempt += 1;
+    }
+  }
+  return null;
+}
+
+async function paceRemoteSync(index, every = 12, delayMs = 350) {
+  if (index > 0 && index % every === 0) {
+    await sleep(delayMs);
+  }
+}
+
 async function listAllAppwriteDocuments(collectionId, queries = []) {
   if (!appwriteDatabases) {
     return [];
@@ -1061,7 +1099,9 @@ async function listAllAppwriteDocuments(collectionId, queries = []) {
       queryBatch.push(appwriteQuery.limit(100));
       queryBatch.push(appwriteQuery.offset(offset));
     }
-    const response = await appwriteDatabases.listDocuments(appwriteDatabaseId, collectionId, queryBatch);
+    const response = await withAppwriteRetry(() =>
+      appwriteDatabases.listDocuments(appwriteDatabaseId, collectionId, queryBatch)
+    );
     all.push(...response.documents);
     if (response.documents.length < 100) {
       break;
@@ -1077,13 +1117,17 @@ async function upsertAppwriteDocument(collectionId, documentId, data) {
   }
 
   try {
-    return await appwriteDatabases.updateDocument(appwriteDatabaseId, collectionId, documentId, data);
+    return await withAppwriteRetry(() =>
+      appwriteDatabases.updateDocument(appwriteDatabaseId, collectionId, documentId, data)
+    );
   } catch (error) {
     const code = Number(error?.code || error?.response?.code || 0);
     if (code !== 404) {
       throw error;
     }
-    return appwriteDatabases.createDocument(appwriteDatabaseId, collectionId, documentId, data);
+    return withAppwriteRetry(() =>
+      appwriteDatabases.createDocument(appwriteDatabaseId, collectionId, documentId, data)
+    );
   }
 }
 
@@ -1309,6 +1353,27 @@ function cleanImportHistory(history = []) {
     const detail = normalizeImportCell(item?.detail).toLowerCase();
     const isOldGlobalImport = label.includes("import magasins") && detail.includes("global");
     return !isOldGlobalImport;
+  });
+}
+
+function resetImportedStoresForKickoff(stores = []) {
+  return (stores || []).map((store) => {
+    const nextStore = clone(store);
+    nextStore.status = "planned";
+    nextStore.health = "";
+    nextStore.steps = freshImportedSteps();
+    nextStore.appointments = Array.isArray(nextStore.appointments) ? nextStore.appointments : [];
+    const workflow = ensureStoreWorkflowData(nextStore);
+    workflow.destinyInstallDate = "";
+    workflow.collectDate = "";
+    workflow.itValidationDate = "";
+    workflow.previsitDate = "";
+    workflow.transferDate = "";
+    workflow.destinyInstallDone = "Non";
+    workflow.extensionRequestStatus = workflow.extensionRequestStatus || "A envoyer";
+    workflow.extensionConfigStatus = workflow.extensionConfigStatus || "En attente";
+    workflow.networkConfigConfirmed = false;
+    return nextStore;
   });
 }
 
@@ -5081,11 +5146,15 @@ async function syncAllRemoteState() {
     return;
   }
 
-  for (const person of state.people) {
+  for (let index = 0; index < state.people.length; index += 1) {
+    await paceRemoteSync(index, 10, 500);
+    const person = state.people[index];
     await syncPersonToRemote(person);
   }
 
-  for (const store of state.stores) {
+  for (let index = 0; index < state.stores.length; index += 1) {
+    await paceRemoteSync(index, 8, 700);
+    const store = state.stores[index];
     await syncStoreToRemote(store);
   }
 
@@ -5096,7 +5165,9 @@ async function syncAllRemoteState() {
   }
 
   if (hasAppwriteDataConfig) {
-    for (const activity of state.activities) {
+    for (let index = 0; index < state.activities.length; index += 1) {
+      await paceRemoteSync(index, 12, 350);
+      const activity = state.activities[index];
       await upsertAppwriteDocument(
         appwriteActivitiesCollectionId,
         safeDocumentId("activity", activity.id || `${activity.storeName}-${activity.createdAt}`),
@@ -5732,6 +5803,25 @@ function toImportNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function formatImportDateValue(value) {
+  const parsed = normalizeDateOnly(value);
+  if (!parsed) {
+    return "";
+  }
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function freshImportedSteps() {
+  return [
+    { actorType: "store_manager", label: "Magasin", status: "planned", note: "A lancer" },
+    { actorType: "installer", label: "Telephonie", status: "planned", note: "A planifier" },
+    { actorType: "electrician", label: "Electricien", status: "planned", note: "A planifier" }
+  ];
+}
+
 function importStoresRows(rows) {
   if (!Array.isArray(rows) || !rows.length) {
     throw new Error("Aucune ligne magasin exploitable.");
@@ -5756,14 +5846,7 @@ function importStoresRows(rows) {
     const fallbackOwner = twemOptions.includes(state.activeUserName) ? state.activeUserName : "Valou";
     const owner = normalizeImportCell(readImportValue(row, ["owner", "responsable_twem", "twem"], fallbackOwner));
     const manager = normalizeImportCell(readImportValue(row, ["nom_manager", "manager", "responsable_magasin", "responsable"], ""));
-    const statusSource = normalizeImportCell(readImportValue(row, ["cloturer", "status", "statut_global"], "planned")).toLowerCase();
-    const status = statusSource.includes("done")
-      ? "done"
-      : statusSource.includes("block")
-        ? "blocked"
-        : statusSource.includes("progress") || statusSource.includes("cours")
-          ? "in_progress"
-          : "planned";
+    const status = "planned";
     const updatedAt = new Date().toISOString();
     const licenseCount = toImportNumber(readImportValue(row, ["license", "licenses", "license_count", "nb_licence", "nb_licenses"], 0));
     const fixCount = toImportNumber(readImportValue(row, ["fix", "_fix", "nb_fix", "fix_count", "fixes"], 0));
@@ -5788,7 +5871,7 @@ function importStoresRows(rows) {
       status,
       health: "",
       updatedAt,
-      steps: clone(demoStores[0]?.steps || []),
+      steps: freshImportedSteps(),
       appointments: [],
       licenseCount,
       fixCount,
@@ -5797,9 +5880,19 @@ function importStoresRows(rows) {
       panicCount
     };
     const workflow = ensureStoreWorkflowData(storeDraft);
+    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date"], workflow.currentPhoneDate || ""));
     workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
     workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
     workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
+    workflow.destinyInstallDate = "";
+    workflow.collectDate = "";
+    workflow.itValidationDate = "";
+    workflow.previsitDate = "";
+    workflow.transferDate = "";
+    workflow.destinyInstallDone = "Non";
+    workflow.extensionRequestStatus = "A envoyer";
+    workflow.extensionConfigStatus = "En attente";
+    workflow.networkConfigConfirmed = false;
 
     const managerEmail = normalizeImportCell(readImportValue(row, ["email"], ""));
     const managerPhone = normalizeImportCell(readImportValue(row, ["tel", "telephone"], ""));
@@ -6993,6 +7086,7 @@ async function init() {
   document.documentElement.lang = state.language;
 
   if (hasImportedStoreSet(state.stores)) {
+    state.stores = resetImportedStoresForKickoff(state.stores);
     state.people = cleanPeopleForImportedStores(state.people, state.stores);
   }
 
