@@ -4224,6 +4224,15 @@ function renderStores() {
       renderStoreCards(stores, "stores");
       return;
     case "configuration":
+      if (state.expandedStoreIds.size) {
+        const focusedStores = stores.filter((store) => state.expandedStoreIds.has(store.id));
+        if (focusedStores.length) {
+          projectTable?.classList.remove("compact-rows-table");
+          setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
+          renderStoreCards(focusedStores, "configuration");
+          return;
+        }
+      }
       projectTable?.classList.add("compact-rows-table");
       renderStoreSummaryRows(stores);
       return;
