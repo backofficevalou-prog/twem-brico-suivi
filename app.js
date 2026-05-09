@@ -1229,6 +1229,89 @@ function normalizeCoreRole(person) {
   return normalized;
 }
 
+function mergePersonRecords(records = []) {
+  return records.reduce((acc, record) => {
+    if (!record) {
+      return acc;
+    }
+    Object.entries(record).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        acc[key] = value;
+      }
+    });
+    return acc;
+  }, {});
+}
+
+function cleanPeopleForImportedStores(people = [], stores = []) {
+  const hydratedPeople = mergePeopleWithPinFallback(people);
+  const storesByCode = new Map((stores || []).map((store) => [store.code, store]));
+  const coreNames = ["Emir", "Valou"];
+
+  const coreTwem = coreNames.map((name) => {
+    const matching = hydratedPeople.filter((person) => person.name === name);
+    const base = initialPeople.find((person) => person.name === name) || {};
+    const merged = hydrateAccessProfile(mergePersonRecords([base, ...matching]));
+    return hydrateAccessProfile({
+      ...merged,
+      name,
+      role: name === "Valou" ? "supadmin_twem" : "admin_twem",
+      allowedStoreCodes: ["*"],
+      storeCode: "",
+      pinStatus: "active"
+    });
+  });
+
+  const managerPeople = hydratedPeople.filter((person) => {
+    if (!person || coreNames.includes(person.name)) {
+      return false;
+    }
+    if (!person.storeCode || !storesByCode.has(person.storeCode)) {
+      return false;
+    }
+    const role = String(person.role || "").toLowerCase();
+    return role === "manager" || role === "magasin";
+  }).map((person) => {
+    const store = storesByCode.get(person.storeCode);
+    return hydrateAccessProfile({
+      ...person,
+      role: "magasin",
+      name: person.name || store?.manager || "",
+      allowedStoreCodes: [person.storeCode],
+      pinStatus: person.pinStatus || "active"
+    });
+  });
+
+  const byStore = new Map();
+  managerPeople.forEach((person) => {
+    const key = `${person.storeCode}|${normalizeImportCell(person.email).toLowerCase()}|${normalizeImportCell(person.name).toLowerCase()}`;
+    if (!byStore.has(key)) {
+      byStore.set(key, person);
+    }
+  });
+
+  return mergePeopleWithPinFallback([
+    ...coreTwem,
+    ...[...byStore.values()]
+  ]);
+}
+
+function hasImportedStoreSet(stores = []) {
+  return Array.isArray(stores) && stores.length > 20;
+}
+
+function cleanImportHistory(history = []) {
+  if (!Array.isArray(history)) {
+    return [];
+  }
+  return history.filter((item) => {
+    const label = normalizeImportCell(item?.label).toLowerCase();
+    const detail = normalizeImportCell(item?.detail).toLowerCase();
+    const isOldGlobalImport = label.includes("import magasins") && detail.includes("global");
+    return !isOldGlobalImport;
+  });
+}
+
 function isSupAdmin(user = currentUser()) {
   return Boolean(user && user.role === "supadmin_twem" && user.name === "Valou");
 }
@@ -5197,17 +5280,45 @@ function render() {
   renderPinGate();
   renderAuthState();
   renderAdminTabs();
-  renderSummary();
-  renderStores();
-  renderActivities();
-  renderAutomations();
-  renderPeopleList();
-  renderRoleList();
-  renderImportExportHistory();
-  renderPinAccessList();
-  renderToolList();
-  renderVisibilityEditor();
-  renderVisibilityOverrides();
+  const activePanel = panelForTab(state.activeAdminTab);
+  if (activePanel === "dashboard") {
+    renderSummary();
+    renderStores();
+    renderActivities();
+    applyReadOnlyRules();
+    return;
+  }
+  if (activePanel === "contacts") {
+    renderPeopleList();
+    renderRoleList();
+    return;
+  }
+  if (activePanel === "reports") {
+    renderStores();
+    renderActivities();
+    return;
+  }
+  if (activePanel === "automations") {
+    renderAutomations();
+    return;
+  }
+  if (activePanel === "import-export") {
+    renderImportExportHistory();
+    return;
+  }
+  if (activePanel === "pin-access") {
+    renderPinAccessList();
+    return;
+  }
+  if (activePanel === "tools") {
+    renderToolList();
+    return;
+  }
+  if (activePanel === "visibility") {
+    renderVisibilityEditor();
+    renderVisibilityOverrides();
+    return;
+  }
   applyReadOnlyRules();
 }
 
@@ -6878,8 +6989,12 @@ async function init() {
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";
-  state.importExportHistory = stored.importExportHistory || [];
+  state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
   document.documentElement.lang = state.language;
+
+  if (hasImportedStoreSet(state.stores)) {
+    state.people = cleanPeopleForImportedStores(state.people, state.stores);
+  }
 
   if (presentationBypassUsers.length) {
     state.activeUserName = state.people.find((person) => person.name === "Valou")?.name
