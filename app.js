@@ -769,6 +769,7 @@ const importInput = document.querySelector("#importInput");
 const reportButton = document.querySelector("#reportButton");
 const tabImportButton = document.querySelector("#tabImportButton");
 const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
+const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButton");
 const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
 const tabExportStoresXlsxButton = document.querySelector("#tabExportStoresXlsxButton");
@@ -5146,34 +5147,61 @@ async function syncAllRemoteState() {
     return;
   }
 
-  for (let index = 0; index < state.people.length; index += 1) {
-    await paceRemoteSync(index, 10, 500);
-    const person = state.people[index];
-    await syncPersonToRemote(person);
-  }
-
-  for (let index = 0; index < state.stores.length; index += 1) {
-    await paceRemoteSync(index, 8, 700);
-    const store = state.stores[index];
-    await syncStoreToRemote(store);
-  }
-
+  await syncPeopleRemoteState();
+  await syncStoresRemoteState();
   await syncSettingsToRemote();
 
   if (supabaseClient) {
     return;
   }
 
-  if (hasAppwriteDataConfig) {
-    for (let index = 0; index < state.activities.length; index += 1) {
-      await paceRemoteSync(index, 12, 350);
-      const activity = state.activities[index];
-      await upsertAppwriteDocument(
-        appwriteActivitiesCollectionId,
-        safeDocumentId("activity", activity.id || `${activity.storeName}-${activity.createdAt}`),
-        buildAppwriteActivityDocument(activity)
-      );
-    }
+  await syncActivitiesRemoteState();
+}
+
+async function syncPeopleRemoteState(options = {}) {
+  const {
+    delayMs = 1200,
+    every = 1
+  } = options;
+
+  for (let index = 0; index < state.people.length; index += 1) {
+    await paceRemoteSync(index, every, delayMs);
+    const person = state.people[index];
+    await syncPersonToRemote(person);
+  }
+}
+
+async function syncStoresRemoteState(options = {}) {
+  const {
+    delayMs = 1500,
+    every = 1
+  } = options;
+
+  for (let index = 0; index < state.stores.length; index += 1) {
+    await paceRemoteSync(index, every, delayMs);
+    const store = state.stores[index];
+    await syncStoreToRemote(store);
+  }
+}
+
+async function syncActivitiesRemoteState(options = {}) {
+  const {
+    delayMs = 900,
+    every = 1
+  } = options;
+
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
+
+  for (let index = 0; index < state.activities.length; index += 1) {
+    await paceRemoteSync(index, every, delayMs);
+    const activity = state.activities[index];
+    await upsertAppwriteDocument(
+      appwriteActivitiesCollectionId,
+      safeDocumentId("activity", activity.id || `${activity.storeName}-${activity.createdAt}`),
+      buildAppwriteActivityDocument(activity)
+    );
   }
 }
 
@@ -5239,13 +5267,22 @@ function isMissingAppwriteDatabaseError(error) {
   );
 }
 
-async function syncImportedStateIfPossible() {
+async function syncImportedStateIfPossible(mode = "full") {
   if (!hasRemoteData()) {
     return { synced: false, skipped: true };
   }
 
   try {
-    await syncAllRemoteState();
+    if (mode === "stores") {
+      await syncStoresRemoteState({ delayMs: 1800, every: 1 });
+      await syncSettingsToRemote();
+    } else if (mode === "telephony") {
+      await syncStoresRemoteState({ delayMs: 1800, every: 1 });
+    } else if (mode === "extensions") {
+      await syncSettingsToRemote();
+    } else {
+      await syncAllRemoteState();
+    }
     await loadRemoteState();
     return { synced: true, skipped: false };
   } catch (error) {
@@ -5522,47 +5559,6 @@ function readWorkbookRows(file, arrayBuffer) {
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   return window.XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-}
-
-function readStoresWorkbookRows(arrayBuffer) {
-  if (!xlsxAvailable()) {
-    throw new Error("Bibliotheque XLSX indisponible.");
-  }
-  const workbook = window.XLSX.read(arrayBuffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  const secondSheetName = workbook.SheetNames[1];
-  const firstSheet = workbook.Sheets[firstSheetName];
-  const firstRows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
-
-  if (!secondSheetName) {
-    return firstRows;
-  }
-
-  const secondSheet = workbook.Sheets[secondSheetName];
-  const secondRows = window.XLSX.utils.sheet_to_json(secondSheet, { defval: "" });
-  if (!Array.isArray(secondRows) || !secondRows.length) {
-    return firstRows;
-  }
-
-  const normalizeStoreKey = (value) => normalizeImportCell(value).replace(/\.0$/, "");
-  const telephonyByStore = new Map();
-
-  secondRows.forEach((row) => {
-    const key = normalizeStoreKey(row["Store NR"] || row.StoreNR || row.store_nr || row.store_nr_);
-    if (!key) {
-      return;
-    }
-    telephonyByStore.set(key, row);
-  });
-
-  return firstRows.map((row) => {
-    const key = normalizeStoreKey(row["Store NR"] || row.StoreNR || row.store_nr || row.store_nr_);
-    const telephonyRow = telephonyByStore.get(key) || {};
-    return {
-      ...row,
-      ...telephonyRow
-    };
-  });
 }
 
 function readExtensionWorkbookRows(arrayBuffer) {
@@ -5863,6 +5859,61 @@ function freshImportedSteps() {
   ];
 }
 
+function importTelephonyRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error("Aucune ligne telephonie exploitable.");
+  }
+
+  const storesByNumber = new Map();
+  state.stores.forEach((store) => {
+    storesByNumber.set(normalizeImportCell(store.shopNumber).replace(/\.0$/, ""), store);
+  });
+
+  let matchedCount = 0;
+  rows.forEach((rawRow) => {
+    const row = normalizeImportRow(rawRow);
+    const shopNumber = normalizeImportCell(readImportValue(row, ["store_nr", "shopnumber", "store_number", "store_nr_"], "")).replace(/\.0$/, "");
+    if (!shopNumber) {
+      return;
+    }
+    const store = storesByNumber.get(shopNumber);
+    if (!store) {
+      return;
+    }
+    matchedCount += 1;
+    store.status = "planned";
+    store.health = "";
+    store.steps = freshImportedSteps();
+    store.updatedAt = new Date().toISOString();
+
+    store.licenseCount = toImportNumber(readImportValue(row, ["license", "_license", "license_count", "nb_license", "nb_licence"], store.licenseCount || 0));
+    store.fixCount = toImportNumber(readImportValue(row, ["fix", "_fix", "nb_fix"], store.fixCount || 0));
+    store.mobileCount = toImportNumber(readImportValue(row, ["mobile", "_mobile", "nb_mobile"], store.mobileCount || 0));
+    store.callButtonCount = toImportNumber(readImportValue(row, ["call_button", "_call_button", "nb_call_button"], store.callButtonCount || 0));
+    store.panicCount = toImportNumber(readImportValue(row, ["panic_button", "_panic_button", "nb_panic_button"], store.panicCount || 0));
+
+    const workflow = ensureStoreWorkflowData(store);
+    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date"], workflow.currentPhoneDate || ""));
+    workflow.destinyInstallDate = "";
+    workflow.collectDate = "";
+    workflow.itValidationDate = "";
+    workflow.previsitDate = "";
+    workflow.transferDate = "";
+    workflow.destinyInstallDone = "Non";
+    workflow.extensionRequestStatus = "A envoyer";
+    workflow.extensionConfigStatus = "En attente";
+    workflow.networkConfigConfirmed = false;
+    workflow.vlan22Status = normalizeImportCell(readImportValue(row, ["configuration_vlan_22"], workflow.vlan22Status || "A relancer"));
+    workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
+    workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
+    workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
+  });
+
+  if (!matchedCount) {
+    throw new Error("Aucun Store NR du fichier telephonie ne correspond aux magasins deja importes.");
+  }
+}
+
 function importStoresRows(rows) {
   if (!Array.isArray(rows) || !rows.length) {
     throw new Error("Aucune ligne magasin exploitable.");
@@ -6003,16 +6054,37 @@ function handleImportInputChange(event) {
         recordImportExportHistory("import", "Import extensions", file.name);
         saveState();
         render();
+      } else if (state.importMode === "telephony") {
+        if (fileName.endsWith(".json")) {
+          const payload = JSON.parse(String(reader.result));
+          const rows = Array.isArray(payload) ? payload : (payload.telephony || payload.rows || []);
+          importTelephonyRows(rows);
+        } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
+          importTelephonyRows(readWorkbookRows(file, reader.result));
+        } else if (fileName.endsWith(".csv")) {
+          importTelephonyRows(parseDelimitedText(reader.result));
+        } else {
+          throw new Error("Pour la telephonie, utilise XLS/XLSX, CSV ou JSON.");
+        }
+        saveState();
+        render();
+        const syncResult = await syncImportedStateIfPossible("telephony");
+        recordImportExportHistory("import", "Import telephonie", file.name);
+        saveState();
+        render();
+        window.alert(syncResult.missingDatabase
+          ? "Import telephonie termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
+          : "Import telephonie termine.");
       } else if (fileName.endsWith(".json")) {
         const payload = JSON.parse(String(reader.result));
         await importJsonData(payload);
         recordImportExportHistory("import", "Import magasins / donnees", file.name);
         window.alert(t("importDone"));
       } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
-        importStoresRows(readStoresWorkbookRows(reader.result));
+        importStoresRows(readWorkbookRows(file, reader.result));
         saveState();
         render();
-        const syncResult = await syncImportedStateIfPossible();
+        const syncResult = await syncImportedStateIfPossible("stores");
         recordImportExportHistory("import", "Import magasins XLS/XLSX", file.name);
         saveState();
         render();
@@ -6023,7 +6095,7 @@ function handleImportInputChange(event) {
         importStoresRows(parseDelimitedText(reader.result));
         saveState();
         render();
-        const syncResult = await syncImportedStateIfPossible();
+        const syncResult = await syncImportedStateIfPossible("stores");
         recordImportExportHistory("import", "Import magasins CSV", file.name);
         saveState();
         render();
@@ -7100,6 +7172,7 @@ importInput.addEventListener("change", handleImportInputChange);
 reportButton.addEventListener("click", handleReportButtonClick);
 tabImportButton?.addEventListener("click", handleImportButtonClick);
 tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
+tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telephony"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", exportJsonData);
 tabExportStoresXlsxButton?.addEventListener("click", exportStoresXlsx);
