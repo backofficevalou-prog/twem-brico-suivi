@@ -2366,7 +2366,7 @@ function buildAppointmentsEditor(store) {
     : '<div class="empty-state">Aucun rendez-vous pour ce magasin.</div>';
 
   return `
-    <article class="appointments-card" data-access-zone="appointments">
+    <article class="appointments-card full-span-card" data-access-zone="appointments">
       <h3>Rendez-vous</h3>
       <p>Plusieurs rendez-vous possibles par magasin.</p>
       <div class="appointments-split">
