@@ -3701,8 +3701,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
     const isExpanded = state.expandedStoreIds.has(store.id);
     const row = document.createElement("tr");
     if (mode === "stores") {
-      row.className = "stores-summary-row";
-      const addressBits = [store.address, store.city].filter(Boolean).join(" - ") || "-";
+      const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
       const poBits = [
         store.poLicences ? `Licence ${store.poLicences}` : null,
         store.poPm ? `PM ${store.poPm}` : null
@@ -3724,14 +3723,16 @@ function renderStoreOverviewRows(stores, mode = "stores") {
           ${escapeHtml(store.shopType || "-")}
           <div class="cell-note">${escapeHtml(poBits)}</div>
         </td>
-        <td>${escapeHtml(store.manager || "-")}</td>
-        <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
+        <td>
+          <strong>${escapeHtml(store.manager || "-")}</strong>
+          <div class="cell-note">${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</div>
+        </td>
+        <td>&nbsp;</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
         <td>${escapeHtml(nextActionForStore(store))}</td>
         <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button></td>
       `;
     } else {
-      row.className = "configuration-summary-row";
       row.innerHTML = `
         <td>${escapeHtml(store.code)}</td>
         <td><strong>${escapeHtml(store.name)}</strong></td>
@@ -4277,7 +4278,7 @@ function renderStores() {
     case "stores":
     default:
       projectTable?.classList.add("compact-rows-table");
-      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
       renderStoreOverviewRows(stores, "stores");
   }
 }
