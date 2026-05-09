@@ -3699,37 +3699,49 @@ function renderStoreOverviewRows(stores, mode = "stores") {
   projectTableBody.innerHTML = "";
   stores.forEach((store) => {
     const isExpanded = state.expandedStoreIds.has(store.id);
-    const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
-    const poBits = [
-      store.poLicences ? `Licence ${store.poLicences}` : null,
-      store.poHpDesk ? `HpDesk ${store.poHpDesk}` : null,
-      store.poPm ? `PM ${store.poPm}` : null,
-      store.poRentingHw ? `Renting ${store.poRentingHw}` : null
-    ].filter(Boolean).join(" - ") || "-";
     const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>
-        <strong>${escapeHtml(store.code)}</strong>
-        <div class="cell-note">${escapeHtml(store.shopSize || store.shopType2 || "-")}</div>
-      </td>
-      <td>
-        <strong>${escapeHtml(store.name)}</strong>
-        <div class="cell-note">${escapeHtml(addressBits)}</div>
-      </td>
-      <td>
-        ${escapeHtml(store.city || "-")}
-        <div class="cell-note">${escapeHtml(store.country || "-")}</div>
-      </td>
-      <td>
-        ${escapeHtml(store.shopType || "-")}
-        <div class="cell-note">${escapeHtml(poBits)}</div>
-      </td>
-      <td>${escapeHtml(store.manager || "-")}</td>
-      <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
-      <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
-      <td>${escapeHtml(nextActionForStore(store))}</td>
-      <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer la fiche" : "Voir la fiche"}</button></td>
-    `;
+    if (mode === "stores") {
+      const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
+      const poBits = [
+        store.poLicences ? `Licence ${store.poLicences}` : null,
+        store.poPm ? `PM ${store.poPm}` : null
+      ].filter(Boolean).join(" - ") || "-";
+      row.innerHTML = `
+        <td>
+          <strong>${escapeHtml(store.code)}</strong>
+          <div class="cell-note">${escapeHtml(store.shopSize || store.shopType2 || "-")}</div>
+        </td>
+        <td>
+          <strong>${escapeHtml(store.name)}</strong>
+          <div class="cell-note">${escapeHtml(addressBits)}</div>
+        </td>
+        <td>
+          ${escapeHtml(store.city || "-")}
+          <div class="cell-note">${escapeHtml(store.country || "-")}</div>
+        </td>
+        <td>
+          ${escapeHtml(store.shopType || "-")}
+          <div class="cell-note">${escapeHtml(poBits)}</div>
+        </td>
+        <td>${escapeHtml(store.manager || "-")}</td>
+        <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
+        <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
+        <td>${escapeHtml(nextActionForStore(store))}</td>
+        <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button></td>
+      `;
+    } else {
+      row.innerHTML = `
+        <td>${escapeHtml(store.code)}</td>
+        <td><strong>${escapeHtml(store.name)}</strong></td>
+        <td>${escapeHtml(store.city || "-")}</td>
+        <td>${escapeHtml(store.shopType || "-")}</td>
+        <td>${escapeHtml(store.manager || "-")}</td>
+        <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
+        <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
+        <td>${escapeHtml(nextActionForStore(store))}</td>
+        <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button></td>
+      `;
+    }
     projectTableBody.append(row);
 
     if (isExpanded) {
