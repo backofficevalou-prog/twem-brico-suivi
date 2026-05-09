@@ -3702,10 +3702,14 @@ function renderStoreOverviewRows(stores, mode = "stores") {
     const row = document.createElement("tr");
     if (mode === "stores") {
       const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
+      const typeAndLicence = [
+        store.shopType || "-",
+        store.poLicences ? `Licence ${store.poLicences}` : null
+      ].filter(Boolean).join("\n");
       const poBits = [
-        store.poLicences ? `Licence ${store.poLicences}` : null,
-        store.poPm ? `PM ${store.poPm}` : null
-      ].filter(Boolean).join(" - ") || "-";
+        store.poHpDesk ? `PO HpDesk ${store.poHpDesk}` : null,
+        store.poPm ? `PO PM ${store.poPm}` : null
+      ].filter(Boolean).join("\n") || "-";
       row.innerHTML = `
         <td>
           <strong>${escapeHtml(store.code)}</strong>
@@ -3716,12 +3720,10 @@ function renderStoreOverviewRows(stores, mode = "stores") {
           <div class="cell-note">${escapeHtml(addressBits)}</div>
         </td>
         <td>
-          ${escapeHtml(store.city || "-")}
-          <div class="cell-note">${escapeHtml(store.country || "-")}</div>
+          ${typeAndLicence.split("\n").map((line, index) => index === 0 ? escapeHtml(line) : `<div class="cell-note">${escapeHtml(line)}</div>`).join("")}
         </td>
         <td>
-          ${escapeHtml(store.shopType || "-")}
-          <div class="cell-note">${escapeHtml(poBits)}</div>
+          ${poBits.split("\n").map((line, index) => index === 0 ? escapeHtml(line) : `<div class="cell-note">${escapeHtml(line)}</div>`).join("")}
         </td>
         <td>
           <strong>${escapeHtml(store.manager || "-")}</strong>
@@ -4275,13 +4277,13 @@ function renderStores() {
       setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
       renderStoreOverviewRows(stores, "configuration");
       return;
-    case "stores":
-    default:
-      projectTable?.classList.add("compact-rows-table");
-      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
-      renderStoreOverviewRows(stores, "stores");
+      case "stores":
+      default:
+        projectTable?.classList.add("compact-rows-table");
+        setMainTableHeaders(["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
+        renderStoreOverviewRows(stores, "stores");
+    }
   }
-}
 
 function renderActivities() {
   activityList.innerHTML = "";
