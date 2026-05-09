@@ -3494,200 +3494,6 @@ function buildStoreSideSummary(store) {
   `;
 }
 
-function buildStoreSummaryStrip(store) {
-  const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
-  const poBits = [
-    store.poLicences ? `Licence ${store.poLicences}` : null,
-    store.poHpDesk ? `HpDesk ${store.poHpDesk}` : null,
-    store.poPm ? `PM ${store.poPm}` : null,
-    store.poRentingHw ? `Renting ${store.poRentingHw}` : null
-  ].filter(Boolean);
-
-  return `
-    <article class="editor-card full-span-card store-summary-strip section-anchor" id="section-overview">
-      <div class="store-summary-cell">
-        <span class="mini-label">Code</span>
-        <strong>${escapeHtml(store.shopNumber || store.code)}</strong>
-      </div>
-      <div class="store-summary-cell">
-        <span class="mini-label">Magasin</span>
-        <strong>${escapeHtml(store.name)}</strong>
-      </div>
-      <div class="store-summary-cell">
-        <span class="mini-label">Ville</span>
-        <strong>${escapeHtml(store.city || "-")}</strong>
-      </div>
-      <div class="store-summary-cell">
-        <span class="mini-label">Type</span>
-        <strong>${escapeHtml(store.shopType || "-")}</strong>
-      </div>
-      <div class="store-summary-cell">
-        <span class="mini-label">Responsable</span>
-        <strong>${escapeHtml(store.manager || "-")}</strong>
-      </div>
-      <div class="store-summary-cell">
-        <span class="mini-label">Telephone</span>
-        <strong>${escapeHtml(store.phone || "-")}</strong>
-      </div>
-      <div class="store-summary-cell store-summary-wide">
-        <span class="mini-label">Adresse</span>
-        <strong>${escapeHtml(addressBits)}</strong>
-      </div>
-      <div class="store-summary-cell store-summary-wide">
-        <span class="mini-label">PO / commandes</span>
-        <strong>${escapeHtml(poBits.join(" - ") || "-")}</strong>
-      </div>
-      <div class="store-summary-cell store-summary-status">
-        <span class="mini-label">Statut global</span>
-        <div class="store-summary-status-body">
-          ${renderProgressCircle(store)}
-          <div class="cell-stack">
-            <span class="${badgeClass(store.status)}">${statusLabel(store.status)}</span>
-            <span class="cell-note">${escapeHtml(store.health || "Aucun probleme remonte")}</span>
-          </div>
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-function buildStoreIntervenantsWide(store, manager, installer, electrician) {
-  return `
-    <article class="editor-card full-span-card intervenants-wide-card">
-      <h3>Intervenants</h3>
-      <p>Vue projet sur toute la largeur avec les differents intervenants du magasin.</p>
-      ${buildPrimaryIntervenantsBoard(store, manager, installer, electrician)}
-      ${buildExtraActorsBoard(store)}
-      <p class="intervenants-help">Ajout et modification des intervenants dans l onglet Contacts.</p>
-    </article>
-  `;
-}
-
-function buildAppointmentsSplitCard(store) {
-  const appointments = sortedAppointments(store);
-  const rows = appointments.length
-    ? appointments.map((appointment) => `
-        <div class="journal-row">
-          <div>
-            <strong>${escapeHtml(formatDateTime(appointment.datetime))}</strong>
-            <div class="cell-note">${escapeHtml(peopleLabel(appointment.people))}</div>
-          </div>
-          <div class="journal-row-side">
-            <span class="${badgeClass(appointment.status)}">${escapeHtml(appointment.status)}</span>
-            <span class="cell-note">${escapeHtml(appointment.note || "-")}</span>
-          </div>
-        </div>
-      `).join("")
-    : '<div class="empty-state">Aucun rendez-vous pris pour ce magasin.</div>';
-
-  return `
-    <div class="editor-grid section-anchor" id="section-appointments">
-      <article class="appointments-card" data-access-zone="appointments">
-        <h3>Prise de rendez-vous</h3>
-        <p>Ajoute ici un nouveau rendez-vous pour ce magasin.</p>
-        <div class="two-col">
-          <label>
-            <span>Nouveau rendez-vous</span>
-            <input type="datetime-local" name="new_appointment_datetime">
-          </label>
-          <label>
-            <span>Statut</span>
-            <select name="new_appointment_status">
-              ${renderOptions(appointmentStatusOptions, "Propose")}
-            </select>
-          </label>
-        </div>
-        <div class="two-col">
-          <label>
-            <span>Personnes concernees</span>
-            <select name="new_appointment_people" class="multi-select" multiple>
-              ${renderStorePeopleOptions(store, [])}
-            </select>
-          </label>
-          <label>
-            <span>Note rendez-vous</span>
-            <input type="text" name="new_appointment_note" placeholder="Ex: acces reserve prevu">
-          </label>
-        </div>
-      </article>
-      <article class="editor-card" data-access-zone="appointments">
-        <h3>Rendez-vous pris</h3>
-        <p>Rendez-vous deja programmes pour ce magasin.</p>
-        <div class="journal-stack">${rows}</div>
-      </article>
-    </div>
-  `;
-}
-
-function buildSavSplitCard(store) {
-  const storeTickets = ticketsForStore(store.id)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const requesterName = currentUser()?.name || state.activeUserName || store.manager || "-";
-  const activeTickets = storeTickets.filter((ticket) => ticket.status !== "closed");
-  const activeRows = activeTickets.length
-    ? activeTickets.map((ticket) => `
-        <div class="journal-row">
-          <div>
-            <strong>${escapeHtml(ticket.concern || "Sans objet")}</strong>
-            <div class="cell-note">${escapeHtml(ticket.requesterName || "-")} - ${escapeHtml(formatDateTime(ticket.createdAt))}</div>
-          </div>
-          <div class="journal-row-side">
-            <span class="${ticketBadgeClass(ticket.status)}">${escapeHtml(ticketStatusLabel(ticket.status))}</span>
-            <span class="cell-note">${escapeHtml(ticket.targetService || "-")}</span>
-          </div>
-        </div>
-      `).join("")
-    : '<div class="empty-state">Aucun SAV ouvert ou en cours.</div>';
-
-  return `
-    <div class="editor-grid section-anchor" id="section-sav">
-      <article class="editor-card" data-access-zone="sav_ticket">
-        <h3>Introduire un SAV</h3>
-        <p>Tout acteur du magasin peut introduire une demande de suivi.</p>
-        <div class="three-col sav-request-grid">
-          <label>
-            <span>N de magasin</span>
-            <input type="text" value="${escapeHtml(store.code)}" readonly>
-          </label>
-          <label>
-            <span>Nom du magasin</span>
-            <input type="text" value="${escapeHtml(store.name)}" readonly>
-          </label>
-          <label>
-            <span>Demandeur</span>
-            <input type="text" value="${escapeHtml(requesterName)}" readonly>
-          </label>
-        </div>
-        <div class="two-col">
-          <label>
-            <span>Service a mobiliser</span>
-            <select name="new_ticket_service">
-              ${renderOptions(["TWEM", "Destiny", "IT", "Infra", "Magasin", "Autre"], "Destiny")}
-            </select>
-          </label>
-          <label>
-            <span>Ce que ca concerne</span>
-            <input type="text" name="new_ticket_concern" placeholder="Ex: poste caisse, GSM, transfert, VLAN, accueil">
-          </label>
-        </div>
-        <label>
-          <span>Note explicative libre</span>
-          <textarea name="new_ticket_note" rows="4" placeholder="Decris le probleme, le besoin ou le contexte de la demande SAV"></textarea>
-        </label>
-        <div class="editor-actions sav-request-actions">
-          <span class="validation-text" data-sav-feedback="${store.id}"></span>
-          <button type="button" data-sav-create="${store.id}">Confirmer / envoyer</button>
-        </div>
-      </article>
-      <article class="editor-card" data-access-zone="sav_ticket">
-        <h3>SAV ouverts / en cours</h3>
-        <p>Les plus recents sont affiches en premier.</p>
-        <div class="journal-stack">${activeRows}</div>
-      </article>
-    </div>
-  `;
-}
-
 function buildStoreHero(store, manager, installer, electrician, isExpanded, mode = "stores") {
   return `
     <div class="store-focus-layout expanded-store-hero">
@@ -3713,9 +3519,6 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
 }
 
 function buildStoreDetailForm(store, mode = "stores") {
-  const manager = store.parties.find((party) => party.role === "magasin") || { status: "planned", note: "A lancer" };
-  const installer = store.parties.find((party) => party.role === "telephonie") || { status: "planned", note: "A planifier" };
-  const electrician = store.parties.find((party) => party.role === "electricien") || { status: "planned", note: "A planifier" };
   const detailContent = mode === "configuration"
     ? `
         ${buildStoreSectionNav("configuration")}
@@ -3733,23 +3536,13 @@ function buildStoreDetailForm(store, mode = "stores") {
     : `
         ${buildStoreSectionNav("stores")}
 
-        ${buildStoreSummaryStrip(store)}
-
-        <div class="editor-grid">
-          ${buildStoreIntervenantsWide(store, manager, installer, electrician)}
-        </div>
-
-        ${buildAppointmentsSplitCard(store)}
-
-        ${buildSavSplitCard(store)}
-
-        ${buildConfigurationSummaryCard(store)}
-
         <div class="editor-grid section-anchor" id="section-quantities">
           ${buildStorePilotSkeleton(store)}
         </div>
 
-        <div class="editor-grid section-anchor" id="section-equipment">
+        ${buildConfigurationSummaryCard(store)}
+
+        <div class="editor-grid section-anchor" id="section-overview">
           ${buildStorePostsSkeleton(store)}
         </div>
 
@@ -3763,6 +3556,14 @@ function buildStoreDetailForm(store, mode = "stores") {
             <p>Chronologie des rendez-vous programmes pour ce magasin.</p>
             ${buildTimeline(store)}
           </article>
+        </div>
+
+        <div class="editor-grid section-anchor" id="section-appointments">
+          ${buildAppointmentsEditor(store)}
+        </div>
+
+        <div class="editor-grid section-anchor" id="section-sav">
+          ${buildSavCard(store)}
         </div>
 
         <div class="editor-grid">
