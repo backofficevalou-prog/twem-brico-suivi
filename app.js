@@ -731,6 +731,7 @@ const state = {
   importMode: "stores",
   importExportHistory: [],
   tickets: [],
+  roleViewUnlocked: false,
   filters: {
     search: "",
     status: "all",
@@ -746,7 +747,7 @@ const state = {
 const presentationBypassUsers = ["Valou", "Emir"];
 const magicLinksEnabled = false;
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -1415,14 +1416,14 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
-    supmanager: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    magasin: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    it: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    infra: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
+    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"]
   };
   return map[role] || ["dashboard"];
 }
@@ -1459,6 +1460,7 @@ function tabTitle(tab) {
     dashboard: "Dashboard",
     timeline: isNl ? "Tijdlijn / Planning" : "Timeline / Planning",
     stores: isNl ? "Winkels" : "Magasins",
+    configuration: isNl ? "Winkelconfiguratie" : "Configuration magasin",
     sav: "SAV / Tickets",
     extensions: "Extensions",
     contacts: isNl ? "Contacten" : "Contacts",
@@ -3644,7 +3646,7 @@ function renderTimelineRows(stores) {
   projectTableBody.querySelectorAll("[data-timeline-open]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-timeline-open"));
-      state.activeAdminTab = "stores";
+      state.activeAdminTab = "configuration";
       state.expandedStoreIds = new Set([storeId]);
       render();
     });
@@ -3668,8 +3670,64 @@ function renderDashboardRows(stores) {
   projectTableBody.querySelectorAll("[data-dashboard-open]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-dashboard-open"));
-      state.activeAdminTab = "stores";
+      state.activeAdminTab = "configuration";
       state.expandedStoreIds = new Set([storeId]);
+      render();
+    });
+  });
+}
+
+function preparationStatusForStore(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  if (workflow.charlesRouxStatus === "OK" || workflow.vlan22Activated === "Oui" || workflow.mobileCheckStatus === "OK") {
+    return "Prepare";
+  }
+  return "A lancer";
+}
+
+function configurationStatusForStore(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  if (workflow.networkConfigConfirmed) {
+    return "Confirmee";
+  }
+  if ((workflow.extensionConfigStatus || "").toLowerCase().includes("attente")) {
+    return "En attente";
+  }
+  return "A lancer";
+}
+
+function telephonySummaryForStore(store) {
+  return [
+    `${store.fixCount || 0} fixes`,
+    `${store.mobileCount || 0} gsm`,
+    `${store.callButtonCount || 0} call`,
+    `${store.panicCount || 0} panic`
+  ].join(" / ");
+}
+
+function renderStoreSummaryRows(stores) {
+  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Preparation", "Configuration", "Telephonie", "SAV", "Action"]);
+  renderCompactStoreRows(stores, (store) => {
+    const openTickets = state.tickets.filter((ticket) => ticket.storeId === store.id && ticket.status !== "closed").length;
+    return [
+      escapeHtml(store.code),
+      `<strong>${escapeHtml(store.name)}</strong>`,
+      escapeHtml(store.city),
+      escapeHtml(store.shopType || "-"),
+      `<span class="${badgeClass(preparationStatusForStore(store) === "Prepare" ? "done" : "planned")}">${escapeHtml(preparationStatusForStore(store))}</span>`,
+      `<span class="${badgeClass(configurationStatusForStore(store) === "Confirmee" ? "done" : configurationStatusForStore(store) === "En attente" ? "in_progress" : "planned")}">${escapeHtml(configurationStatusForStore(store))}</span>`,
+      escapeHtml(telephonySummaryForStore(store)),
+      openTickets ? `<span class="badge badge-progress">${openTickets} ouvert(s)</span>` : '<span class="badge badge-done">0</span>',
+      `<button type="button" class="mini-button" data-store-open-config="${store.id}">Ouvrir</button>`
+    ];
+  });
+
+  projectTableBody.querySelectorAll("[data-store-open-config]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const storeId = Number(button.getAttribute("data-store-open-config"));
+      state.activeAdminTab = "configuration";
+      state.expandedStoreIds = new Set([storeId]);
+      saveState();
       render();
     });
   });
@@ -3773,7 +3831,7 @@ function renderSavRows() {
   projectTableBody.querySelectorAll("[data-sav-open-store]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-sav-open-store"));
-      state.activeAdminTab = "stores";
+      state.activeAdminTab = "configuration";
       state.expandedStoreIds = new Set([storeId]);
       saveState();
       render();
@@ -4019,6 +4077,15 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       renderTimelineRows(stores);
       return;
+    case "stores":
+      projectTable?.classList.add("compact-rows-table");
+      renderStoreSummaryRows(stores);
+      return;
+    case "configuration":
+      projectTable?.classList.remove("compact-rows-table");
+      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
+      renderStoreCards(stores);
+      return;
     case "sav":
       projectTable?.classList.add("compact-rows-table");
       renderSavRows(stores);
@@ -4031,19 +4098,19 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       renderDashboardRows(stores);
       return;
-    case "stores":
     default:
-      projectTable?.classList.remove("compact-rows-table");
-      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-      renderStoreCards(stores);
+      projectTable?.classList.add("compact-rows-table");
+      renderDashboardRows(stores);
   }
 }
 
 function renderActivities() {
   activityList.innerHTML = "";
   reportArchiveList.innerHTML = "";
+  const visibleStoreNames = new Set(getRoleScopedStores().map((store) => store.name));
   const now = new Date();
   const items = [...state.activities]
+    .filter((activity) => visibleStoreNames.has(activity.storeName))
     .filter((activity) => isSameLocalDay(new Date(activity.createdAt), now))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 6);
@@ -4071,7 +4138,7 @@ function renderActivities() {
     entries: state.activities
       .filter((activity) => activity.storeName === store.name)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  })).filter((group) => group.entries.length);
+  })).filter((group) => visibleStoreNames.has(group.storeName) && group.entries.length);
 
   if (!groupedByStore.length) {
     reportArchiveList.innerHTML = '<div class="empty-state">Aucun rapport magasin disponible pour le moment.</div>';
@@ -4492,7 +4559,7 @@ function renderAuthState() {
   const sidebarVisible = state.pinValidated && (
     availableTabs.includes("*") || availableTabs.some((tab) => tab !== "dashboard")
   );
-  const debugViewVisible = isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
+  const debugViewVisible = state.roleViewUnlocked || isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
 
   workspaceSidebar.classList.toggle("hidden-panel", !sidebarVisible);
   workspaceShell?.classList.toggle("without-sidebar", !sidebarVisible);
@@ -6837,6 +6904,7 @@ async function handlePinAccessSubmit(event) {
 function handleActiveUserChange(event) {
   state.activeUserName = event.target.value;
   state.pinValidated = true;
+  state.roleViewUnlocked = true;
   ensureValidActiveTab();
   saveState();
   render();
@@ -7197,6 +7265,7 @@ async function init() {
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
+  state.roleViewUnlocked = stored.roleViewUnlocked || false;
   document.documentElement.lang = state.language;
 
   if (hasImportedStoreSet(state.stores)) {
@@ -7210,6 +7279,7 @@ async function init() {
       || state.activeUserName;
     state.pinValidated = true;
     state.activeAdminTab = "dashboard";
+    state.roleViewUnlocked = true;
   }
 
   if (isSupabaseMode && supabaseClient) {
