@@ -3494,130 +3494,6 @@ function buildStoreSideSummary(store) {
   `;
 }
 
-function buildStoreTopSummary(store) {
-  const addressParts = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
-  const poParts = [
-    store.poLicences ? `Licence ${store.poLicences}` : null,
-    store.poHpDesk ? `HpDesk ${store.poHpDesk}` : null,
-    store.poPm ? `PM ${store.poPm}` : null,
-    store.poRentingHw ? `Renting ${store.poRentingHw}` : null
-  ].filter(Boolean);
-
-  return `
-    <article class="editor-card full-span-card store-top-summary section-anchor" id="section-overview">
-      <div class="store-top-summary-cell">
-        <span class="mini-label">Code magasin</span>
-        <strong>${escapeHtml(store.shopNumber || store.code)}</strong>
-      </div>
-      <div class="store-top-summary-cell">
-        <span class="mini-label">Nom</span>
-        <strong>${escapeHtml(store.name)}</strong>
-      </div>
-      <div class="store-top-summary-cell">
-        <span class="mini-label">Type</span>
-        <strong>${escapeHtml(store.shopType || "-")}</strong>
-      </div>
-      <div class="store-top-summary-cell">
-        <span class="mini-label">Responsable</span>
-        <strong>${escapeHtml(store.manager || "-")}</strong>
-      </div>
-      <div class="store-top-summary-cell">
-        <span class="mini-label">Telephone</span>
-        <strong>${escapeHtml(store.phone || "-")}</strong>
-      </div>
-      <div class="store-top-summary-cell store-top-summary-status">
-        <span class="mini-label">Statut global</span>
-        <div class="store-top-status-body">
-          ${renderProgressCircle(store)}
-          <div class="cell-stack">
-            <span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>
-            <span class="cell-note">${escapeHtml(store.health || "Aucun probleme remonte")}</span>
-          </div>
-        </div>
-      </div>
-      <div class="store-top-summary-cell store-top-summary-wide">
-        <span class="mini-label">Adresse</span>
-        <strong>${escapeHtml(addressParts)}</strong>
-      </div>
-      <div class="store-top-summary-cell store-top-summary-wide">
-        <span class="mini-label">PO / commandes</span>
-        <strong>${escapeHtml(poParts.join(" - ") || "-")}</strong>
-      </div>
-    </article>
-  `;
-}
-
-function buildStoreIntervenantsSummary(store, manager, installer, electrician) {
-  return `
-    <article class="editor-card full-span-card store-top-panel">
-      <h3>Intervenants</h3>
-      <p>Vue synthetique des intervenants du magasin.</p>
-      ${buildPrimaryIntervenantsBoard(store, manager, installer, electrician)}
-      ${buildExtraActorsBoard(store)}
-    </article>
-  `;
-}
-
-function buildStoreAppointmentsSummary(store) {
-  const appointments = sortedAppointments(store);
-  const rows = appointments.length
-    ? appointments.map((appointment) => `
-        <div class="compact-journal-row">
-          <div>
-            <strong>${escapeHtml(formatDateTime(appointment.datetime))}</strong>
-            <div class="cell-note">${escapeHtml(peopleLabel(appointment.people))}</div>
-          </div>
-          <span class="${badgeClass(appointment.status)}">${escapeHtml(appointment.status)}</span>
-        </div>
-      `).join("")
-    : '<div class="empty-state">Aucun rendez-vous pris.</div>';
-
-  return `
-    <div class="editor-grid section-anchor" id="section-appointments">
-      <article class="editor-card">
-        <h3>Prise de rendez-vous</h3>
-        <p>Le detail complet reste plus bas dans la fiche.</p>
-        <div class="compact-note-box">Utilise le module detaille de rendez-vous plus bas pour ajouter ou modifier une intervention.</div>
-      </article>
-      <article class="editor-card">
-        <h3>Rendez-vous pris</h3>
-        <p>Vue rapide des rendez-vous deja programmes.</p>
-        <div class="compact-journal-stack">${rows}</div>
-      </article>
-    </div>
-  `;
-}
-
-function buildStoreSavSummary(store) {
-  const storeTickets = ticketsForStore(store.id).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const rows = storeTickets
-    .filter((ticket) => ticket.status !== "closed")
-    .map((ticket) => `
-      <div class="compact-journal-row">
-        <div>
-          <strong>${escapeHtml(ticket.concern || "Sans objet")}</strong>
-          <div class="cell-note">${escapeHtml(ticket.requesterName || "-")} - ${escapeHtml(formatDateTime(ticket.createdAt))}</div>
-        </div>
-        <span class="${ticketBadgeClass(ticket.status)}">${escapeHtml(ticketStatusLabel(ticket.status))}</span>
-      </div>
-    `).join("") || '<div class="empty-state">Aucun SAV ouvert ou en cours.</div>';
-
-  return `
-    <div class="editor-grid section-anchor" id="section-sav">
-      <article class="editor-card">
-        <h3>Introduire un SAV</h3>
-        <p>Le formulaire complet reste plus bas dans la fiche.</p>
-        <div class="compact-note-box">Utilise le module detaille SAV plus bas pour envoyer une nouvelle demande.</div>
-      </article>
-      <article class="editor-card">
-        <h3>SAV ouverts / en cours</h3>
-        <p>Les plus recents sont affiches en premier.</p>
-        <div class="compact-journal-stack">${rows}</div>
-      </article>
-    </div>
-  `;
-}
-
 function buildStoreHero(store, manager, installer, electrician, isExpanded, mode = "stores") {
   return `
     <div class="store-focus-layout expanded-store-hero">
@@ -3643,9 +3519,6 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
 }
 
 function buildStoreDetailForm(store, mode = "stores") {
-  const manager = store.parties.find((party) => party.role === "magasin") || { status: "planned", note: "A lancer" };
-  const installer = store.parties.find((party) => party.role === "telephonie") || { status: "planned", note: "A planifier" };
-  const electrician = store.parties.find((party) => party.role === "electricien") || { status: "planned", note: "A planifier" };
   const detailContent = mode === "configuration"
     ? `
         ${buildStoreSectionNav("configuration")}
@@ -3662,18 +3535,6 @@ function buildStoreDetailForm(store, mode = "stores") {
       `
     : `
         ${buildStoreSectionNav("stores")}
-
-        <div class="editor-grid">
-          ${buildStoreTopSummary(store)}
-        </div>
-
-        <div class="editor-grid">
-          ${buildStoreIntervenantsSummary(store, manager, installer, electrician)}
-        </div>
-
-        ${buildStoreAppointmentsSummary(store)}
-
-        ${buildStoreSavSummary(store)}
 
         <div class="editor-grid section-anchor" id="section-quantities">
           ${buildStorePilotSkeleton(store)}
