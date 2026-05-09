@@ -2396,6 +2396,9 @@ function buildAppointmentsEditor(store) {
               <input type="text" name="new_appointment_note" placeholder="Ex: acces reserve prevu">
             </label>
           </div>
+          <div class="editor-actions sav-request-actions">
+            <button type="submit">Confirmer / envoyer</button>
+          </div>
         </div>
         <aside class="appointments-current-card">
           <h4>Rendez-vous pris</h4>
