@@ -743,7 +743,8 @@ const state = {
   expandedStoreIds: new Set()
 };
 
-const presentationBypassUser = "Valou";
+const presentationBypassUsers = ["Valou", "Emir"];
+const magicLinksEnabled = false;
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
 
@@ -4320,7 +4321,7 @@ function renderConnectionStatus() {
 
 function renderPinGate() {
   const user = currentUser();
-  const bypassActive = Boolean(presentationBypassUser);
+  const bypassActive = presentationBypassUsers.includes(state.activeUserName) || presentationBypassUsers.includes(user?.name || "");
   pinGate?.classList.toggle("hidden-panel", state.pinValidated || bypassActive);
   if (pinFeedback && !state.pinValidated) {
     pinFeedback.textContent = user ? `Dernier profil charge: ${user.name}` : "";
@@ -5023,6 +5024,11 @@ async function syncAllRemoteState() {
 }
 
 async function sendMagicLink(email) {
+  if (!magicLinksEnabled) {
+    window.alert("L envoi de lien magique est desactive pour le moment.");
+    return;
+  }
+
   if (isAppwriteMode) {
     if (!appwriteAccount || !appwriteIdFactory) {
       window.alert("Configure Appwrite pour envoyer un lien magique.");
@@ -5492,6 +5498,27 @@ function normalizeImportCell(value) {
   return String(value).trim();
 }
 
+function preserveCoreTwemPeople() {
+  const source = mergePeopleWithPinFallback(state.people).filter((person) => ["Emir", "Valou"].includes(person.name));
+  return source.map((person) => hydrateAccessProfile({
+    ...person,
+    allowedStoreCodes: ["*"],
+    storeCode: "",
+    email: person.email || `${person.name.toLowerCase()}@twem.be`
+  }));
+}
+
+function languageFromStoreSheet(value) {
+  const normalized = normalizeImportCell(value).toLowerCase();
+  if (normalized === "n" || normalized === "nl" || normalized === "nl/f") {
+    return "nl";
+  }
+  if (normalized.includes("n") && !normalized.includes("f")) {
+    return "nl";
+  }
+  return "fr";
+}
+
 function normalizeImportKey(key) {
   return normalizeImportCell(key)
     .toLowerCase()
@@ -5531,6 +5558,7 @@ function importStoresRows(rows) {
     throw new Error("Aucune ligne magasin exploitable.");
   }
 
+  const importedManagers = [];
   const nextStores = rows.map((rawRow, index) => {
     const row = normalizeImportRow(rawRow);
     const shopNumber = normalizeImportCell(readImportValue(row, ["store_nr", "shopnumber", "store_number", "numero", "store_nr_"], `${index + 1}`));
@@ -5593,11 +5621,45 @@ function importStoresRows(rows) {
     workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
     workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
 
+    const managerEmail = normalizeImportCell(readImportValue(row, ["email"], ""));
+    const managerPhone = normalizeImportCell(readImportValue(row, ["tel", "telephone"], ""));
+    if (manager) {
+      importedManagers.push(hydrateAccessProfile({
+        id: `mgr-${shopNumber || code}`,
+        name: manager,
+        role: "magasin",
+        phone: managerPhone,
+        email: managerEmail,
+        storeCode: code,
+        language: languageFromStoreSheet(readImportValue(row, ["lang"], "")),
+        allowedStoreCodes: [code],
+        pin: generateUniquePin(),
+        pinStatus: "active",
+        pinCreatedAt: new Date().toISOString()
+      }));
+    }
+
     storeDraft.workflowData = workflow;
     return storeDraft;
   });
 
   state.stores = nextStores;
+  state.activities = [];
+  state.tickets = [];
+
+  const coreTwem = preserveCoreTwemPeople();
+  const managersByKey = new Map();
+  importedManagers.forEach((person) => {
+    const key = `${normalizeImportCell(person.email).toLowerCase()}|${normalizeImportCell(person.name).toLowerCase()}|${person.storeCode}`;
+    if (!managersByKey.has(key)) {
+      managersByKey.set(key, person);
+    }
+  });
+  state.people = mergePeopleWithPinFallback([
+    ...coreTwem,
+    ...[...managersByKey.values()]
+  ]);
+  state.activeUserName = state.people.find((person) => person.name === "Valou")?.name || "Valou";
 }
 
 function handleImportInputChange(event) {
@@ -6749,8 +6811,10 @@ async function init() {
   state.importExportHistory = stored.importExportHistory || [];
   document.documentElement.lang = state.language;
 
-  if (presentationBypassUser) {
-    state.activeUserName = presentationBypassUser;
+  if (presentationBypassUsers.length) {
+    state.activeUserName = state.people.find((person) => person.name === "Valou")?.name
+      || state.people.find((person) => person.name === "Emir")?.name
+      || state.activeUserName;
     state.pinValidated = true;
     state.activeAdminTab = "dashboard";
   }
