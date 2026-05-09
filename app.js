@@ -5052,6 +5052,34 @@ function describeAppwriteError(error) {
   return [code, type, message].filter(Boolean).join(" | ");
 }
 
+function isMissingAppwriteDatabaseError(error) {
+  const message = String(error?.message || "");
+  const type = String(error?.type || error?.response?.type || "");
+  const code = Number(error?.code || error?.response?.code || 0);
+  return (
+    code === 404
+    || type.includes("database_not_found")
+    || message.includes("Database with the requested ID")
+  );
+}
+
+async function syncImportedStateIfPossible() {
+  if (!hasRemoteData()) {
+    return { synced: false, skipped: true };
+  }
+
+  try {
+    await syncAllRemoteState();
+    await loadRemoteState();
+    return { synced: true, skipped: false };
+  } catch (error) {
+    if (isMissingAppwriteDatabaseError(error)) {
+      return { synced: false, skipped: false, missingDatabase: true };
+    }
+    throw error;
+  }
+}
+
 async function completeAppwriteMagicSession() {
   if (!appwriteAccount) {
     return;
@@ -5516,24 +5544,26 @@ function handleImportInputChange(event) {
         window.alert(t("importDone"));
       } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
         importStoresRows(readWorkbookRows(file, reader.result));
-        if (hasRemoteData()) {
-          await syncAllRemoteState();
-          await loadRemoteState();
-        }
+        saveState();
+        render();
+        const syncResult = await syncImportedStateIfPossible();
         recordImportExportHistory("import", "Import magasins XLS/XLSX", file.name);
         saveState();
         render();
-        window.alert("Import magasins termine.");
+        window.alert(syncResult.missingDatabase
+          ? "Import magasins termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
+          : "Import magasins termine.");
       } else if (fileName.endsWith(".csv")) {
         importStoresRows(parseDelimitedText(reader.result));
-        if (hasRemoteData()) {
-          await syncAllRemoteState();
-          await loadRemoteState();
-        }
+        saveState();
+        render();
+        const syncResult = await syncImportedStateIfPossible();
         recordImportExportHistory("import", "Import magasins CSV", file.name);
         saveState();
         render();
-        window.alert("Import magasins termine.");
+        window.alert(syncResult.missingDatabase
+          ? "Import magasins termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
+          : "Import magasins termine.");
       } else {
         window.alert("Pour les magasins, utilise XLS/XLSX, CSV ou JSON.");
       }
