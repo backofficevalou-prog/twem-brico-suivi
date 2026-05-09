@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260507d">
+  <link rel="stylesheet" href="styles.css?v=20260509a">
 </head>
 <body>
   <div class="pin-gate" id="pinGate">
@@ -486,9 +486,16 @@
                 <div class="import-export-grid">
                   <article class="import-card">
                     <h4>Importer des magasins</h4>
-                    <p>Injecter un fichier XLS / XLSX / CSV de magasins ou une sauvegarde JSON complete.</p>
+                    <p>Charger la base magasins: identite, manager, adresse, type, facturation.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportStoresButton">Importer magasins</button>
+                    </div>
+                  </article>
+                  <article class="import-card">
+                    <h4>Importer la telephonie</h4>
+                    <p>Charger les quantites et les donnees telephonie par <code>Store NR</code>.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="tabImportTelephonyButton">Importer telephonie</button>
                     </div>
                   </article>
                   <article class="import-card">
@@ -524,7 +531,8 @@
                   <article class="import-card import-help-card">
                     <h4>Format attendu</h4>
                     <ul class="import-help-list">
-                      <li>Magasins: XLS / XLSX ou CSV avec colonnes code, nom, ville, type, responsable...</li>
+                      <li>Magasins: fichier liste magasin avec <code>Store NR</code>, nom, manager, adresse, type, PO...</li>
+                      <li>Telephonie: fichier separe avec <code>Store NR</code>, dates, VLAN, quantites, alarme, reseau mobile...</li>
                       <li>Extensions: XLS / XLSX ou CSV avec categorie, modele, numero, libelle...</li>
                       <li>JSON reste disponible uniquement comme sauvegarde technique</li>
                     </ul>
@@ -571,6 +579,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260507d"></script>
+  <script src="app.js?v=20260509a"></script>
 </body>
 </html>
