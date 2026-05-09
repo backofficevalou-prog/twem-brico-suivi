@@ -1290,6 +1290,25 @@ function canUseRoleSimulation() {
   return isSupAdmin();
 }
 
+function preferredUserFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const rawUser = (params.get("user") || "").trim().toLowerCase();
+  if (!rawUser) {
+    return null;
+  }
+
+  const aliases = {
+    emir: "Emir",
+    valou: "Valou"
+  };
+
+  if (aliases[rawUser]) {
+    return aliases[rawUser];
+  }
+
+  return state.people.find((person) => person.name.toLowerCase() === rawUser)?.name || null;
+}
+
 function normalizeCoreRole(person) {
   if (!person || typeof person !== "object") {
     return person;
@@ -7503,8 +7522,14 @@ async function init() {
     state.people = cleanPeopleForImportedStores(state.people, state.stores);
   }
 
-  if (presentationBypassUsers.length) {
-    state.activeUserName = state.people.find((person) => person.name === "Valou")?.name
+  const queryUserName = preferredUserFromQuery();
+  if (queryUserName) {
+    state.activeUserName = queryUserName;
+    state.pinValidated = presentationBypassUsers.includes(queryUserName);
+    state.activeAdminTab = "dashboard";
+  } else if (presentationBypassUsers.length) {
+    state.activeUserName = state.people.find((person) => person.name === state.activeUserName)?.name
+      || state.people.find((person) => person.name === "Valou")?.name
       || state.people.find((person) => person.name === "Emir")?.name
       || state.activeUserName;
     state.pinValidated = true;
