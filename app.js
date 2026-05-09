@@ -4732,6 +4732,7 @@ function renderAuthState() {
 
 function renderAdminTabs() {
   const user = currentUser();
+  const debugViewVisible = state.roleViewUnlocked || isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
   const canKeepCurrentTab = state.activeAdminTab === "visibility" ? debugViewVisible : canAccessTab(state.activeAdminTab, user);
   if (!canKeepCurrentTab || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
     state.activeAdminTab = "dashboard";
