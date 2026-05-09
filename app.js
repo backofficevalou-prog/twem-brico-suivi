@@ -756,7 +756,7 @@ const state = {
 const presentationBypassUsers = ["Valou", "Emir"];
 const magicLinksEnabled = false;
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -1444,14 +1444,14 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
-    supmanager: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    magasin: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    it: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    infra: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
+    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"]
   };
   return map[role] || ["dashboard"];
 }
