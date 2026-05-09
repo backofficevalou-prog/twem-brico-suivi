@@ -2354,34 +2354,53 @@ function buildAppointmentsEditor(store) {
       `).join("")
     : '<div class="empty-state">Aucun rendez-vous pour ce magasin.</div>';
 
+  const currentAppointments = sortedAppointments(store).length
+    ? sortedAppointments(store).map((appointment) => `
+        <div class="appointment-current-item">
+          <strong>${escapeHtml(formatDateTime(appointment.datetime))}</strong>
+          <span class="${badgeClass(appointment.status)}">${escapeHtml(appointment.status)}</span>
+          <span class="cell-note">${escapeHtml(peopleLabel(appointment.people))}</span>
+          <span class="cell-note">${escapeHtml(appointment.note || "-")}</span>
+        </div>
+      `).join("")
+    : '<div class="empty-state">Aucun rendez-vous pour ce magasin.</div>';
+
   return `
     <article class="appointments-card" data-access-zone="appointments">
       <h3>Rendez-vous</h3>
       <p>Plusieurs rendez-vous possibles par magasin.</p>
-      <div class="appointments-list">${rows}</div>
-      <div class="two-col">
-        <label>
-          <span>Nouveau rendez-vous</span>
-          <input type="datetime-local" name="new_appointment_datetime">
-        </label>
-        <label>
-          <span>Statut</span>
-          <select name="new_appointment_status">
-            ${renderOptions(appointmentStatusOptions, "Propose")}
-          </select>
-        </label>
-      </div>
-      <div class="two-col">
-        <label>
-          <span>Personnes concernees</span>
-          <select name="new_appointment_people" class="multi-select" multiple>
-            ${renderStorePeopleOptions(store, [])}
-          </select>
-        </label>
-        <label>
-          <span>Note rendez-vous</span>
-          <input type="text" name="new_appointment_note" placeholder="Ex: acces reserve prevu">
-        </label>
+      <div class="appointments-split">
+        <div>
+          <div class="appointments-list">${rows}</div>
+          <div class="two-col">
+            <label>
+              <span>Nouveau rendez-vous</span>
+              <input type="datetime-local" name="new_appointment_datetime">
+            </label>
+            <label>
+              <span>Statut</span>
+              <select name="new_appointment_status">
+                ${renderOptions(appointmentStatusOptions, "Propose")}
+              </select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>
+              <span>Personnes concernees</span>
+              <select name="new_appointment_people" class="multi-select" multiple>
+                ${renderStorePeopleOptions(store, [])}
+              </select>
+            </label>
+            <label>
+              <span>Note rendez-vous</span>
+              <input type="text" name="new_appointment_note" placeholder="Ex: acces reserve prevu">
+            </label>
+          </div>
+        </div>
+        <aside class="appointments-current-card">
+          <h4>Rendez-vous pris</h4>
+          <div class="appointments-current-list">${currentAppointments}</div>
+        </aside>
       </div>
     </article>
   `;

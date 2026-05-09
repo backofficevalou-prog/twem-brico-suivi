@@ -906,6 +906,39 @@ button {
   margin-bottom: 12px;
 }
 
+.appointments-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.appointments-current-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fffdf6;
+}
+
+.appointments-current-card h4 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.appointments-current-list {
+  display: grid;
+  gap: 10px;
+}
+
+.appointment-current-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
 .appointment-item {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr 1.2fr auto;
@@ -2291,6 +2324,7 @@ button {
   .editor-grid,
   .editor-fields,
   .two-col,
+  .appointments-split,
   .appointment-item,
   .simple-item-grid,
   .admin-grid,
@@ -2447,11 +2481,13 @@ button {
   .actor-board-title,
   .actor-board-cell,
   .store-side-block,
-  .store-meta-card,
-  .network-row,
-  .appointment-item {
-    padding: 10px;
-  }
+    .store-meta-card,
+    .network-row,
+    .appointments-current-card,
+    .appointment-current-item,
+    .appointment-item {
+      padding: 10px;
+    }
 
   .mini-donut {
     width: 76px;
