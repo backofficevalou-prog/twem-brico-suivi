@@ -252,15 +252,6 @@ const visibilityTabCatalog = [
     ]
   },
   {
-    key: "configuration",
-    label: "Configuration magasin",
-    blocks: [
-      { key: "config_list", label: "Liste configuration", hint: "Acces a la configuration par magasin." },
-      { key: "config_prep", label: "Preparation chantier", hint: "Coordination Destiny, pre-visite et preparation externe." },
-      { key: "config_phone", label: "Configuration telephonie", hint: "Extensions, GSM, alarme, groupes et cascades." }
-    ]
-  },
-  {
     key: "sav",
     label: "SAV / Tickets",
     blocks: [
@@ -740,7 +731,6 @@ const state = {
   importMode: "stores",
   importExportHistory: [],
   tickets: [],
-  roleViewUnlocked: false,
   filters: {
     search: "",
     status: "all",
@@ -756,7 +746,7 @@ const state = {
 const presentationBypassUsers = ["Valou", "Emir"];
 const magicLinksEnabled = false;
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "sav", "extensions"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -851,8 +841,6 @@ const visibilityRoleMeta = document.querySelector("#visibilityRoleMeta");
 const visibilityTabsEditor = document.querySelector("#visibilityTabsEditor");
 const visibilityZonesEditor = document.querySelector("#visibilityZonesEditor");
 const visibilityRoleSummary = document.querySelector("#visibilityRoleSummary");
-const visibilityRoleDirectory = document.querySelector("#visibilityRoleDirectory");
-const resetUserViewButton = document.querySelector("#resetUserViewButton");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -1273,14 +1261,6 @@ function currentUser() {
   return state.people.find((person) => person.name === state.activeUserName) || null;
 }
 
-function preferredTwemViewName() {
-  return state.people.find((person) => person.name === "Valou")?.name
-    || state.people.find((person) => person.name === "Emir")?.name
-    || state.people.find((person) => ["supadmin_twem", "admin_twem"].includes(person.role))?.name
-    || state.activeUserName
-    || "";
-}
-
 function normalizeCoreRole(person) {
   if (!person || typeof person !== "object") {
     return person;
@@ -1435,14 +1415,14 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
-    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"],
+    supmanager: ["dashboard", "timeline", "stores", "sav", "extensions", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    it: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    infra: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"]
   };
   return map[role] || ["dashboard"];
 }
@@ -1479,7 +1459,6 @@ function tabTitle(tab) {
     dashboard: "Dashboard",
     timeline: isNl ? "Tijdlijn / Planning" : "Timeline / Planning",
     stores: isNl ? "Winkels" : "Magasins",
-    configuration: isNl ? "Winkelconfiguratie" : "Configuration magasin",
     sav: "SAV / Tickets",
     extensions: "Extensions",
     contacts: isNl ? "Contacten" : "Contacts",
@@ -1690,7 +1669,7 @@ function summarizeRoleVisibility(role) {
 }
 
 function renderVisibilityEditor() {
-  if (!visibilityRoleSelect || !visibilityTabsEditor || !visibilityZonesEditor || !visibilityRoleSummary || !visibilityRoleDirectory) {
+  if (!visibilityRoleSelect || !visibilityTabsEditor || !visibilityZonesEditor || !visibilityRoleSummary) {
     return;
   }
 
@@ -1798,28 +1777,6 @@ function renderVisibilityEditor() {
       </article>
     `;
 
-  const roleCards = availableRoles.map((entry) => {
-    const roleSummary = summarizeRoleVisibility(entry);
-    const visibleText = roleSummary.visibleTabs.map((tab) => tab.label).join(", ") || "Aucun";
-    const editableText = roleSummary.editableBlocks.slice(0, 3).join(" | ") || "Lecture seule";
-    return `
-      <article class="visibility-role-card ${entry === role ? "is-active" : ""}">
-        <div class="visibility-role-card-head">
-          <strong>${escapeHtml(roleLabel(entry))}</strong>
-          <button type="button" class="mini-button" data-visibility-open-role="${escapeHtml(entry)}">Modifier</button>
-        </div>
-        <div class="visibility-role-card-body">
-          <span>${escapeHtml(roleSummary.visibleTabs.length)} onglet(s)</span>
-          <span>${escapeHtml(roleSummary.editableBlocks.length)} bloc(s) modifiable(s)</span>
-        </div>
-        <p>${escapeHtml(visibleText)}</p>
-        <p class="cell-note">${escapeHtml(editableText)}</p>
-      </article>
-    `;
-  }).join("");
-
-  visibilityRoleDirectory.innerHTML = `<div class="visibility-role-directory">${roleCards}</div>`;
-
   visibilityTabsEditor.querySelectorAll("[data-visibility-tab]").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       const tabKey = checkbox.getAttribute("data-visibility-tab");
@@ -1841,14 +1798,6 @@ function renderVisibilityEditor() {
       const [tabKey, blockKey] = input.getAttribute("data-visibility-mode").split("::");
       config.blocks[tabKey] ||= {};
       config.blocks[tabKey][blockKey] = input.value;
-      saveState();
-      renderVisibilityEditor();
-    });
-  });
-
-  visibilityRoleDirectory.querySelectorAll("[data-visibility-open-role]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.visibilityEditorRole = button.getAttribute("data-visibility-open-role") || state.visibilityEditorRole;
       saveState();
       renderVisibilityEditor();
     });
@@ -2138,12 +2087,6 @@ function renderSummary() {
       { label: "Clotures", value: getFilteredTickets().filter((ticket) => ticket.status === "closed").length, note: "Historique conserve", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status === "closed").length * 20), filter: { key: "status", value: "done", tab: "sav" } },
       { label: "A surveiller", value: getFilteredTickets().filter((ticket) => ticket.status !== "closed").length, note: "Tickets encore actifs", portion: Math.min(100, getFilteredTickets().filter((ticket) => ticket.status !== "closed").length * 20), filter: null }
     ],
-    configuration: [
-      { label: "Configurations a traiter", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Choix magasin a confirmer", portion: Math.round((visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length / total) * 100), filter: null },
-      { label: "Preparation chantier", value: visibleStores.filter((store) => !["OK", "Oui"].includes(ensureStoreWorkflowData(store).charlesRouxStatus) || ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Pre-visite / infra / VLAN", portion: Math.round((visibleStores.filter((store) => !["OK", "Oui"].includes(ensureStoreWorkflowData(store).charlesRouxStatus) || ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length / total) * 100), filter: null },
-      { label: "GSM prevus", value: visibleStores.reduce((sum, store) => sum + getGsmRows(store).length, 0), note: "Parc mobile configure", portion: 100, filter: null },
-      { label: "Choix confirmes", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Configuration finalisee", portion: Math.round((visibleStores.filter((store) => ensureStoreWorkflowData(store).networkConfigConfirmed).length / total) * 100), filter: null }
-    ],
     extensions: [
       { label: "Reference extensions", value: extensionCatalogRows.length, note: "Liste commune magasin / IT", portion: 100, filter: null },
       { label: "Postes fixes", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).fixCount, 0), note: "Quota total fixe", portion: 100, filter: null },
@@ -2297,10 +2240,6 @@ function syncSelectors() {
     const selected = person.name === state.activeUserName ? "selected" : "";
     return `<option value="${escapeHtml(person.name)}" ${selected}>${escapeHtml(person.name)} - ${escapeHtml(person.role)}</option>`;
   }).join("");
-  if (activeUserSelect) {
-    const ownViewName = preferredTwemViewName();
-    activeUserSelect.insertAdjacentHTML("afterbegin", `<option value="__reset__">${escapeHtml(ownViewName)} - ma vue</option>`);
-  }
 
   storeOwnerSelect.innerHTML = state.people
     .filter((person) => ["supadmin_twem", "admin_twem"].includes(person.role))
@@ -2711,23 +2650,17 @@ function buildStoreHeaderCards() {
   `;
 }
 
-function buildStoreSectionNav(mode = "stores") {
-  const links = mode === "configuration"
-    ? [
-        ["quantities", "Quantites"],
-        ["preparation", "Preparation"],
-        ["configuration", "Configuration"],
-        ["equipment", "Equipements"],
-        ["closing", "Cloture"]
-      ]
-    : [
-        ["overview", "Vue d ensemble"],
-        ["quantities", "Quantites"],
-        ["configuration-summary", "Preparation / config"],
-        ["appointments", "Rendez-vous"],
-        ["sav", "SAV"],
-        ["closing", "Cloture"]
-      ];
+function buildStoreSectionNav() {
+  const links = [
+    ["overview", "Vue d ensemble"],
+    ["quantities", "Quantites"],
+    ["preparation", "Preparation"],
+    ["configuration", "Configuration"],
+    ["equipment", "Equipements"],
+    ["appointments", "Rendez-vous"],
+    ["sav", "SAV"],
+    ["closing", "Cloture"]
+  ];
   return `
     <nav class="store-editor-nav">
       ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
@@ -2902,80 +2835,6 @@ function buildConfigurationHubCard(store) {
           </label>
         </div>
         ${buildNetworkConfigSkeleton(store, { showConfirmBar: false })}
-      </article>
-    </div>
-  `;
-}
-
-function buildPreparationConfigurationRecapCard(store) {
-  const workflow = ensureStoreWorkflowData(store);
-  const destinyReady = workflow.destinyInstallDate || workflow.destinyTicketRef || workflow.destinyPmName;
-  const preVisitDone = ["Termine", "Tous reseaux OK", "Certains reseaux manquants", "Aucun reseau mobile"].includes(workflow.networkSurveyStatus) || (workflow.firstVisitRemark || "").trim();
-  const externalPrepDone = workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" || workflow.cablingStatus === "OK";
-  const configConfirmed = Boolean(workflow.networkConfigConfirmed);
-  const extensionState = workflow.extensionConfigStatus || "En attente";
-  const gsmRows = getGsmRows(store);
-  const configuredGsm = gsmRows.filter((row) => row.model || row.mobileNumber || row.user || row.extensionLinked).length;
-  const groupsDone = (workflow.callGroupsNote || "").trim();
-  const cascadesDone = (workflow.cascadeNote || "").trim();
-  const alarmDone = workflow.alarmType || workflow.alarmCompany || workflow.alarmCentralPhone;
-
-  const statusChip = (done, doneLabel = "Fait", pendingLabel = "A faire") => `
-    <span class="${badgeClass(done ? "done" : "planned")}">${done ? doneLabel : pendingLabel}</span>
-  `;
-
-  return `
-    <div class="editor-grid section-anchor" id="section-configuration-summary">
-      <article class="editor-card full-span-card grouped-card" data-access-zone="configuration_request">
-        <div class="grouped-card-head">
-          <h3>Configuration et preparation</h3>
-          <p>Recapitulatif de la preparation chantier et des choix telephonie confirmes.</p>
-        </div>
-        <div class="summary-recap-grid">
-          <article class="summary-recap-item">
-            <h4>Coordination Destiny</h4>
-            ${statusChip(destinyReady)}
-            <p>${escapeHtml(workflow.destinyPmName || workflow.destinyTicketRef || "Aucune coordination encodee")}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>Pre-visite</h4>
-            ${statusChip(preVisitDone)}
-            <p>${escapeHtml(workflow.networkSurveyStatus || "A planifier")}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>Preparation externe</h4>
-            ${statusChip(externalPrepDone)}
-            <p>${escapeHtml(workflow.vlan22Activated || workflow.charlesRouxStatus || "A verifier")}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>Configuration magasin</h4>
-            ${statusChip(configConfirmed, "Confirmee", "En attente")}
-            <p>${escapeHtml(extensionState)}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>GSM / SIM</h4>
-            ${statusChip(configuredGsm > 0, `${configuredGsm} defini(s)`, "A definir")}
-            <p>${escapeHtml(`${gsmRows.length} GSM prevu(s)`)}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>Alarme</h4>
-            ${statusChip(Boolean(alarmDone))}
-            <p>${escapeHtml(workflow.alarmType || "A confirmer")}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>Groupes d appel</h4>
-            ${statusChip(Boolean(groupsDone))}
-            <p>${escapeHtml(groupsDone || "Non renseigne")}</p>
-          </article>
-          <article class="summary-recap-item">
-            <h4>Cascades</h4>
-            ${statusChip(Boolean(cascadesDone))}
-            <p>${escapeHtml(cascadesDone || "Non renseigne")}</p>
-          </article>
-        </div>
-        <div class="recap-actions">
-          <button type="button" class="mini-button" data-open-configuration="${store.id}">Ouvrir la configuration detaillee</button>
-        </div>
       </article>
     </div>
   `;
@@ -3521,7 +3380,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded) {
   `;
 }
 
-function renderStoreCards(stores, mode = "stores") {
+function renderStoreCards(stores) {
   stores.forEach((store, index) => {
     const manager = stepFor(store, "store_manager");
     const installer = stepFor(store, "installer");
@@ -3556,15 +3415,17 @@ function renderStoreCards(stores, mode = "stores") {
           <td colspan="9">
             <div class="details-panel">
             <form class="store-editor" data-store-editor="${store.id}">
-              ${buildStoreSectionNav(mode)}
+              ${buildStoreSectionNav()}
 
               <div class="editor-grid section-anchor" id="section-quantities">
                 ${buildStorePilotSkeleton(store)}
               </div>
 
-              ${mode === "configuration"
-                ? `${buildPreparationHubCard(store)}${buildConfigurationHubCard(store)}${buildEquipmentCards(store)}`
-                : buildPreparationConfigurationRecapCard(store)}
+              ${buildPreparationHubCard(store)}
+
+              ${buildConfigurationHubCard(store)}
+
+              ${buildEquipmentCards(store)}
 
               <div class="editor-grid section-anchor" id="section-overview">
                 ${buildStorePostsSkeleton(store)}
@@ -3659,16 +3520,6 @@ function renderStoreCards(stores, mode = "stores") {
 
   projectTableBody.querySelectorAll("[data-gsm-add]").forEach((button) => {
     button.addEventListener("click", handleGsmAdd);
-  });
-
-  projectTableBody.querySelectorAll("[data-open-configuration]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const storeId = Number(button.getAttribute("data-open-configuration"));
-      state.activeAdminTab = "stores";
-      state.expandedStoreIds = new Set([storeId]);
-      saveState();
-      render();
-    });
   });
 }
 
@@ -3824,62 +3675,6 @@ function renderDashboardRows(stores) {
   });
 }
 
-function preparationStatusForStore(store) {
-  const workflow = ensureStoreWorkflowData(store);
-  if (workflow.charlesRouxStatus === "OK" || workflow.vlan22Activated === "Oui" || workflow.mobileCheckStatus === "OK") {
-    return "Prepare";
-  }
-  return "A lancer";
-}
-
-function configurationStatusForStore(store) {
-  const workflow = ensureStoreWorkflowData(store);
-  if (workflow.networkConfigConfirmed) {
-    return "Confirmee";
-  }
-  if ((workflow.extensionConfigStatus || "").toLowerCase().includes("attente")) {
-    return "En attente";
-  }
-  return "A lancer";
-}
-
-function telephonySummaryForStore(store) {
-  return [
-    `${store.fixCount || 0} fixes`,
-    `${store.mobileCount || 0} gsm`,
-    `${store.callButtonCount || 0} call`,
-    `${store.panicCount || 0} panic`
-  ].join(" / ");
-}
-
-function renderStoreSummaryRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Preparation", "Configuration", "Telephonie", "SAV", "Action"]);
-  renderCompactStoreRows(stores, (store) => {
-    const openTickets = state.tickets.filter((ticket) => ticket.storeId === store.id && ticket.status !== "closed").length;
-    return [
-      escapeHtml(store.code),
-      `<strong>${escapeHtml(store.name)}</strong>`,
-      escapeHtml(store.city),
-      escapeHtml(store.shopType || "-"),
-      `<span class="${badgeClass(preparationStatusForStore(store) === "Prepare" ? "done" : "planned")}">${escapeHtml(preparationStatusForStore(store))}</span>`,
-      `<span class="${badgeClass(configurationStatusForStore(store) === "Confirmee" ? "done" : configurationStatusForStore(store) === "En attente" ? "in_progress" : "planned")}">${escapeHtml(configurationStatusForStore(store))}</span>`,
-      escapeHtml(telephonySummaryForStore(store)),
-      openTickets ? `<span class="badge badge-progress">${openTickets} ouvert(s)</span>` : '<span class="badge badge-done">0</span>',
-      `<button type="button" class="mini-button" data-store-open-config="${store.id}">Ouvrir</button>`
-    ];
-  });
-
-  projectTableBody.querySelectorAll("[data-store-open-config]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const storeId = Number(button.getAttribute("data-store-open-config"));
-      state.activeAdminTab = "configuration";
-      state.expandedStoreIds = new Set([storeId]);
-      saveState();
-      render();
-    });
-  });
-}
-
 function renderActivitiesRows(stores) {
   setMainTableHeaders(["Code", "Magasin", "Activite", "Responsable", "Priorite", "SLA", "Etat", "Historique", "Action"]);
   renderCompactStoreRows(stores, (store) => {
@@ -3978,7 +3773,7 @@ function renderSavRows() {
   projectTableBody.querySelectorAll("[data-sav-open-store]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-sav-open-store"));
-      state.activeAdminTab = "configuration";
+      state.activeAdminTab = "stores";
       state.expandedStoreIds = new Set([storeId]);
       saveState();
       render();
@@ -4224,24 +4019,6 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       renderTimelineRows(stores);
       return;
-    case "stores":
-      projectTable?.classList.remove("compact-rows-table");
-      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-      renderStoreCards(stores, "stores");
-      return;
-    case "configuration":
-      if (state.expandedStoreIds.size) {
-        const focusedStores = stores.filter((store) => state.expandedStoreIds.has(store.id));
-        if (focusedStores.length) {
-          projectTable?.classList.remove("compact-rows-table");
-          setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-          renderStoreCards(focusedStores, "configuration");
-          return;
-        }
-      }
-      projectTable?.classList.add("compact-rows-table");
-      renderStoreSummaryRows(stores);
-      return;
     case "sav":
       projectTable?.classList.add("compact-rows-table");
       renderSavRows(stores);
@@ -4254,19 +4031,19 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       renderDashboardRows(stores);
       return;
+    case "stores":
     default:
-      projectTable?.classList.add("compact-rows-table");
-      renderDashboardRows(stores);
+      projectTable?.classList.remove("compact-rows-table");
+      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
+      renderStoreCards(stores);
   }
 }
 
 function renderActivities() {
   activityList.innerHTML = "";
   reportArchiveList.innerHTML = "";
-  const visibleStoreNames = new Set(getRoleScopedStores().map((store) => store.name));
   const now = new Date();
   const items = [...state.activities]
-    .filter((activity) => visibleStoreNames.has(activity.storeName))
     .filter((activity) => isSameLocalDay(new Date(activity.createdAt), now))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 6);
@@ -4294,7 +4071,7 @@ function renderActivities() {
     entries: state.activities
       .filter((activity) => activity.storeName === store.name)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  })).filter((group) => visibleStoreNames.has(group.storeName) && group.entries.length);
+  })).filter((group) => group.entries.length);
 
   if (!groupedByStore.length) {
     reportArchiveList.innerHTML = '<div class="empty-state">Aucun rapport magasin disponible pour le moment.</div>';
@@ -4715,15 +4492,12 @@ function renderAuthState() {
   const sidebarVisible = state.pinValidated && (
     availableTabs.includes("*") || availableTabs.some((tab) => tab !== "dashboard")
   );
-  const debugViewVisible = state.roleViewUnlocked || isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
+  const debugViewVisible = isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
 
   workspaceSidebar.classList.toggle("hidden-panel", !sidebarVisible);
   workspaceShell?.classList.toggle("without-sidebar", !sidebarVisible);
   if (userViewField) {
     userViewField.classList.toggle("hidden-panel", !debugViewVisible);
-  }
-  if (resetUserViewButton) {
-    resetUserViewButton.classList.toggle("hidden-panel", !debugViewVisible);
   }
 
   const targetPanel = panelForTab(state.activeAdminTab);
@@ -4732,14 +4506,12 @@ function renderAuthState() {
 
 function renderAdminTabs() {
   const user = currentUser();
-  const debugViewVisible = state.roleViewUnlocked || isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
-  const canKeepCurrentTab = state.activeAdminTab === "visibility" ? debugViewVisible : canAccessTab(state.activeAdminTab, user);
-  if (!canKeepCurrentTab || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
+  if (!canAccessTab(state.activeAdminTab, user) || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
     state.activeAdminTab = "dashboard";
   }
   adminTabs.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const tab = button.getAttribute("data-admin-tab");
-    const visible = state.pinValidated && (tab === "visibility" ? debugViewVisible : canAccessTab(tab, user));
+    const visible = state.pinValidated && canAccessTab(tab, user);
     button.classList.toggle("hidden-panel", !visible);
     button.classList.toggle("is-active", visible && tab === state.activeAdminTab);
     button.textContent = tabTitle(tab);
@@ -7063,19 +6835,8 @@ async function handlePinAccessSubmit(event) {
 }
 
 function handleActiveUserChange(event) {
-  const nextValue = event.target.value;
-  state.activeUserName = nextValue === "__reset__" ? preferredTwemViewName() : nextValue;
+  state.activeUserName = event.target.value;
   state.pinValidated = true;
-  state.roleViewUnlocked = true;
-  ensureValidActiveTab();
-  saveState();
-  render();
-}
-
-function handleResetUserView() {
-  state.activeUserName = preferredTwemViewName();
-  state.pinValidated = true;
-  state.roleViewUnlocked = true;
   ensureValidActiveTab();
   saveState();
   render();
@@ -7092,17 +6853,10 @@ function handleAdminTabClick(event) {
   const button = event.target.closest("[data-admin-tab]");
   if (button) {
     const nextTab = button.getAttribute("data-admin-tab");
-    const canOpenVisibility = nextTab === "visibility" && (state.roleViewUnlocked || isSupAdmin() || ["Valou", "Emir"].includes(currentUser()?.name));
-    if (!canAccessTab(nextTab) && !canOpenVisibility) {
+    if (!canAccessTab(nextTab)) {
       return;
     }
     state.activeAdminTab = nextTab;
-    if (nextTab !== "configuration") {
-      state.expandedStoreIds = new Set();
-    }
-    if (window.location.hash?.startsWith("#section-")) {
-      history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-    }
     saveState();
     render();
     return;
@@ -7396,7 +7150,6 @@ visibilityRoleSelect?.addEventListener("change", (event) => {
   saveState();
   renderVisibilityEditor();
 });
-resetUserViewButton?.addEventListener("click", handleResetUserView);
 pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
 pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
@@ -7444,7 +7197,6 @@ async function init() {
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
-  state.roleViewUnlocked = stored.roleViewUnlocked || false;
   document.documentElement.lang = state.language;
 
   if (hasImportedStoreSet(state.stores)) {
@@ -7458,7 +7210,6 @@ async function init() {
       || state.activeUserName;
     state.pinValidated = true;
     state.activeAdminTab = "dashboard";
-    state.roleViewUnlocked = true;
   }
 
   if (isSupabaseMode && supabaseClient) {

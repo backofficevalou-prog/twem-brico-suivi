@@ -904,31 +904,6 @@ button {
   gap: 12px;
 }
 
-.summary-recap-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.summary-recap-item {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #fffdfa;
-}
-
-.summary-recap-item h4,
-.summary-recap-item p {
-  margin: 0;
-}
-
-.recap-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .three-col-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1754,12 +1729,6 @@ button {
   gap: 10px;
 }
 
-.visibility-role-directory {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
 .visibility-zone-card,
 .visibility-summary-card {
   border: 1px solid var(--line);
@@ -1779,33 +1748,6 @@ button {
   display: grid;
   gap: 8px;
   padding: 10px 12px 12px;
-}
-
-.visibility-role-card {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fff;
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-}
-
-.visibility-role-card.is-active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(199, 61, 42, 0.08);
-}
-
-.visibility-role-card-head,
-.visibility-role-card-body {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.visibility-role-card p {
-  margin: 0;
 }
 
 .visibility-zone-row {
@@ -2280,8 +2222,6 @@ button {
   .override-row,
   .external-prep-grid,
   .network-row,
-  .summary-recap-grid,
-  .visibility-role-directory,
   .store-focus-layout {
     grid-template-columns: 1fr;
   }
