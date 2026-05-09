@@ -1070,10 +1070,28 @@ button {
   margin-top: 14px;
 }
 
+.sav-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.sav-current-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffdf8;
+  padding: 14px;
+}
+
+.sav-current-card h4 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
 .sav-history-stack {
   display: grid;
   gap: 12px;
-  margin-top: 16px;
 }
 
 .sav-thread-card {
@@ -2325,6 +2343,7 @@ button {
   .editor-fields,
   .two-col,
   .appointments-split,
+  .sav-split,
   .appointment-item,
   .simple-item-grid,
   .admin-grid,
@@ -2484,6 +2503,7 @@ button {
     .store-meta-card,
     .network-row,
     .appointments-current-card,
+    .sav-current-card,
     .appointment-current-item,
     .appointment-item {
       padding: 10px;

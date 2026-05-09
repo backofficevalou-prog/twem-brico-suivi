@@ -4167,47 +4167,53 @@ function buildSavCard(store) {
     <article class="editor-card full-span-card sav-ticket-card" data-access-zone="sav_ticket">
       <h3>Demande SAV / ticket</h3>
       <p>Tout acteur du magasin peut creer une demande. La demande initiale reste intacte, puis le suivi se fait juste en dessous avec historique date et signe.</p>
+      <div class="sav-split">
+        <div>
+          <div class="three-col sav-request-grid">
+            <label>
+              <span>N de magasin</span>
+              <input type="text" value="${escapeHtml(store.code)}" readonly>
+            </label>
+            <label>
+              <span>Nom du magasin</span>
+              <input type="text" value="${escapeHtml(store.name)}" readonly>
+            </label>
+            <label>
+              <span>Demandeur</span>
+              <input type="text" value="${escapeHtml(requesterName)}" readonly>
+            </label>
+          </div>
 
-      <div class="three-col sav-request-grid">
-        <label>
-          <span>N de magasin</span>
-          <input type="text" value="${escapeHtml(store.code)}" readonly>
-        </label>
-        <label>
-          <span>Nom du magasin</span>
-          <input type="text" value="${escapeHtml(store.name)}" readonly>
-        </label>
-        <label>
-          <span>Demandeur</span>
-          <input type="text" value="${escapeHtml(requesterName)}" readonly>
-        </label>
-      </div>
+          <div class="two-col">
+            <label>
+              <span>Service a mobiliser</span>
+              <select name="new_ticket_service">
+                ${renderOptions(["TWEM", "Destiny", "IT", "Infra", "Magasin", "Autre"], "Destiny")}
+              </select>
+            </label>
+            <label>
+              <span>Ce que ca concerne</span>
+              <input type="text" name="new_ticket_concern" placeholder="Ex: poste caisse, GSM, transfert, VLAN, accueil">
+            </label>
+          </div>
 
-      <div class="two-col">
-        <label>
-          <span>Service a mobiliser</span>
-          <select name="new_ticket_service">
-            ${renderOptions(["TWEM", "Destiny", "IT", "Infra", "Magasin", "Autre"], "Destiny")}
-          </select>
-        </label>
-        <label>
-          <span>Ce que ca concerne</span>
-          <input type="text" name="new_ticket_concern" placeholder="Ex: poste caisse, GSM, transfert, VLAN, accueil">
-        </label>
-      </div>
+          <label>
+            <span>Note explicative libre</span>
+            <textarea name="new_ticket_note" rows="4" placeholder="Decris le probleme, le besoin ou le contexte de la demande SAV"></textarea>
+          </label>
 
-      <label>
-        <span>Note explicative libre</span>
-        <textarea name="new_ticket_note" rows="4" placeholder="Decris le probleme, le besoin ou le contexte de la demande SAV"></textarea>
-      </label>
+          <div class="editor-actions sav-request-actions">
+            <span class="validation-text" data-sav-feedback="${store.id}"></span>
+            <button type="button" data-sav-create="${store.id}">Confirmer / envoyer</button>
+          </div>
+        </div>
 
-      <div class="editor-actions sav-request-actions">
-        <span class="validation-text" data-sav-feedback="${store.id}"></span>
-        <button type="button" data-sav-create="${store.id}">Confirmer / envoyer</button>
-      </div>
-
-      <div class="sav-history-stack">
-        ${storeTickets.length ? storeTickets.map((ticket) => buildTicketThread(store, ticket)).join("") : '<div class="empty-state sav-empty">Aucun ticket SAV pour ce magasin pour le moment.</div>'}
+        <aside class="sav-current-card">
+          <h4>SAV du magasin</h4>
+          <div class="sav-history-stack">
+            ${storeTickets.length ? storeTickets.map((ticket) => buildTicketThread(store, ticket)).join("") : '<div class="empty-state sav-empty">Aucun ticket SAV pour ce magasin pour le moment.</div>'}
+          </div>
+        </aside>
       </div>
     </article>
   `;
