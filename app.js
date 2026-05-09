@@ -3643,7 +3643,7 @@ function renderExtensionsRows(stores) {
     if (!search) {
       return true;
     }
-    const haystack = `${row.category} ${row.model} ${row.number} ${row.label} ${row.language} ${row.item} ${row.activation}`.toLowerCase();
+    const haystack = `${row.category} ${row.model} ${row.number} ${row.label} ${row.language} ${row.item} ${row.activation} ${row.oldNumber || ""} ${row.usage || ""}`.toLowerCase();
     return haystack.includes(search);
   });
 
@@ -3686,7 +3686,7 @@ function renderExtensionsRows(stores) {
                     <td>${escapeHtml(row.item || "-")}</td>
                     <td>${escapeHtml(row.activation || "-")}</td>
                     <td>${escapeHtml(row.oldNumber || "-")}</td>
-                    <td>${escapeHtml(row.category === "Mobile" ? "Choix magasin / mobile" : row.category.includes("Bouton") ? "Securite / appel" : "Poste fixe / accueil")}</td>
+                    <td>${escapeHtml(row.usage || "-")}</td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -5342,6 +5342,33 @@ function readWorkbookRows(file, arrayBuffer) {
   return window.XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 }
 
+function readExtensionWorkbookRows(arrayBuffer) {
+  if (!xlsxAvailable()) {
+    throw new Error("Bibliotheque XLSX indisponible.");
+  }
+  const workbook = window.XLSX.read(arrayBuffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const matrix = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+  if (!Array.isArray(matrix) || matrix.length < 3) {
+    return [];
+  }
+
+  const headerRow = matrix[1].map((value) => normalizeImportCell(value));
+  return matrix
+    .slice(2)
+    .filter((row) => Array.isArray(row) && row.some((cell) => normalizeImportCell(cell) !== ""))
+    .map((row) => {
+      const entry = {};
+      headerRow.forEach((header, index) => {
+        if (header) {
+          entry[header] = row[index] ?? "";
+        }
+      });
+      return entry;
+    });
+}
+
 function exportJsonData() {
   const payload = {
     stores: state.stores,
@@ -5412,7 +5439,7 @@ function exportStoresPdf() {
 
 function exportExtensionsXlsx() {
   const rows = [
-    ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation"]
+    ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation", "Usage"]
   ];
   extensionCatalogRows.forEach((row) => {
     rows.push([
@@ -5423,7 +5450,8 @@ function exportExtensionsXlsx() {
       row.oldNumber,
       row.language,
       row.item,
-      row.activation
+      row.activation,
+      row.usage || ""
     ]);
   });
   exportRowsToXlsx(
@@ -5435,7 +5463,7 @@ function exportExtensionsXlsx() {
 }
 
 function exportExtensionsPdf() {
-  const headers = ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation"];
+  const headers = ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation", "Usage"];
   const bodyRows = extensionCatalogRows.map((row) => ([
     row.category,
     row.model,
@@ -5444,7 +5472,8 @@ function exportExtensionsPdf() {
     row.oldNumber,
     row.language,
     row.item,
-    row.activation
+    row.activation,
+    row.usage || ""
   ]));
   exportRowsToPdf(
     "Catalogue extensions TWEM Brico",
@@ -5482,14 +5511,53 @@ function importExtensionRows(rows) {
   }
 
   extensionCatalogRows.splice(0, extensionCatalogRows.length, ...rows.map((row, index) => ({
-    category: row.category || row.categorie || row.type || "Extension",
-    model: row.model || row.modele || "",
-    number: row.number || row.numero || row.extension || `EXT-${index + 1}`,
-    label: row.label || row.libelle || row.lieu || "",
-    oldNumber: row.old_number || row["ancien numero"] || row.ancien_numero || "",
-    language: row.language || row.langue || "",
-    item: row.item || "",
-    activation: row.activation || ""
+    category: normalizeImportCell(
+      row.category
+      || row.categorie
+      || row.type
+      || row.Type
+      || "Extension"
+    ),
+    model: normalizeImportCell(row.model || row.modele || row.Model || ""),
+    number: normalizeImportCell(
+      row.number
+      || row.numero
+      || row.extension
+      || row["NEW NUMBER"]
+      || row["Extension*OLD"]
+      || `EXT-${index + 1}`
+    ),
+    label: normalizeImportCell(
+      row.label
+      || row.libelle
+      || row.lieu
+      || row["Last name*"]
+      || row.Departement
+      || ""
+    ),
+    oldNumber: normalizeImportCell(
+      row.old_number
+      || row["ancien numero"]
+      || row.ancien_numero
+      || row["ancien numéro"]
+      || row["Extension*OLD"]
+      || ""
+    ),
+    language: normalizeImportCell(row.language || row.langue || row.Language || ""),
+    item: normalizeImportCell(row.item || row.Item || ""),
+    activation: normalizeImportCell(
+      row.activation
+      || row["Activation or Port-in type"]
+      || row["Activation / Port-in"]
+      || ""
+    ),
+    usage: normalizeImportCell(
+      row.usage
+      || row.Departement
+      || row["Fixed phone type"]
+      || row["External direct number"]
+      || ""
+    )
   })));
 }
 
@@ -5574,7 +5642,8 @@ function importStoresRows(rows) {
     const fullAddress = [address, addressTail].filter(Boolean).join(" - ");
     const shopType = normalizeImportCell(readImportValue(row, ["type_shop", "type_magasin", "shop_type"], "DOS"));
     const shopSize = normalizeImportCell(readImportValue(row, ["shop_type_2", "shopsize", "type_shop_2"], ""));
-    const owner = normalizeImportCell(readImportValue(row, ["owner", "responsable_twem", "twem"], twemOptions[0]));
+    const fallbackOwner = twemOptions.includes(state.activeUserName) ? state.activeUserName : "Valou";
+    const owner = normalizeImportCell(readImportValue(row, ["owner", "responsable_twem", "twem"], fallbackOwner));
     const manager = normalizeImportCell(readImportValue(row, ["nom_manager", "manager", "responsable_magasin", "responsable"], ""));
     const statusSource = normalizeImportCell(readImportValue(row, ["cloturer", "status", "statut_global"], "planned")).toLowerCase();
     const status = statusSource.includes("done")
@@ -5646,6 +5715,7 @@ function importStoresRows(rows) {
   state.stores = nextStores;
   state.activities = [];
   state.tickets = [];
+  state.importExportHistory = [];
 
   const coreTwem = preserveCoreTwemPeople();
   const managersByKey = new Map();
@@ -5679,7 +5749,7 @@ function handleImportInputChange(event) {
           const rows = Array.isArray(payload) ? payload : (payload.extensions || payload.rows || []);
           importExtensionRows(rows);
         } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
-          importExtensionRows(readWorkbookRows(file, reader.result));
+          importExtensionRows(readExtensionWorkbookRows(reader.result));
         } else if (fileName.endsWith(".csv")) {
           importExtensionRows(parseDelimitedText(reader.result));
         } else {
