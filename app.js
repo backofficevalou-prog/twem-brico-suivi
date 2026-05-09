@@ -2703,21 +2703,105 @@ function buildStoreHeaderCards() {
   `;
 }
 
-function buildStoreSectionNav() {
-  const links = [
-    ["overview", "Vue d ensemble"],
-    ["quantities", "Quantites"],
-    ["preparation", "Preparation"],
-    ["configuration", "Configuration"],
-    ["equipment", "Equipements"],
-    ["appointments", "Rendez-vous"],
-    ["sav", "SAV"],
-    ["closing", "Cloture"]
-  ];
+function buildStoreSectionNav(mode = "stores") {
+  const links = mode === "configuration"
+    ? [
+        ["overview", "Vue d ensemble"],
+        ["preparation", "Preparation"],
+        ["configuration", "Configuration"],
+        ["equipment", "Equipements"],
+        ["closing", "Cloture"]
+      ]
+    : [
+        ["overview", "Vue d ensemble"],
+        ["quantities", "Quantites"],
+        ["configuration-summary", "Recap configuration"],
+        ["equipment", "Equipements"],
+        ["appointments", "Rendez-vous"],
+        ["sav", "SAV"],
+        ["closing", "Cloture"]
+      ];
   return `
     <nav class="store-editor-nav">
       ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
     </nav>
+  `;
+}
+
+function buildConfigurationSummaryCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const transmittedRows = [
+    ["Demande configuration", workflow.extensionRequestStatus || "A envoyer"],
+    ["Commande articles", normalizeImportCell(store.poHardware || store.poHw || "-") ? "Reference recue" : "A confirmer"],
+    ["Mail configuration", workflow.extensionRequestStatus || "A envoyer"],
+    ["Ticket Destiny", workflow.destinyTicketRef || "A confirmer"],
+    ["Date telephonie actuelle", workflow.currentPhoneDate || "A confirmer"]
+  ];
+
+  const confirmedRows = [
+    ["Coordination Destiny", workflow.destinyPmName || workflow.destinyInstallDate ? "Fait" : "A faire"],
+    ["Pre-visite", workflow.networkSurveyStatus === "Termine" || workflow.networkSurveyStatus === "OK" ? "Faite" : "A faire"],
+    ["Preparation externe", workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" ? "Faite" : "A faire"],
+    ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
+    ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"]
+  ];
+
+  return `
+    <div class="editor-grid section-anchor" id="section-configuration-summary">
+      <article class="editor-card full-span-card grouped-card" data-access-zone="configuration_request">
+        <div class="grouped-card-head">
+          <h3>Recap configuration et preparation</h3>
+          <p>Vue synthetique des demandes transmises et des elements deja confirmes.</p>
+        </div>
+        <div class="two-col">
+          <section class="subpanel">
+            <h4>Demandes transmises</h4>
+            <div class="compact-table-wrap">
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th>Element</th>
+                    <th>Etat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${transmittedRows.map(([label, value]) => `
+                    <tr>
+                      <td>${escapeHtml(label)}</td>
+                      <td>${escapeHtml(value || "-")}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="subpanel">
+            <h4>Elements confirmes</h4>
+            <div class="compact-table-wrap">
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th>Element</th>
+                    <th>Etat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${confirmedRows.map(([label, value]) => `
+                    <tr>
+                      <td>${escapeHtml(label)}</td>
+                      <td>${escapeHtml(value || "-")}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <div class="posts-skeleton-actions">
+          <button type="button" class="mini-button" data-open-config-store="${store.id}">Ouvrir la configuration detaillee</button>
+        </div>
+      </article>
+    </div>
   `;
 }
 
@@ -3409,7 +3493,7 @@ function buildStoreSideSummary(store) {
   `;
 }
 
-function buildStoreHero(store, manager, installer, electrician, isExpanded) {
+function buildStoreHero(store, manager, installer, electrician, isExpanded, mode = "stores") {
   return `
     <div class="store-focus-layout expanded-store-hero">
       <article class="editor-card store-info-column">
@@ -3417,6 +3501,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded) {
           <button type="button" class="toggle-button" data-store-toggle="${store.id}">${isExpanded ? "-" : "+"}</button>
           <div class="store-info-title">
             <h3>${escapeHtml(store.name)}</h3>
+            ${mode === "configuration" ? `<button type="button" class="mini-button" data-open-config-store="${store.id}">Ouvrir la fiche</button>` : ""}
           </div>
         </div>
         ${buildStoreIdentityMeta(store)}
@@ -3433,7 +3518,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded) {
   `;
 }
 
-function renderStoreCards(stores) {
+function renderStoreCards(stores, mode = "stores") {
   stores.forEach((store, index) => {
     const manager = stepFor(store, "store_manager");
     const installer = stepFor(store, "installer");
@@ -3455,7 +3540,7 @@ function renderStoreCards(stores) {
     heroRow.innerHTML = `
       <td colspan="9">
         <div class="details-panel hero-panel">
-          ${buildStoreHero(store, manager, installer, electrician, isExpanded)}
+          ${buildStoreHero(store, manager, installer, electrician, isExpanded, mode)}
         </div>
       </td>
     `;
@@ -3464,68 +3549,85 @@ function renderStoreCards(stores) {
     if (isExpanded) {
       const detailRow = document.createElement("tr");
       detailRow.className = "details-row";
+      const detailContent = mode === "configuration"
+        ? `
+            ${buildStoreSectionNav("configuration")}
+
+            <div class="editor-grid section-anchor" id="section-overview">
+              ${buildConfigurationSummaryCard(store)}
+            </div>
+
+            ${buildPreparationHubCard(store)}
+
+            ${buildConfigurationHubCard(store)}
+
+            ${buildEquipmentCards(store)}
+
+            <div class="editor-grid section-anchor" id="section-closing">
+              ${buildClosureWorkflowCard(store)}
+            </div>
+          `
+        : `
+            ${buildStoreSectionNav("stores")}
+
+            <div class="editor-grid section-anchor" id="section-quantities">
+              ${buildStorePilotSkeleton(store)}
+            </div>
+
+            ${buildConfigurationSummaryCard(store)}
+
+            <div class="editor-grid section-anchor" id="section-overview">
+              ${buildStorePostsSkeleton(store)}
+            </div>
+
+            <div class="editor-grid section-anchor" id="section-closing">
+              ${buildClosureWorkflowCard(store)}
+            </div>
+
+            <div class="editor-grid">
+              <article class="editor-card full-span-card">
+                <h3>Ligne du temps</h3>
+                <p>Chronologie des rendez-vous programmes pour ce magasin.</p>
+                ${buildTimeline(store)}
+              </article>
+            </div>
+
+            <div class="editor-grid section-anchor" id="section-appointments">
+              ${buildAppointmentsEditor(store)}
+            </div>
+
+            <div class="editor-grid section-anchor" id="section-sav">
+              ${buildSavCard(store)}
+            </div>
+
+            <div class="editor-grid">
+              <article class="editor-card" data-access-zone="status_admin">
+                <h3>Statut global</h3>
+                <div class="two-col">
+                  <label>
+                    <span>Statut</span>
+                    <select name="global_status">${renderOptions(globalStatusOptions, store.status)}</select>
+                  </label>
+                  <label>
+                    <span>Responsable magasin</span>
+                    <input type="text" name="manager" value="${escapeHtml(store.manager || "")}">
+                  </label>
+                </div>
+              </article>
+              <article class="editor-card" data-access-zone="problem_notes">
+                <h3>Probleme / notes</h3>
+                <label>
+                  <span>Obligatoire si statut bloque</span>
+                  <textarea name="health" rows="4" placeholder="Decris le probleme a traiter">${escapeHtml(store.health || "")}</textarea>
+                </label>
+              </article>
+            </div>
+          `;
         detailRow.innerHTML = `
           <td colspan="9">
             <div class="details-panel">
             <form class="store-editor" data-store-editor="${store.id}">
-              ${buildStoreSectionNav()}
-
-              <div class="editor-grid section-anchor" id="section-quantities">
-                ${buildStorePilotSkeleton(store)}
-              </div>
-
-              ${buildPreparationHubCard(store)}
-
-              ${buildConfigurationHubCard(store)}
-
-              ${buildEquipmentCards(store)}
-
-              <div class="editor-grid section-anchor" id="section-overview">
-                ${buildStorePostsSkeleton(store)}
-              </div>
-
-              <div class="editor-grid section-anchor" id="section-closing">
-                ${buildClosureWorkflowCard(store)}
-              </div>
-
-              <div class="editor-grid">
-                <article class="editor-card full-span-card">
-                  <h3>Ligne du temps</h3>
-                  <p>Chronologie des rendez-vous programmes pour ce magasin.</p>
-                  ${buildTimeline(store)}
-                </article>
-              </div>
-
-              <div class="editor-grid section-anchor" id="section-appointments">
-                ${buildAppointmentsEditor(store)}
-              </div>
-
-              <div class="editor-grid section-anchor" id="section-sav">
-                ${buildSavCard(store)}
-              </div>
-
-              <div class="editor-grid">
-                <article class="editor-card" data-access-zone="status_admin">
-                  <h3>Statut global</h3>
-                  <div class="two-col">
-                    <label>
-                      <span>Statut</span>
-                      <select name="global_status">${renderOptions(globalStatusOptions, store.status)}</select>
-                    </label>
-                    <label>
-                      <span>Responsable magasin</span>
-                      <input type="text" name="manager" value="${escapeHtml(store.manager || "")}">
-                    </label>
-                  </div>
-                </article>
-                <article class="editor-card" data-access-zone="problem_notes">
-                  <h3>Probleme / notes</h3>
-                  <label>
-                    <span>Obligatoire si statut bloque</span>
-                    <textarea name="health" rows="4" placeholder="Decris le probleme a traiter">${escapeHtml(store.health || "")}</textarea>
-                  </label>
-                </article>
-              </div>
+              ${detailContent}
 
               <div class="editor-actions">
                 <span class="validation-text" data-validation="${store.id}"></span>
@@ -3573,6 +3675,17 @@ function renderStoreCards(stores) {
 
   projectTableBody.querySelectorAll("[data-gsm-add]").forEach((button) => {
     button.addEventListener("click", handleGsmAdd);
+  });
+
+  projectTableBody.querySelectorAll("[data-open-config-store]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const storeId = Number(button.getAttribute("data-open-config-store"));
+      state.activeAdminTab = "configuration";
+      state.expandedStoreIds = new Set([storeId]);
+      saveState();
+      render();
+      window.location.hash = "#section-configuration";
+    });
   });
 }
 
@@ -4084,11 +4197,16 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       renderDashboardRows(stores);
       return;
+    case "configuration":
+      projectTable?.classList.remove("compact-rows-table");
+      setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
+      renderStoreCards(stores, "configuration");
+      return;
     case "stores":
     default:
       projectTable?.classList.remove("compact-rows-table");
       setMainTableHeaders(["Detail", "Magasin", "Twem", "Magasin", "Telephonie", "Electricien", "Rendez-vous", "Statut", "Probleme"]);
-      renderStoreCards(stores);
+      renderStoreCards(stores, "stores");
   }
 }
 
