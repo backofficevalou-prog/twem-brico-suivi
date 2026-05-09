@@ -252,6 +252,15 @@ const visibilityTabCatalog = [
     ]
   },
   {
+    key: "configuration",
+    label: "Configuration magasin",
+    blocks: [
+      { key: "config_list", label: "Liste configuration", hint: "Acces aux magasins a configurer." },
+      { key: "config_preparation", label: "Preparation chantier", hint: "Coordination Destiny, pre-visite et preparation externe." },
+      { key: "config_choices", label: "Choix telephonie", hint: "Extensions, GSM, alarme, groupes d appel et cascades." }
+    ]
+  },
+  {
     key: "sav",
     label: "SAV / Tickets",
     blocks: [
@@ -841,6 +850,8 @@ const visibilityRoleMeta = document.querySelector("#visibilityRoleMeta");
 const visibilityTabsEditor = document.querySelector("#visibilityTabsEditor");
 const visibilityZonesEditor = document.querySelector("#visibilityZonesEditor");
 const visibilityRoleSummary = document.querySelector("#visibilityRoleSummary");
+const visibilityRoleDirectory = document.querySelector("#visibilityRoleDirectory");
+const resetUserViewButton = document.querySelector("#resetUserViewButton");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -1261,6 +1272,14 @@ function currentUser() {
   return state.people.find((person) => person.name === state.activeUserName) || null;
 }
 
+function preferredSupAdminViewName() {
+  return state.people.find((person) => person.name === "Valou")?.name
+    || state.people.find((person) => person.role === "supadmin_twem")?.name
+    || state.people.find((person) => person.name === "Emir")?.name
+    || state.activeUserName
+    || "";
+}
+
 function normalizeCoreRole(person) {
   if (!person || typeof person !== "object") {
     return person;
@@ -1669,7 +1688,7 @@ function summarizeRoleVisibility(role) {
 }
 
 function renderVisibilityEditor() {
-  if (!visibilityRoleSelect || !visibilityTabsEditor || !visibilityZonesEditor || !visibilityRoleSummary) {
+  if (!visibilityRoleSelect || !visibilityTabsEditor || !visibilityZonesEditor || !visibilityRoleSummary || !visibilityRoleDirectory) {
     return;
   }
 
@@ -1777,6 +1796,22 @@ function renderVisibilityEditor() {
       </article>
     `;
 
+  visibilityRoleDirectory.innerHTML = availableRoles.map((entry) => {
+    const roleSummary = summarizeRoleVisibility(entry);
+    const visibleText = roleSummary.visibleTabs.map((tab) => tab.label).join(", ") || "Aucun onglet";
+    const editableText = roleSummary.editableBlocks.slice(0, 3).join(" | ") || "Lecture seule";
+    return `
+      <article class="visibility-role-compact ${entry === role ? "is-active" : ""}">
+        <div class="visibility-role-compact-head">
+          <strong>${escapeHtml(roleLabel(entry))}</strong>
+          <button type="button" class="mini-button" data-visibility-edit-role="${escapeHtml(entry)}">Modifier</button>
+        </div>
+        <p>${escapeHtml(visibleText)}</p>
+        <p class="cell-note">${escapeHtml(editableText)}</p>
+      </article>
+    `;
+  }).join("");
+
   visibilityTabsEditor.querySelectorAll("[data-visibility-tab]").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       const tabKey = checkbox.getAttribute("data-visibility-tab");
@@ -1798,6 +1833,14 @@ function renderVisibilityEditor() {
       const [tabKey, blockKey] = input.getAttribute("data-visibility-mode").split("::");
       config.blocks[tabKey] ||= {};
       config.blocks[tabKey][blockKey] = input.value;
+      saveState();
+      renderVisibilityEditor();
+    });
+  });
+
+  visibilityRoleDirectory.querySelectorAll("[data-visibility-edit-role]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.visibilityEditorRole = button.getAttribute("data-visibility-edit-role") || state.visibilityEditorRole;
       saveState();
       renderVisibilityEditor();
     });
@@ -4492,12 +4535,15 @@ function renderAuthState() {
   const sidebarVisible = state.pinValidated && (
     availableTabs.includes("*") || availableTabs.some((tab) => tab !== "dashboard")
   );
-  const debugViewVisible = isSupAdmin() || ["Valou", "Emir"].includes(user?.name);
+  const debugViewVisible = isSupAdmin();
 
   workspaceSidebar.classList.toggle("hidden-panel", !sidebarVisible);
   workspaceShell?.classList.toggle("without-sidebar", !sidebarVisible);
   if (userViewField) {
     userViewField.classList.toggle("hidden-panel", !debugViewVisible);
+  }
+  if (resetUserViewButton) {
+    resetUserViewButton.classList.toggle("hidden-panel", !debugViewVisible);
   }
 
   const targetPanel = panelForTab(state.activeAdminTab);
@@ -4506,12 +4552,14 @@ function renderAuthState() {
 
 function renderAdminTabs() {
   const user = currentUser();
-  if (!canAccessTab(state.activeAdminTab, user) || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
+  const debugViewVisible = isSupAdmin();
+  const canKeepCurrentTab = state.activeAdminTab === "visibility" ? debugViewVisible : canAccessTab(state.activeAdminTab, user);
+  if (!canKeepCurrentTab || ![...mainWorkspaceTabs, "contacts", "reports", "automations", "tools", "pin-access", "import-export", "visibility"].includes(state.activeAdminTab)) {
     state.activeAdminTab = "dashboard";
   }
   adminTabs.querySelectorAll("[data-admin-tab]").forEach((button) => {
     const tab = button.getAttribute("data-admin-tab");
-    const visible = state.pinValidated && canAccessTab(tab, user);
+    const visible = state.pinValidated && (tab === "visibility" ? debugViewVisible : canAccessTab(tab, user));
     button.classList.toggle("hidden-panel", !visible);
     button.classList.toggle("is-active", visible && tab === state.activeAdminTab);
     button.textContent = tabTitle(tab);
@@ -6842,6 +6890,14 @@ function handleActiveUserChange(event) {
   render();
 }
 
+function handleResetUserView() {
+  state.activeUserName = preferredSupAdminViewName();
+  state.pinValidated = true;
+  ensureValidActiveTab();
+  saveState();
+  render();
+}
+
 function handleLanguageChange(event) {
   state.language = event.target.value;
   document.documentElement.lang = state.language;
@@ -7150,6 +7206,7 @@ visibilityRoleSelect?.addEventListener("change", (event) => {
   saveState();
   renderVisibilityEditor();
 });
+resetUserViewButton?.addEventListener("click", handleResetUserView);
 pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
 pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);

@@ -112,10 +112,6 @@
                 <option value="all">Tous</option>
               </select>
             </label>
-            <label class="hidden-panel" id="userViewField">
-              <span id="userViewLabel">Vue utilisateur</span>
-              <select id="activeUserSelect"></select>
-            </label>
             <label>
               <span id="dateLabel">Date</span>
               <select id="dateFilter">
@@ -292,6 +288,11 @@
                       <span>Role</span>
                       <select id="visibilityRoleSelect"></select>
                     </label>
+                    <label class="visibility-role-picker hidden-panel" id="userViewField">
+                      <span id="userViewLabel">Vue utilisateur</span>
+                      <select id="activeUserSelect"></select>
+                    </label>
+                    <button type="button" class="mini-button hidden-panel" id="resetUserViewButton">Revenir a ma vue</button>
                     <div id="visibilityRoleMeta" class="visibility-role-meta"></div>
                   </div>
 
@@ -317,6 +318,14 @@
                       <p>Resume leger du role courant pour relire sans se perdre.</p>
                     </div>
                     <div id="visibilityRoleSummary" class="visibility-summary"></div>
+                  </article>
+
+                  <article class="visibility-step-card">
+                    <div class="visibility-step-head">
+                      <h4>Roles en resume</h4>
+                      <p>Vue compacte de chaque role avec acces et bouton Modifier.</p>
+                    </div>
+                    <div id="visibilityRoleDirectory" class="visibility-summary"></div>
                   </article>
                 </div>
               </article>
