@@ -1325,6 +1325,10 @@ function preferredSupAdminViewName() {
 }
 
 function canUseRoleSimulation() {
+  return isSupAdmin();
+}
+
+function canShowRoleReturn() {
   return state.roleViewUnlocked || isSupAdmin();
 }
 
@@ -4827,7 +4831,7 @@ function renderAuthState() {
   const sidebarVisible = state.pinValidated && (
     availableTabs.includes("*") || availableTabs.some((tab) => tab !== "dashboard")
   );
-  const debugViewVisible = canUseRoleSimulation();
+  const debugViewVisible = canShowRoleReturn();
 
   workspaceSidebar.classList.toggle("hidden-panel", !sidebarVisible);
   workspaceShell?.classList.toggle("without-sidebar", !sidebarVisible);
@@ -7002,7 +7006,7 @@ function handleGsmAdd(event) {
   render();
 }
 
-function handleSavRowStatusUpdate(event) {
+async function handleSavRowStatusUpdate(event) {
   const button = event.currentTarget;
   const ticketId = button.getAttribute("data-sav-row-apply");
   const ticket = state.tickets.find((entry) => entry.id === ticketId);
@@ -7023,6 +7027,9 @@ function handleSavRowStatusUpdate(event) {
     note: `Statut change vers ${ticketStatusLabel(nextStatus)} depuis la vue SAV.`
   });
 
+  if (hasRemoteData()) {
+    await syncSavStateToRemote();
+  }
   saveState();
   render();
 }
