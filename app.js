@@ -709,6 +709,7 @@ const appwriteStoresCollectionId = appConfig.appwriteStoresCollectionId || "stor
 const appwritePeopleCollectionId = appConfig.appwritePeopleCollectionId || "people";
 const appwriteActivitiesCollectionId = appConfig.appwriteActivitiesCollectionId || "activities";
 const appwriteSettingsCollectionId = appConfig.appwriteSettingsCollectionId || "settings";
+const appwriteTicketsCollectionId = appConfig.appwriteTicketsCollectionId || "tickets";
 const hasAppwriteDataConfig = Boolean(
   appwriteDatabases
   && appwriteDatabaseId
@@ -716,6 +717,7 @@ const hasAppwriteDataConfig = Boolean(
   && appwritePeopleCollectionId
   && appwriteActivitiesCollectionId
   && appwriteSettingsCollectionId
+  && appwriteTicketsCollectionId
 );
 let realtimeChannel = null;
 let appwriteRealtimeUnsubscribe = null;
@@ -1060,6 +1062,41 @@ function buildAppwriteSettingsDocument() {
     tool_items_json: JSON.stringify(state.toolItems || []),
     access_overrides_json: JSON.stringify(state.accessOverrides || [])
   };
+}
+
+function buildAppwriteTicketDocument(ticket) {
+  return {
+    store_id: String(ticket.storeId || ""),
+    store_code: ticket.storeCode || "",
+    store_name: ticket.storeName || "",
+    requester_name: ticket.requesterName || "",
+    target_service: ticket.targetService || "",
+    concern: ticket.concern || "",
+    initial_note: ticket.initialNote || "",
+    status: ticket.status || "open",
+    created_at: ticket.createdAt || new Date().toISOString(),
+    payload_json: JSON.stringify(ticket)
+  };
+}
+
+function normalizeAppwriteTicket(document) {
+  const payload = parseJsonField(document.payload_json, null);
+  const base = {
+    id: document.$id,
+    storeId: document.store_id || "",
+    storeCode: document.store_code || "",
+    storeName: document.store_name || "",
+    requesterName: document.requester_name || "",
+    targetService: document.target_service || "",
+    concern: document.concern || "",
+    initialNote: document.initial_note || "",
+    status: document.status || "open",
+    createdAt: document.created_at || new Date().toISOString(),
+    updates: []
+  };
+  return payload && typeof payload === "object"
+    ? { ...base, ...payload, id: payload.id || document.$id }
+    : base;
 }
 
 function isAppwriteRateLimitError(error) {
@@ -5213,12 +5250,14 @@ async function loadRemoteState() {
     storeDocuments,
     peopleDocuments,
     activityDocuments,
-    settingsDocuments
+    settingsDocuments,
+    ticketDocuments
   ] = await Promise.all([
     listAllAppwriteDocuments(appwriteStoresCollectionId, appwriteQuery ? [appwriteQuery.orderAsc("code")] : []),
     listAllAppwriteDocuments(appwritePeopleCollectionId, appwriteQuery ? [appwriteQuery.orderAsc("name")] : []),
     listAllAppwriteDocuments(appwriteActivitiesCollectionId, appwriteQuery ? [appwriteQuery.orderDesc("created_at")] : []),
-    listAllAppwriteDocuments(appwriteSettingsCollectionId)
+    listAllAppwriteDocuments(appwriteSettingsCollectionId),
+    listAllAppwriteDocuments(appwriteTicketsCollectionId, appwriteQuery ? [appwriteQuery.orderDesc("created_at")] : [])
   ]);
 
   state.stores = storeDocuments.length
@@ -5230,6 +5269,9 @@ async function loadRemoteState() {
   state.people = peopleDocuments.length
     ? mergePeopleWithPinFallback(peopleDocuments.map(normalizeAppwritePerson))
     : (state.people.length ? mergePeopleWithPinFallback(state.people) : demoPinPeople());
+  state.tickets = ticketDocuments.length
+    ? ticketDocuments.map(normalizeAppwriteTicket)
+    : (state.tickets.length ? state.tickets : clone(demoTickets));
 
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
@@ -5460,7 +5502,45 @@ async function syncAllRemoteState() {
     return;
   }
 
+  await syncTicketsRemoteState();
   await syncActivitiesRemoteState();
+}
+
+async function syncTicketsRemoteState(options = {}) {
+  const {
+    delayMs = 700,
+    every = 2
+  } = options;
+
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
+
+  for (let index = 0; index < state.tickets.length; index += 1) {
+    await paceRemoteSync(index, every, delayMs);
+    const ticket = state.tickets[index];
+    await upsertAppwriteDocument(
+      appwriteTicketsCollectionId,
+      safeDocumentId("ticket", ticket.id || `${ticket.storeCode}-${ticket.createdAt}`),
+      buildAppwriteTicketDocument(ticket)
+    );
+  }
+}
+
+async function syncSavStateToRemote() {
+  if (!hasRemoteData()) {
+    return;
+  }
+
+  if (supabaseClient) {
+    await syncAllRemoteState();
+    await loadRemoteState();
+    return;
+  }
+
+  await syncTicketsRemoteState();
+  await syncActivitiesRemoteState();
+  await loadRemoteState();
 }
 
 async function syncPeopleRemoteState(options = {}) {
@@ -6737,7 +6817,7 @@ async function handleStoreEditorSubmit(event) {
   render();
 }
 
-function handleSavCreate(event) {
+async function handleSavCreate(event) {
   const button = event.currentTarget;
   const storeId = Number(button.getAttribute("data-sav-create"));
   const form = button.closest("[data-store-editor]");
@@ -6788,11 +6868,14 @@ function handleSavCreate(event) {
   if (feedback) {
     feedback.textContent = "Ticket SAV cree.";
   }
+  if (hasRemoteData()) {
+    await syncSavStateToRemote();
+  }
   saveState();
   render();
 }
 
-function handleSavUpdate(event) {
+async function handleSavUpdate(event) {
   const button = event.currentTarget;
   const ticketId = button.getAttribute("data-sav-update");
   const ticket = state.tickets.find((entry) => entry.id === ticketId);
@@ -6833,11 +6916,14 @@ function handleSavUpdate(event) {
     createdAt: new Date().toISOString()
   });
 
+  if (hasRemoteData()) {
+    await syncSavStateToRemote();
+  }
   saveState();
   render();
 }
 
-function handleSavToggleClose(event) {
+async function handleSavToggleClose(event) {
   const button = event.currentTarget;
   const ticketId = button.getAttribute("data-sav-toggle-close");
   const ticket = state.tickets.find((entry) => entry.id === ticketId);
@@ -6863,6 +6949,9 @@ function handleSavToggleClose(event) {
     createdAt: new Date().toISOString()
   });
 
+  if (hasRemoteData()) {
+    await syncSavStateToRemote();
+  }
   saveState();
   render();
 }

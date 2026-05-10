@@ -8,5 +8,6 @@ window.APP_CONFIG = {
   appwriteStoresCollectionId: "stores",
   appwritePeopleCollectionId: "people",
   appwriteActivitiesCollectionId: "activities",
-  appwriteSettingsCollectionId: "settings"
+  appwriteSettingsCollectionId: "settings",
+  appwriteTicketsCollectionId: "tickets"
 };
