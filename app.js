@@ -1325,7 +1325,7 @@ function preferredSupAdminViewName() {
 }
 
 function canUseRoleSimulation() {
-  return isSupAdmin();
+  return state.roleViewUnlocked || isSupAdmin();
 }
 
 function preferredUserFromQuery() {
@@ -1525,7 +1525,7 @@ function accessibleTabsForUser(user = currentUser()) {
 
 function canAccessTab(tab, user = currentUser()) {
   if (tab === "visibility") {
-    return isSupAdmin(user);
+    return state.roleViewUnlocked || isSupAdmin(user);
   }
   const tabs = accessibleTabsForUser(user);
   return tabs.includes("*") || tabs.includes(tab);
