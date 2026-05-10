@@ -1275,6 +1275,153 @@ function loadState() {
 
 function saveState() {
   window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
+  scheduleRemoteStateSync();
+}
+
+const remoteSyncShadow = {
+  stores: new Map(),
+  people: new Map(),
+  tickets: new Map(),
+  activities: new Map(),
+  settings: ""
+};
+
+let remoteSyncTimer = null;
+let remoteSyncInFlight = false;
+let remoteSyncQueued = false;
+let remoteSyncSuppressed = false;
+
+function stableSerialize(value) {
+  try {
+    return JSON.stringify(value ?? null);
+  } catch {
+    return "";
+  }
+}
+
+function storeRemoteSyncKey(store) {
+  return safeDocumentId("store", store.code || store.id);
+}
+
+function personRemoteSyncKey(person) {
+  return safeDocumentId("person", person.id || person.email || person.name);
+}
+
+function ticketRemoteSyncKey(ticket) {
+  return safeDocumentId("ticket", ticket.id || `${ticket.storeCode}-${ticket.createdAt}`);
+}
+
+function activityRemoteSyncKey(activity) {
+  return safeDocumentId("activity", activity.id || `${activity.storeName}-${activity.createdAt}`);
+}
+
+function settingsRemoteSyncSnapshot() {
+  return stableSerialize(buildAppwriteSettingsDocument());
+}
+
+function refreshRemoteSyncShadow() {
+  remoteSyncShadow.stores = new Map((state.stores || []).map((store) => [storeRemoteSyncKey(store), stableSerialize(store)]));
+  remoteSyncShadow.people = new Map((state.people || []).map((person) => [personRemoteSyncKey(person), stableSerialize(person)]));
+  remoteSyncShadow.tickets = new Map((state.tickets || []).map((ticket) => [ticketRemoteSyncKey(ticket), stableSerialize(ticket)]));
+  remoteSyncShadow.activities = new Map((state.activities || []).map((activity) => [activityRemoteSyncKey(activity), stableSerialize(activity)]));
+  remoteSyncShadow.settings = settingsRemoteSyncSnapshot();
+}
+
+function computeRemoteSyncDiff(items, keyGetter, shadowMap) {
+  const changed = [];
+  const liveKeys = new Set();
+  (items || []).forEach((item) => {
+    const key = keyGetter(item);
+    liveKeys.add(key);
+    if (shadowMap.get(key) !== stableSerialize(item)) {
+      changed.push(item);
+    }
+  });
+  const removed = [...shadowMap.keys()].filter((key) => !liveKeys.has(key));
+  return { changed, removed };
+}
+
+async function syncDirtyRemoteState() {
+  if (!hasRemoteData() || remoteSyncSuppressed) {
+    return;
+  }
+
+  if (remoteSyncInFlight) {
+    remoteSyncQueued = true;
+    return;
+  }
+
+  remoteSyncInFlight = true;
+  try {
+    if (supabaseClient) {
+      await syncAllRemoteState();
+      await loadRemoteState();
+      refreshRemoteSyncShadow();
+      return;
+    }
+
+    const peopleDiff = computeRemoteSyncDiff(state.people || [], personRemoteSyncKey, remoteSyncShadow.people);
+    const storesDiff = computeRemoteSyncDiff(state.stores || [], storeRemoteSyncKey, remoteSyncShadow.stores);
+    const ticketsDiff = computeRemoteSyncDiff(state.tickets || [], ticketRemoteSyncKey, remoteSyncShadow.tickets);
+    const activitiesDiff = computeRemoteSyncDiff(state.activities || [], activityRemoteSyncKey, remoteSyncShadow.activities);
+    const settingsChanged = remoteSyncShadow.settings !== settingsRemoteSyncSnapshot();
+
+    for (const person of peopleDiff.changed) {
+      await syncPersonToRemote(person);
+    }
+    for (const personKey of peopleDiff.removed) {
+      const id = personKey.replace(/^person-/, "");
+      await deletePersonFromRemote(id);
+    }
+    for (const store of storesDiff.changed) {
+      await syncStoreToRemote(store);
+    }
+    for (const ticket of ticketsDiff.changed) {
+      await upsertAppwriteDocument(
+        appwriteTicketsCollectionId,
+        ticketRemoteSyncKey(ticket),
+        buildAppwriteTicketDocument(ticket)
+      );
+    }
+    for (const ticketKey of ticketsDiff.removed) {
+      await appwriteDatabases.deleteDocument(appwriteDatabaseId, appwriteTicketsCollectionId, ticketKey);
+    }
+    for (const activity of activitiesDiff.changed) {
+      await upsertAppwriteDocument(
+        appwriteActivitiesCollectionId,
+        activityRemoteSyncKey(activity),
+        buildAppwriteActivityDocument(activity)
+      );
+    }
+    if (settingsChanged) {
+      await syncSettingsToRemote();
+    }
+
+    await loadRemoteState();
+    refreshRemoteSyncShadow();
+  } catch (error) {
+    console.error("Remote sync error", error);
+  } finally {
+    remoteSyncInFlight = false;
+    if (remoteSyncQueued) {
+      remoteSyncQueued = false;
+      scheduleRemoteStateSync(1500);
+    }
+  }
+}
+
+function scheduleRemoteStateSync(delayMs = 1500) {
+  if (!hasRemoteData() || remoteSyncSuppressed) {
+    return;
+  }
+
+  if (remoteSyncTimer) {
+    window.clearTimeout(remoteSyncTimer);
+  }
+  remoteSyncTimer = window.setTimeout(() => {
+    remoteSyncTimer = null;
+    void syncDirtyRemoteState();
+  }, delayMs);
 }
 
 function normalizedAutomations(list) {
@@ -1529,7 +1676,7 @@ function accessibleTabsForUser(user = currentUser()) {
 
 function canAccessTab(tab, user = currentUser()) {
   if (tab === "visibility") {
-    return state.roleViewUnlocked || isSupAdmin(user);
+    return isSupAdmin(user);
   }
   const tabs = accessibleTabsForUser(user);
   return tabs.includes("*") || tabs.includes(tab);
@@ -5179,6 +5326,8 @@ function handleNetworkConfirm(event) {
 }
 
 async function loadRemoteState() {
+  remoteSyncSuppressed = true;
+  try {
   if (supabaseClient) {
     const [
       storesResult,
@@ -5244,6 +5393,7 @@ async function loadRemoteState() {
     }
 
     saveState();
+    refreshRemoteSyncShadow();
     return;
   }
 
@@ -5294,6 +5444,10 @@ async function loadRemoteState() {
   }
 
   saveState();
+  refreshRemoteSyncShadow();
+  } finally {
+    remoteSyncSuppressed = false;
+  }
 }
 
 async function syncStoreToRemote(store, activityComment) {
@@ -5777,7 +5931,7 @@ function setupAppwritePolling() {
   }
 
   appwritePollHandle = window.setInterval(async () => {
-    if (state.connectionState !== "connected") {
+    if (state.connectionState === "initializing") {
       return;
     }
     try {
