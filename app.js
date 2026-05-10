@@ -721,6 +721,7 @@ const hasAppwriteDataConfig = Boolean(
 );
 let realtimeChannel = null;
 let appwriteRealtimeUnsubscribe = null;
+let appwritePollHandle = null;
 
 const state = {
   mode: "demo",
@@ -5271,7 +5272,7 @@ async function loadRemoteState() {
     : (state.people.length ? mergePeopleWithPinFallback(state.people) : demoPinPeople());
   state.tickets = ticketDocuments.length
     ? ticketDocuments.map(normalizeAppwriteTicket)
-    : (state.tickets.length ? state.tickets : clone(demoTickets));
+    : [];
 
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
@@ -5755,14 +5756,33 @@ async function setupRealtime() {
   }
 
   appwriteRealtimeUnsubscribe = appwriteClient.subscribe([
-    `databases.${appwriteDatabaseId}.collections.${appwriteStoresCollectionId}.documents`,
-    `databases.${appwriteDatabaseId}.collections.${appwritePeopleCollectionId}.documents`,
-    `databases.${appwriteDatabaseId}.collections.${appwriteActivitiesCollectionId}.documents`,
-    `databases.${appwriteDatabaseId}.collections.${appwriteSettingsCollectionId}.documents`
-  ], async () => {
-    await loadRemoteState();
-    render();
-  });
+      `databases.${appwriteDatabaseId}.collections.${appwriteStoresCollectionId}.documents`,
+      `databases.${appwriteDatabaseId}.collections.${appwriteTicketsCollectionId}.documents`,
+      `databases.${appwriteDatabaseId}.collections.${appwritePeopleCollectionId}.documents`,
+      `databases.${appwriteDatabaseId}.collections.${appwriteActivitiesCollectionId}.documents`,
+      `databases.${appwriteDatabaseId}.collections.${appwriteSettingsCollectionId}.documents`
+    ], async () => {
+      await loadRemoteState();
+      render();
+    });
+}
+
+function setupAppwritePolling() {
+  if (!isAppwriteMode || !hasAppwriteDataConfig || appwritePollHandle) {
+    return;
+  }
+
+  appwritePollHandle = window.setInterval(async () => {
+    if (state.connectionState !== "connected") {
+      return;
+    }
+    try {
+      await loadRemoteState();
+      render();
+    } catch (error) {
+      console.error("Appwrite polling error", error);
+    }
+  }, 60000);
 }
 
 function render() {
@@ -7651,6 +7671,7 @@ async function init() {
       if (hasAppwriteDataConfig) {
         await loadRemoteState();
         await setupRealtime();
+        setupAppwritePolling();
       }
     } catch (error) {
       state.connectionState = "fallback";
