@@ -5940,7 +5940,7 @@ function setupAppwritePolling() {
     } catch (error) {
       console.error("Appwrite polling error", error);
     }
-  }, 60000);
+  }, 250000);
 }
 
 function render() {
