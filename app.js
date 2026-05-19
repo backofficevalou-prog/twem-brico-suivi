@@ -1098,6 +1098,23 @@ function storeProvenance(store) {
   return provenanceOptions.includes(raw) ? raw : "Migration";
 }
 
+function normalizeShopTypeValue(value) {
+  const raw = normalizeImportCell(value).toUpperCase().replace(/\s+/g, "");
+  if (!raw) {
+    return "";
+  }
+  if (raw === "FOS/DOS" || raw === "DOS/FOS" || raw === "FOSDOS") {
+    return "FOSDOS";
+  }
+  if (raw === "DOS") {
+    return "DOS";
+  }
+  if (raw === "FOS") {
+    return "FOS";
+  }
+  return normalizeImportCell(value).toUpperCase();
+}
+
 function buildAppwriteTicketDocument(ticket) {
   return {
     store_id: String(ticket.storeId || ""),
@@ -6110,11 +6127,13 @@ async function importJsonData(payload) {
 
 function handleImportButtonClick() {
   state.importMode = "stores";
+  importInput.value = "";
   importInput.click();
 }
 
 function triggerImport(mode) {
   state.importMode = mode;
+  importInput.value = "";
   importInput.click();
 }
 
