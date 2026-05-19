@@ -1439,15 +1439,20 @@ function normalizedRoleOptions(list) {
 }
 
 function recordImportExportHistory(type, label, detail = "") {
-  state.importExportHistory.unshift({
+  const nextEntry = {
     id: `io-${Date.now()}`,
     type,
     label,
     detail,
     author: currentUser()?.name || state.activeUserName || "-",
     createdAt: new Date().toISOString()
-  });
-  state.importExportHistory = state.importExportHistory.slice(0, 20);
+  };
+
+  const baseHistory = label === "Export JSON complet"
+    ? state.importExportHistory.filter((item) => item.label !== "Export JSON complet")
+    : [...state.importExportHistory];
+
+  state.importExportHistory = [nextEntry, ...baseHistory].slice(0, 20);
   saveState();
 }
 
@@ -6284,6 +6289,16 @@ function exportExtensionsPdf() {
   recordImportExportHistory("export", "Export extensions PDF", `${bodyRows.length} extension(s) exportee(s).`);
 }
 
+function safeRunExport(action) {
+  try {
+    action();
+    renderImportExportHistory();
+  } catch (error) {
+    console.error("Export error", error);
+    window.alert(`Export impossible: ${error.message}`);
+  }
+}
+
 function parseDelimitedText(raw) {
   const lines = String(raw || "")
     .replace(/\r/g, "")
@@ -6612,7 +6627,6 @@ function importStoresRows(rows) {
   state.stores = nextStores;
   state.activities = [];
   state.tickets = [];
-  state.importExportHistory = [];
 
   const coreTwem = preserveCoreTwemPeople();
   const managersByKey = new Map();
@@ -7806,11 +7820,11 @@ tabImportButton?.addEventListener("click", handleImportButtonClick);
 tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
 tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telephony"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
-tabExportButton?.addEventListener("click", exportJsonData);
-tabExportStoresXlsxButton?.addEventListener("click", exportStoresXlsx);
-tabExportStoresPdfButton?.addEventListener("click", exportStoresPdf);
-tabExportExtensionsXlsxButton?.addEventListener("click", exportExtensionsXlsx);
-tabExportExtensionsPdfButton?.addEventListener("click", exportExtensionsPdf);
+tabExportButton?.addEventListener("click", () => safeRunExport(exportJsonData));
+tabExportStoresXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresXlsx));
+tabExportStoresPdfButton?.addEventListener("click", () => safeRunExport(exportStoresPdf));
+tabExportExtensionsXlsxButton?.addEventListener("click", () => safeRunExport(exportExtensionsXlsx));
+tabExportExtensionsPdfButton?.addEventListener("click", () => safeRunExport(exportExtensionsPdf));
 
 async function init() {
   const stored = loadState();
