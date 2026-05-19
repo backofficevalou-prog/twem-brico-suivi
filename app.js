@@ -6965,18 +6965,18 @@ async function handleStoreEditorSubmit(event) {
 
   validationNode.textContent = "";
   const workflow = ensureStoreWorkflowData(store);
-  store.owner = form.querySelector('[name="owner"]').value;
+  store.owner = form.querySelector('[name="owner"]')?.value || store.owner || "";
   store.manager = form.querySelector('[name="manager"]').value.trim();
   store.status = globalStatus;
   store.health = health;
   store.updatedAt = new Date().toISOString();
 
-  stepFor(store, "store_manager").status = form.querySelector('[name="store_manager_status"]').value;
-  stepFor(store, "installer").status = form.querySelector('[name="installer_status"]').value;
-  stepFor(store, "electrician").status = form.querySelector('[name="electrician_status"]').value;
-  stepFor(store, "store_manager").note = form.querySelector('[name="store_manager_note"]').value.trim();
-  stepFor(store, "installer").note = form.querySelector('[name="installer_note"]').value.trim();
-  stepFor(store, "electrician").note = form.querySelector('[name="electrician_note"]').value.trim();
+  stepFor(store, "store_manager").status = form.querySelector('[name="store_manager_status"]')?.value || stepFor(store, "store_manager").status;
+  stepFor(store, "installer").status = form.querySelector('[name="installer_status"]')?.value || stepFor(store, "installer").status;
+  stepFor(store, "electrician").status = form.querySelector('[name="electrician_status"]')?.value || stepFor(store, "electrician").status;
+  stepFor(store, "store_manager").note = form.querySelector('[name="store_manager_note"]')?.value.trim() || stepFor(store, "store_manager").note || "";
+  stepFor(store, "installer").note = form.querySelector('[name="installer_note"]')?.value.trim() || stepFor(store, "installer").note || "";
+  stepFor(store, "electrician").note = form.querySelector('[name="electrician_note"]')?.value.trim() || stepFor(store, "electrician").note || "";
   store.appointments = readAppointments(form, store);
 
   workflow.destinyInstallDate = form.querySelector('[name="destiny_install_date"]').value;
