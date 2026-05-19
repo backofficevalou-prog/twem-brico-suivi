@@ -6937,15 +6937,21 @@ function handleImportInputChange(event) {
         } else {
           throw new Error("Pour la telephonie, utilise XLS/XLSX, CSV ou JSON.");
         }
-        saveState();
-        render();
-        const syncResult = await syncImportedStateIfPossible("telephony");
-        recordImportExportHistory("import", "Import telephonie", file.name);
-        saveState();
-        render();
-        window.alert(syncResult.missingDatabase
-          ? "Import telephonie termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
-          : "Import telephonie termine.");
+        remoteSyncSuppressed = true;
+        try {
+          saveState();
+          render();
+          const syncResult = await syncImportedStateIfPossible("telephony");
+          recordImportExportHistory("import", "Import telephonie", file.name);
+          saveState();
+          render();
+          window.alert(syncResult.missingDatabase
+            ? "Import telephonie termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
+            : "Import telephonie termine.");
+        } finally {
+          remoteSyncSuppressed = false;
+          refreshRemoteSyncShadow();
+        }
       } else if (fileName.endsWith(".json")) {
         const payload = JSON.parse(String(reader.result));
         await importJsonData(payload);
@@ -6953,26 +6959,38 @@ function handleImportInputChange(event) {
         window.alert(t("importDone"));
       } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
         importStoresRows(readWorkbookRows(file, reader.result));
-        saveState();
-        render();
-        const syncResult = await syncImportedStateIfPossible("stores");
-        recordImportExportHistory("import", "Import magasins XLS/XLSX", file.name);
-        saveState();
-        render();
-        window.alert(syncResult.missingDatabase
-          ? "Import magasins termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
-          : "Import magasins termine.");
+        remoteSyncSuppressed = true;
+        try {
+          saveState();
+          render();
+          const syncResult = await syncImportedStateIfPossible("stores");
+          recordImportExportHistory("import", "Import magasins XLS/XLSX", file.name);
+          saveState();
+          render();
+          window.alert(syncResult.missingDatabase
+            ? "Import magasins termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
+            : "Import magasins termine.");
+        } finally {
+          remoteSyncSuppressed = false;
+          refreshRemoteSyncShadow();
+        }
       } else if (fileName.endsWith(".csv")) {
         importStoresRows(parseDelimitedText(reader.result));
-        saveState();
-        render();
-        const syncResult = await syncImportedStateIfPossible("stores");
-        recordImportExportHistory("import", "Import magasins CSV", file.name);
-        saveState();
-        render();
-        window.alert(syncResult.missingDatabase
-          ? "Import magasins termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
-          : "Import magasins termine.");
+        remoteSyncSuppressed = true;
+        try {
+          saveState();
+          render();
+          const syncResult = await syncImportedStateIfPossible("stores");
+          recordImportExportHistory("import", "Import magasins CSV", file.name);
+          saveState();
+          render();
+          window.alert(syncResult.missingDatabase
+            ? "Import magasins termine dans l application. La base Appwrite 'twem_brico' n existe pas encore, donc la synchro backend est en attente."
+            : "Import magasins termine.");
+        } finally {
+          remoteSyncSuppressed = false;
+          refreshRemoteSyncShadow();
+        }
       } else {
         window.alert("Pour les magasins, utilise XLS/XLSX, CSV ou JSON.");
       }
