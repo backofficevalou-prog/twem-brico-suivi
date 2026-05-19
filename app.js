@@ -3766,6 +3766,10 @@ function buildStoreDetailForm(store, mode = "stores") {
 
         ${buildConfigurationHubCard(store)}
 
+        <div class="editor-grid section-anchor" id="section-equipment">
+          ${buildStorePostsSkeleton(store)}
+        </div>
+
         ${buildEquipmentCards(store)}
 
         <div class="editor-grid section-anchor" id="section-closing">
@@ -6409,6 +6413,20 @@ function toImportNumber(value, fallback = 0) {
 }
 
 function formatImportDateValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  const numericValue = typeof value === "number"
+    ? value
+    : (/^\d+(\.\d+)?$/.test(String(value).trim()) ? Number(String(value).trim()) : NaN);
+  if (Number.isFinite(numericValue) && numericValue > 59) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    excelEpoch.setUTCDate(excelEpoch.getUTCDate() + Math.floor(numericValue));
+    const year = excelEpoch.getUTCFullYear();
+    const month = String(excelEpoch.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(excelEpoch.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
   const parsed = normalizeDateOnly(value);
   if (!parsed) {
     return "";
