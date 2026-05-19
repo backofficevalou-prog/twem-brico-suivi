@@ -832,6 +832,7 @@ const peopleSearchInput = document.querySelector("#peopleSearchInput");
 const intervenantForm = document.querySelector("#intervenantForm");
 const intervenantPersonSelect = document.querySelector("#intervenantPersonSelect");
 const intervenantRoleSelect = document.querySelector("#intervenantRoleSelect");
+const intervenantList = document.querySelector("#intervenantList");
 const roleForm = document.querySelector("#roleForm");
 const roleInput = document.querySelector("#roleInput");
 const roleList = document.querySelector("#roleList");
@@ -4961,6 +4962,35 @@ function renderPeopleList() {
   });
 }
 
+function renderIntervenantList() {
+  if (!intervenantList) {
+    return;
+  }
+
+  const intervenants = state.people
+    .filter((person) => ["telephonie_destiny", "it", "infra", "intervenant"].includes(person.role))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+
+  if (!intervenants.length) {
+    intervenantList.innerHTML = '<div class="empty-state">Aucun intervenant actif.</div>';
+    return;
+  }
+
+  intervenantList.innerHTML = intervenants.map((person) => `
+    <div class="simple-item">
+      <div class="simple-item-title">${escapeHtml(person.name)}</div>
+      <div class="simple-item-meta">${escapeHtml(roleLabel(person.role))}${person.storeCode ? ` - ${escapeHtml(person.storeCode)}` : ""}</div>
+      <div class="person-row-actions">
+        <button type="button" class="mini-button" data-intervenant-remove="${escapeHtml(person.id)}">Retirer</button>
+      </div>
+    </div>
+  `).join("");
+
+  intervenantList.querySelectorAll("[data-intervenant-remove]").forEach((button) => {
+    button.addEventListener("click", handleIntervenantRemove);
+  });
+}
+
 function renderRoleList() {
   roleList.innerHTML = "";
   const roleStackSummary = document.querySelector("#roleStackSummary");
@@ -6105,6 +6135,7 @@ function render() {
   }
   if (activePanel === "contacts") {
     renderPeopleList();
+    renderIntervenantList();
     renderRoleList();
     return;
   }
@@ -8001,7 +8032,28 @@ async function handleIntervenantSubmit(event) {
     return;
   }
 
+  if (!["telephonie_destiny", "it", "infra", "intervenant"].includes(person.role)) {
+    person.previousRoleBeforeIntervenant = person.role;
+  }
   person.role = nextRole;
+  if (hasRemoteData()) {
+    await syncPersonToRemote(person);
+    await loadRemoteState();
+  }
+  saveState();
+  render();
+}
+
+async function handleIntervenantRemove(event) {
+  const personId = event.currentTarget.getAttribute("data-intervenant-remove");
+  const person = state.people.find((entry) => entry.id === personId);
+  if (!person) {
+    return;
+  }
+
+  person.role = person.previousRoleBeforeIntervenant || "manager";
+  delete person.previousRoleBeforeIntervenant;
+
   if (hasRemoteData()) {
     await syncPersonToRemote(person);
     await loadRemoteState();
