@@ -1093,6 +1093,11 @@ function buildAppwriteSettingsDocument() {
   };
 }
 
+function storeProvenance(store) {
+  const raw = normalizeImportCell(store?.owner);
+  return provenanceOptions.includes(raw) ? raw : "Migration";
+}
+
 function buildAppwriteTicketDocument(ticket) {
   return {
     store_id: String(ticket.storeId || ""),
@@ -2345,7 +2350,7 @@ function getFilteredStores() {
     const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage}`.toLowerCase();
     const matchesSearch = haystack.includes(state.filters.search);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
-    const matchesOwner = state.filters.owner === "all" || store.owner === state.filters.owner;
+    const matchesOwner = state.filters.owner === "all" || storeProvenance(store) === state.filters.owner;
     const matchesStage = state.filters.stage === "all" || stage === state.filters.stage;
     const matchesType = state.filters.type === "all" || (store.shopType || "") === state.filters.type;
     const matchesCity = state.filters.city === "all" || store.city === state.filters.city;
@@ -2517,12 +2522,11 @@ function renderDashboardExtra(mainTab, visibleStores) {
 
 function syncSelectors() {
   languageSelect.value = state.language;
-  const owners = [...new Set(getRoleScopedStores().map((store) => store.owner))].sort();
   const types = [...new Set(getRoleScopedStores().map((store) => store.shopType).filter(Boolean))].sort();
   const cities = [...new Set(getRoleScopedStores().map((store) => store.city).filter(Boolean))].sort();
   const stages = [...new Set(getRoleScopedStores().map((store) => currentWorkflowStage(store)).filter(Boolean))].sort();
   ownerFilter.innerHTML = `<option value="all">${t("all")}</option>`;
-  owners.forEach((owner) => {
+  provenanceOptions.forEach((owner) => {
     const option = document.createElement("option");
     option.value = owner;
     option.textContent = owner;
