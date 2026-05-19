@@ -3095,14 +3095,14 @@ function buildConfigurationSummaryCard(store) {
     ["Mail configuration", workflow.extensionRequestStatus || "A envoyer"],
     ["Ticket Destiny", workflow.destinyTicketRef || "A confirmer"],
     ["Date telephonie actuelle", workflow.currentPhoneDate || "A confirmer"],
-    ["Demande VLAN22", workflow.vlan22Date || workflow.vlan22Status || "A confirmer"]
+    ["Configuration VLAN22", workflow.vlan22Date || workflow.vlan22Status || "A confirmer"]
   ];
 
   const confirmedRows = [
     ["Coordination Destiny", workflow.destinyPmName || workflow.destinyInstallDate ? "Fait" : "A faire"],
     ["Pre-visite", workflow.networkSurveyStatus === "Termine" || workflow.networkSurveyStatus === "OK" ? "Faite" : "A faire"],
     ["Preparation externe", workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" ? "Faite" : "A faire"],
-    ["VLAN22 active", workflow.vlan22Activated || "A faire"],
+    ["VLAN22 active", workflow.vlan22Date ? "Oui" : (workflow.vlan22Activated || "A faire")],
     ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
     ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"]
   ];
