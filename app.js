@@ -2838,7 +2838,7 @@ function buildStorePilotSkeleton(store) {
   const { licenseCount, fixCount, fixBigCount, mobileCount, mobileSmartphoneCount, flashLightCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
 
   return `
-    <article class="editor-card">
+    <article class="editor-card full-span-card">
       <h3>Quantites magasin</h3>
       <p>Vue de pilotage rapide des besoins reseau et materiel du magasin.</p>
       <div class="quantity-grid">
