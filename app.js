@@ -1102,16 +1102,17 @@ function storeProvenance(store) {
 
 function normalizeShopTypeValue(value) {
   const raw = normalizeImportCell(value).toUpperCase().replace(/\s+/g, "");
+  const lettersOnly = raw.replace(/[^A-Z]/g, "");
   if (!raw) {
     return "";
   }
-  if (raw === "FOS/DOS" || raw === "DOS/FOS" || raw === "FOSDOS") {
+  if (lettersOnly === "FOSDOS" || lettersOnly === "DOSFOS") {
     return "FOSDOS";
   }
-  if (raw === "DOS") {
+  if (lettersOnly === "DOS") {
     return "DOS";
   }
-  if (raw === "FOS") {
+  if (lettersOnly === "FOS") {
     return "FOS";
   }
   return normalizeImportCell(value).toUpperCase();
