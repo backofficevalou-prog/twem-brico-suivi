@@ -2329,6 +2329,29 @@ function normalizeDateOnly(dateLike) {
   if (!dateLike) {
     return null;
   }
+  if (dateLike instanceof Date && !Number.isNaN(dateLike.getTime())) {
+    const parsedDate = new Date(dateLike);
+    parsedDate.setHours(0, 0, 0, 0);
+    return parsedDate;
+  }
+  const raw = String(dateLike).trim();
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const parsedIso = new Date(Number(year), Number(month) - 1, Number(day));
+    parsedIso.setHours(0, 0, 0, 0);
+    return Number.isNaN(parsedIso.getTime()) ? null : parsedIso;
+  }
+  const localMatch = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:\s+.*)?$/);
+  if (localMatch) {
+    let [, day, month, year] = localMatch;
+    if (year.length === 2) {
+      year = Number(year) >= 70 ? `19${year}` : `20${year}`;
+    }
+    const parsedLocal = new Date(Number(year), Number(month) - 1, Number(day));
+    parsedLocal.setHours(0, 0, 0, 0);
+    return Number.isNaN(parsedLocal.getTime()) ? null : parsedLocal;
+  }
   const parsed = new Date(dateLike);
   if (Number.isNaN(parsed.getTime())) {
     return null;
@@ -6020,7 +6043,7 @@ async function syncImportedStateIfPossible(mode = "full") {
       await syncStoresRemoteState({ delayMs: 1800, every: 1 });
       await syncSettingsToRemote();
     } else if (mode === "telephony") {
-      await syncStoresRemoteState({ delayMs: 1800, every: 1 });
+      await syncStoresRemoteState({ delayMs: 700, every: 8 });
     } else if (mode === "extensions") {
       await syncSettingsToRemote();
     } else {
