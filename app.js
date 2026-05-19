@@ -742,6 +742,7 @@ const state = {
   roleViewUnlocked: false,
   contactSearch: "",
   importMode: "stores",
+  importBusyMessage: "",
   importExportHistory: [],
   tickets: [],
   filters: {
@@ -5080,9 +5081,8 @@ function renderImportExportHistory() {
 
   const compactHistory = cleanImportHistory(state.importExportHistory);
   const count = compactHistory.length;
-  importExportHistoryMeta.textContent = count
-    ? `${count} operation(s) memorisee(s)`
-    : "Aucune operation pour le moment.";
+  importExportHistoryMeta.textContent = state.importBusyMessage
+    || (count ? `${count} operation(s) memorisee(s)` : "Aucune operation pour le moment.");
 
   if (!count) {
     importExportHistoryList.innerHTML = '<div class="empty-state">Aucun import ou export enregistre.</div>';
@@ -6863,6 +6863,14 @@ function handleImportInputChange(event) {
     return;
   }
 
+  const importLabel = state.importMode === "telephony"
+    ? "Import telephonie en cours..."
+    : state.importMode === "extensions"
+      ? "Import extensions en cours..."
+      : "Import magasins en cours...";
+  state.importBusyMessage = `${importLabel} ${file.name}`;
+  renderImportExportHistory();
+
   const useBinaryReader = file.name.toLowerCase().endsWith(".xls") || file.name.toLowerCase().endsWith(".xlsx");
   const reader = new FileReader();
   reader.onload = async () => {
@@ -6937,8 +6945,10 @@ function handleImportInputChange(event) {
     } catch (error) {
       window.alert(`${t("importError")}: ${error.message}`);
     } finally {
+      state.importBusyMessage = "";
       importInput.value = "";
       state.importMode = "stores";
+      renderImportExportHistory();
     }
   };
   if (useBinaryReader) {
