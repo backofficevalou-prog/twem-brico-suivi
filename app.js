@@ -758,6 +758,16 @@ const state = {
 
 const presentationBypassUsers = ["Valou", "Emir"];
 const magicLinksEnabled = false;
+const knownTestPeopleNames = [
+  "M. Dupont",
+  "Mme Martin",
+  "M. Lambert",
+  "Mme Simon",
+  "Equipe Telephonie A",
+  "Equipe Telephonie B",
+  "Electricien Nord",
+  "Electricien Sud"
+];
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
 
@@ -884,8 +894,12 @@ function hydrateAccessProfile(person) {
   };
 }
 
+function stripKnownTestPeople(people = []) {
+  return (people || []).filter((person) => !knownTestPeopleNames.includes(person?.name));
+}
+
 function demoPinPeople() {
-  return clone(initialPeople).map(hydrateAccessProfile);
+  return clone(initialPeople).filter((person) => !knownTestPeopleNames.includes(person.name)).map(hydrateAccessProfile);
 }
 
 function mergePeopleWithPinFallback(people = []) {
@@ -930,7 +944,7 @@ function mergePeopleWithPinFallback(people = []) {
     byKey.set(key, merged);
   });
 
-  return [...byKey.values()];
+  return stripKnownTestPeople([...byKey.values()]);
 }
 
 function hasRemoteData() {
