@@ -6892,15 +6892,18 @@ async function handleRemoveAppointment(event) {
 function readAppointments(form, store) {
   const currentAppointments = store.appointments.map((appointment, index) => ({
     ...appointment,
-    datetime: form.querySelector(`[name="appointment_datetime_${index}"]`).value,
-    status: form.querySelector(`[name="appointment_status_${index}"]`).value,
-    people: [...form.querySelector(`[name="appointment_people_${index}"]`).selectedOptions].map((option) => option.value)
+    datetime: form.querySelector(`[name="appointment_datetime_${index}"]`)?.value || appointment.datetime,
+    status: form.querySelector(`[name="appointment_status_${index}"]`)?.value || appointment.status,
+    people: form.querySelector(`[name="appointment_people_${index}"]`)
+      ? [...form.querySelector(`[name="appointment_people_${index}"]`).selectedOptions].map((option) => option.value)
+      : appointment.people
   })).filter((appointment) => appointment.datetime);
 
-  const newDatetime = form.querySelector('[name="new_appointment_datetime"]').value;
-  const newPeople = [...form.querySelector('[name="new_appointment_people"]').selectedOptions].map((option) => option.value);
-  const newStatus = form.querySelector('[name="new_appointment_status"]').value;
-  const newNote = form.querySelector('[name="new_appointment_note"]').value.trim();
+  const newDatetime = form.querySelector('[name="new_appointment_datetime"]')?.value || "";
+  const newPeopleField = form.querySelector('[name="new_appointment_people"]');
+  const newPeople = newPeopleField ? [...newPeopleField.selectedOptions].map((option) => option.value) : [];
+  const newStatus = form.querySelector('[name="new_appointment_status"]')?.value || "Propose";
+  const newNote = form.querySelector('[name="new_appointment_note"]')?.value.trim() || "";
 
   if (newDatetime) {
     currentAppointments.push({
@@ -6955,8 +6958,8 @@ async function handleStoreEditorSubmit(event) {
     return;
   }
 
-  const globalStatus = form.querySelector('[name="global_status"]').value;
-  const health = form.querySelector('[name="health"]').value.trim();
+  const globalStatus = form.querySelector('[name="global_status"]')?.value || store.status || "planned";
+  const health = form.querySelector('[name="health"]')?.value.trim() || store.health || "";
 
   if (globalStatus === "blocked" && !health) {
     validationNode.textContent = "Le champ probleme est obligatoire si le statut est bloque.";
@@ -6966,7 +6969,7 @@ async function handleStoreEditorSubmit(event) {
   validationNode.textContent = "";
   const workflow = ensureStoreWorkflowData(store);
   store.owner = form.querySelector('[name="owner"]')?.value || store.owner || "";
-  store.manager = form.querySelector('[name="manager"]').value.trim();
+  store.manager = form.querySelector('[name="manager"]')?.value.trim() || store.manager || "";
   store.status = globalStatus;
   store.health = health;
   store.updatedAt = new Date().toISOString();
