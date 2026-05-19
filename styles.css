@@ -957,6 +957,14 @@ button {
   margin-top: 12px;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
+.align-end-grid {
+  align-items: end;
+}
+
 .store-editor-nav {
   display: flex;
   flex-wrap: wrap;

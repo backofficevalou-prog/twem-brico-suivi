@@ -3024,6 +3024,7 @@ function buildStoreSectionNav(mode = "stores") {
         ["equipment", "Equipements"],
         ["appointments", "Rendez-vous"],
         ["sav", "SAV"],
+        ["documents", "Documents"],
         ["closing", "Cloture"]
       ];
   return `
@@ -3285,6 +3286,34 @@ function buildConfigurationHubCard(store) {
   `;
 }
 
+function buildStoreDocumentsCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const planName = workflow.planPdfName || "";
+  const updatedLabel = workflow.planPdfUpdatedAt
+    ? `Derniere mise a jour ${formatDateTime(workflow.planPdfUpdatedAt)}`
+    : "Ajoute ici le plan PDF du magasin.";
+
+  return `
+    <div class="editor-grid section-anchor" id="section-documents">
+      <article class="editor-card full-span-card" data-access-zone="store_documents">
+        <h3>Documents / Plan magasin</h3>
+        <div class="two-col align-end-grid">
+          <div class="cell-stack">
+            <strong>${escapeHtml(planName || "Aucun plan PDF importe")}</strong>
+            <span class="cell-note">${escapeHtml(updatedLabel)}</span>
+          </div>
+          <div class="posts-skeleton-actions">
+            <input type="file" class="hidden-file-input" data-plan-file="${store.id}" accept="application/pdf">
+            <button type="button" class="mini-button" data-plan-upload="${store.id}">${planName ? "Remplacer le plan PDF" : "Importer le plan PDF"}</button>
+            <button type="button" class="mini-button" data-plan-open="${store.id}" ${workflow.planPdfDataUrl ? "" : "disabled"}>Ouvrir le PDF</button>
+            <button type="button" class="mini-button" data-plan-delete="${store.id}" ${workflow.planPdfDataUrl ? "" : "disabled"}>Supprimer</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
 function buildEquipmentCards(store) {
   const workflow = ensureStoreWorkflowData(store);
   const gsmRows = getGsmRows(store);
@@ -3506,6 +3535,9 @@ function ensureStoreWorkflowData(store) {
     cablingStatus: "A verifier",
     mobileChargersSent: "Non",
     mobileChargerCount: String(Math.max(1, Math.ceil(mobileCount / 10))),
+    planPdfName: "",
+    planPdfDataUrl: "",
+    planPdfUpdatedAt: "",
     destinyInstallDone: "Non",
     destinyInstallRemark: "",
     bricoFinalMailStatus: "A envoyer",
@@ -3884,6 +3916,8 @@ function buildStoreDetailForm(store, mode = "stores") {
           ${buildSavCard(store)}
         </div>
 
+        ${buildStoreDocumentsCard(store)}
+
         <div class="editor-grid">
           <article class="editor-card" data-access-zone="status_admin">
             <h3>Statut global</h3>
@@ -3914,6 +3948,7 @@ function buildStoreDetailForm(store, mode = "stores") {
         ${detailContent}
         <div class="editor-actions">
           <span class="validation-text" data-validation="${store.id}"></span>
+          <button type="button" class="mini-button" data-store-print="${store.id}">Imprimer la fiche complete</button>
           <button type="submit" data-store-submit>Enregistrer ce magasin</button>
         </div>
       </form>
@@ -3967,6 +4002,26 @@ function attachStoreInteractiveHandlers() {
       render();
       window.location.hash = "#section-preparation";
     });
+  });
+
+  projectTableBody.querySelectorAll("[data-plan-upload]").forEach((button) => {
+    button.addEventListener("click", handleStorePlanUploadTrigger);
+  });
+
+  projectTableBody.querySelectorAll("[data-plan-open]").forEach((button) => {
+    button.addEventListener("click", handleStorePlanOpen);
+  });
+
+  projectTableBody.querySelectorAll("[data-plan-delete]").forEach((button) => {
+    button.addEventListener("click", handleStorePlanDelete);
+  });
+
+  projectTableBody.querySelectorAll("[data-plan-file]").forEach((input) => {
+    input.addEventListener("change", handleStorePlanFileChange);
+  });
+
+  projectTableBody.querySelectorAll("[data-store-print]").forEach((button) => {
+    button.addEventListener("click", handleStorePrint);
   });
 }
 
@@ -6960,6 +7015,191 @@ function exportStoreReportPdf(group) {
   reportWindow.document.close();
   reportWindow.focus();
   reportWindow.print();
+}
+
+function handleStorePlanUploadTrigger(event) {
+  const storeId = event.currentTarget.getAttribute("data-plan-upload");
+  const input = projectTableBody.querySelector(`[data-plan-file="${storeId}"]`);
+  if (!input) {
+    return;
+  }
+  input.value = "";
+  input.click();
+}
+
+function handleStorePlanOpen(event) {
+  const storeId = Number(event.currentTarget.getAttribute("data-plan-open"));
+  const store = state.stores.find((item) => item.id === storeId);
+  const workflow = store ? ensureStoreWorkflowData(store) : null;
+  if (!workflow?.planPdfDataUrl) {
+    return;
+  }
+  window.open(workflow.planPdfDataUrl, "_blank");
+}
+
+async function handleStorePlanDelete(event) {
+  const storeId = Number(event.currentTarget.getAttribute("data-plan-delete"));
+  const store = state.stores.find((item) => item.id === storeId);
+  if (!store) {
+    return;
+  }
+  const workflow = ensureStoreWorkflowData(store);
+  workflow.planPdfName = "";
+  workflow.planPdfDataUrl = "";
+  workflow.planPdfUpdatedAt = "";
+  store.updatedAt = new Date().toISOString();
+  if (hasRemoteData()) {
+    await syncStoreToRemote(store, "Suppression du plan magasin PDF");
+    await loadRemoteState();
+  }
+  saveState();
+  render();
+}
+
+async function handleStorePlanFileChange(event) {
+  const input = event.currentTarget;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+  const storeId = Number(input.getAttribute("data-plan-file"));
+  const store = state.stores.find((item) => item.id === storeId);
+  if (!store) {
+    return;
+  }
+  if (!/\.pdf$/i.test(file.name)) {
+    window.alert("Utilise uniquement un fichier PDF pour le plan magasin.");
+    input.value = "";
+    return;
+  }
+  if (file.size > 4 * 1024 * 1024) {
+    window.alert("Le plan PDF est trop lourd. Garde un fichier inferieur a 4 Mo.");
+    input.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const workflow = ensureStoreWorkflowData(store);
+    workflow.planPdfName = file.name;
+    workflow.planPdfDataUrl = String(reader.result || "");
+    workflow.planPdfUpdatedAt = new Date().toISOString();
+    store.updatedAt = workflow.planPdfUpdatedAt;
+    if (hasRemoteData()) {
+      await syncStoreToRemote(store, "Ajout / mise a jour du plan magasin PDF");
+      await loadRemoteState();
+    }
+    saveState();
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+
+function buildPrintableStoreHtml(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const quantityPlan = getStoreQuantityPlan(store);
+  const appointments = sortedAppointments(store);
+  const tickets = getFilteredTickets().filter((ticket) => ticket.storeId === store.id);
+
+  return `
+    <!doctype html>
+    <html lang="${state.language}">
+    <head>
+      <meta charset="UTF-8">
+      <title>Fiche magasin - ${escapeHtml(store.name)}</title>
+      <style>
+        @page { margin: 12mm; }
+        body { font-family: Arial, sans-serif; color: #222; padding: 0; font-size: 12px; line-height: 1.35; }
+        h1, h2, h3 { margin: 0 0 8px; }
+        .meta { color: #666; margin-bottom: 16px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+        .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; break-inside: avoid; }
+        .full { grid-column: 1 / -1; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #fff3ae; }
+        .muted { color: #666; }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(store.name)}</h1>
+      <div class="meta">${escapeHtml(store.code)} - ${escapeHtml(store.city || "-")} - ${escapeHtml(store.address || "-")}</div>
+      <div class="grid">
+        <div class="card">
+          <h3>Identite</h3>
+          <div><strong>Type</strong> ${escapeHtml(store.shopType || "-")}</div>
+          <div><strong>Taille</strong> ${escapeHtml(store.shopSize || "-")}</div>
+          <div><strong>Manager</strong> ${escapeHtml(store.manager || "-")}</div>
+          <div><strong>Provenance</strong> ${escapeHtml(storeProvenance(store))}</div>
+          <div><strong>Date telephonie actuelle</strong> ${escapeHtml(workflow.currentPhoneDate || "-")}</div>
+        </div>
+        <div class="card">
+          <h3>Quantites telephonie</h3>
+          <div><strong>Licences</strong> ${quantityPlan.licenseCount}</div>
+          <div><strong>Postes fixes</strong> ${quantityPlan.fixCount}</div>
+          <div><strong>Mobiles</strong> ${quantityPlan.mobileCount}</div>
+          <div><strong>Call buttons</strong> ${quantityPlan.callButtonCount}</div>
+          <div><strong>Panic buttons</strong> ${quantityPlan.panicCount}</div>
+        </div>
+        <div class="card full">
+          <h3>Rendez-vous</h3>
+          ${appointments.length ? `
+            <table>
+              <thead><tr><th>Date</th><th>Statut</th><th>Personnes</th><th>Note</th></tr></thead>
+              <tbody>
+                ${appointments.map((appointment) => `
+                  <tr>
+                    <td>${escapeHtml(formatDateTime(appointment.datetime))}</td>
+                    <td>${escapeHtml(appointment.status || "-")}</td>
+                    <td>${escapeHtml(peopleLabel(appointment.people))}</td>
+                    <td>${escapeHtml(appointment.note || "-")}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : "<div class=\"muted\">Aucun rendez-vous.</div>"}
+        </div>
+        <div class="card full">
+          <h3>SAV</h3>
+          ${tickets.length ? `
+            <table>
+              <thead><tr><th>Reference</th><th>Service</th><th>Sujet</th><th>Statut</th><th>Date</th></tr></thead>
+              <tbody>
+                ${tickets.map((ticket) => `
+                  <tr>
+                    <td>${escapeHtml(ticket.id)}</td>
+                    <td>${escapeHtml(ticket.targetService || "-")}</td>
+                    <td>${escapeHtml(ticket.concern || "-")}</td>
+                    <td>${escapeHtml(ticketStatusLabel(ticket.status))}</td>
+                    <td>${escapeHtml(formatDateTime(ticket.createdAt))}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : "<div class=\"muted\">Aucun SAV.</div>"}
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function handleStorePrint(event) {
+  const storeId = Number(event.currentTarget.getAttribute("data-store-print"));
+  const store = state.stores.find((item) => item.id === storeId);
+  if (!store) {
+    return;
+  }
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    window.alert(t("reportWindowError"));
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(buildPrintableStoreHtml(store));
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
 }
 
 function handleReportButtonClick() {
