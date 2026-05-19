@@ -6295,7 +6295,7 @@ function readWorkbookRows(file, arrayBuffer) {
   if (!xlsxAvailable()) {
     throw new Error("Bibliotheque XLSX indisponible.");
   }
-  const workbook = window.XLSX.read(arrayBuffer, { type: "array" });
+  const workbook = window.XLSX.read(arrayBuffer, { type: "array", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   return window.XLSX.utils.sheet_to_json(worksheet, { defval: "" });
@@ -6619,6 +6619,15 @@ function toImportNumber(value, fallback = 0) {
 function formatImportDateValue(value) {
   if (value === null || value === undefined || value === "") {
     return "";
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    if (year <= 1970) {
+      return "";
+    }
+    return `${year}-${month}-${day}`;
   }
   const numericValue = typeof value === "number"
     ? value
