@@ -1168,8 +1168,8 @@ function sleep(ms) {
 
 async function withAppwriteRetry(task, options = {}) {
   const {
-    retries = 4,
-    delayMs = 700
+    retries = 8,
+    delayMs = 2000
   } = options;
 
   let attempt = 0;
@@ -5940,10 +5940,14 @@ async function syncPeopleRemoteState(options = {}) {
 async function syncStoresRemoteState(options = {}) {
   const {
     delayMs = 1500,
-    every = 1
+    every = 1,
+    onProgress = null
   } = options;
 
   for (let index = 0; index < state.stores.length; index += 1) {
+    if (typeof onProgress === "function") {
+      onProgress(index + 1, state.stores.length, state.stores[index]);
+    }
     await paceRemoteSync(index, every, delayMs);
     const store = state.stores[index];
     await syncStoreToRemote(store);
@@ -6043,7 +6047,14 @@ async function syncImportedStateIfPossible(mode = "full") {
       await syncStoresRemoteState({ delayMs: 1800, every: 1 });
       await syncSettingsToRemote();
     } else if (mode === "telephony") {
-      await syncStoresRemoteState({ delayMs: 700, every: 8 });
+      await syncStoresRemoteState({
+        delayMs: 1800,
+        every: 1,
+        onProgress: (current, total, store) => {
+          state.importBusyMessage = `Import telephonie en cours... ${current}/${total} - ${store?.code || ""}`;
+          renderImportExportHistory();
+        }
+      });
     } else if (mode === "extensions") {
       await syncSettingsToRemote();
     } else {
