@@ -1448,9 +1448,7 @@ function recordImportExportHistory(type, label, detail = "") {
     createdAt: new Date().toISOString()
   };
 
-  const baseHistory = label === "Export JSON complet"
-    ? state.importExportHistory.filter((item) => item.label !== "Export JSON complet")
-    : [...state.importExportHistory];
+  const baseHistory = state.importExportHistory.filter((item) => item.label !== label);
 
   state.importExportHistory = [nextEntry, ...baseHistory].slice(0, 20);
   saveState();
@@ -1591,12 +1589,20 @@ function cleanImportHistory(history = []) {
   if (!Array.isArray(history)) {
     return [];
   }
-  return history.filter((item) => {
+  const filtered = history.filter((item) => {
     const label = normalizeImportCell(item?.label).toLowerCase();
     const detail = normalizeImportCell(item?.detail).toLowerCase();
     const isOldGlobalImport = label.includes("import magasins") && detail.includes("global");
     return !isOldGlobalImport;
   });
+  const latestByLabel = new Map();
+  filtered.forEach((item) => {
+    if (!item?.label || latestByLabel.has(item.label)) {
+      return;
+    }
+    latestByLabel.set(item.label, item);
+  });
+  return [...latestByLabel.values()].slice(0, 20);
 }
 
 function resetImportedStoresForKickoff(stores = []) {
@@ -4904,7 +4910,8 @@ function renderImportExportHistory() {
     return;
   }
 
-  const count = state.importExportHistory.length;
+  const compactHistory = cleanImportHistory(state.importExportHistory);
+  const count = compactHistory.length;
   importExportHistoryMeta.textContent = count
     ? `${count} operation(s) memorisee(s)`
     : "Aucune operation pour le moment.";
@@ -4914,7 +4921,7 @@ function renderImportExportHistory() {
     return;
   }
 
-  importExportHistoryList.innerHTML = state.importExportHistory.map((item) => `
+  importExportHistoryList.innerHTML = compactHistory.map((item) => `
     <article class="simple-item import-history-item">
       <div class="import-history-top">
         <strong>${escapeHtml(item.label)}</strong>
@@ -6208,7 +6215,7 @@ function exportStoresXlsx() {
       store.owner,
       store.manager,
       store.status,
-      stageForStore(store),
+      currentWorkflowStage(store),
       nextActionForStore(store)
     ]);
   });
@@ -6230,7 +6237,7 @@ function exportStoresPdf() {
     store.owner,
     store.manager,
     store.status,
-    stageForStore(store),
+    currentWorkflowStage(store),
     nextActionForStore(store)
   ]));
   exportRowsToPdf(
