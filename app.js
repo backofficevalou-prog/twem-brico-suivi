@@ -1008,6 +1008,7 @@ function normalizeAppwriteStore(document) {
       code: payload.code || document.code,
       name: payload.name || document.name,
       city: payload.city || document.city || "",
+      shopType: normalizeShopTypeValue(payload.shopType || document.shop_type || document.shopType || ""),
       owner: payload.owner || document.owner_name || "",
       manager: payload.manager || document.manager_name || "",
       status: payload.status || document.status || "planned",
@@ -1021,6 +1022,7 @@ function normalizeAppwriteStore(document) {
     code: document.code,
     name: document.name,
     city: document.city,
+    shop_type: normalizeShopTypeValue(document.shop_type || document.shopType || ""),
     owner_name: document.owner_name,
     manager_name: document.manager_name,
     status: document.status,
@@ -2369,7 +2371,7 @@ function getFilteredStores() {
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || storeProvenance(store) === state.filters.owner;
     const matchesStage = state.filters.stage === "all" || stage === state.filters.stage;
-    const matchesType = state.filters.type === "all" || (store.shopType || "") === state.filters.type;
+    const matchesType = state.filters.type === "all" || normalizeShopTypeValue(store.shopType || "") === state.filters.type;
     const matchesCity = state.filters.city === "all" || store.city === state.filters.city;
     const matchesDate = matchesDateScope(store);
     return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate;
@@ -2384,9 +2386,9 @@ function renderSummary() {
   const noRdvCount = visibleStores.filter((store) => store.appointments.length === 0).length;
   const inProgressCount = visibleStores.filter((store) => store.status === "in_progress").length;
   const runCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).ltSwitchStatus === "Basculee").length;
-  const dosCount = visibleStores.filter((store) => store.shopType === "DOS").length;
-  const fosCount = visibleStores.filter((store) => store.shopType === "FOS").length;
-  const fosdosCount = visibleStores.filter((store) => store.shopType === "FOSDOS").length;
+  const dosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "DOS").length;
+  const fosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOS").length;
+  const fosdosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOSDOS").length;
   const validationItCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length;
   const validationInfraCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length;
   const riskCount = visibleStores.filter((store) => store.status === "blocked" || ensureStoreWorkflowData(store).networkSurveyStatus !== "OK").length;
@@ -2539,7 +2541,7 @@ function renderDashboardExtra(mainTab, visibleStores) {
 
 function syncSelectors() {
   languageSelect.value = state.language;
-  const types = [...new Set(getRoleScopedStores().map((store) => store.shopType).filter(Boolean))].sort();
+  const types = [...new Set(getRoleScopedStores().map((store) => normalizeShopTypeValue(store.shopType)).filter(Boolean))].sort();
   const cities = [...new Set(getRoleScopedStores().map((store) => store.city).filter(Boolean))].sort();
   const stages = [...new Set(getRoleScopedStores().map((store) => currentWorkflowStage(store)).filter(Boolean))].sort();
   ownerFilter.innerHTML = `<option value="all">${t("all")}</option>`;
@@ -6695,7 +6697,7 @@ function importStoresRows(rows) {
     const address = [street, number].filter(Boolean).join(" ").trim();
     const addressTail = [postalCode, city, country].filter(Boolean).join(" - ").trim();
     const fullAddress = [address, addressTail].filter(Boolean).join(" - ");
-    const shopType = normalizeImportCell(readImportValue(row, ["type_shop", "type_magasin", "shop_type"], "DOS"));
+    const shopType = normalizeShopTypeValue(readImportValue(row, ["type_shop", "type_magasin", "shop_type"], "DOS"));
     const shopSize = normalizeImportCell(readImportValue(row, ["shop_type_2", "shopsize", "type_shop_2"], ""));
     const fallbackOwner = twemOptions.includes(state.activeUserName) ? state.activeUserName : "Valou";
     const owner = normalizeImportCell(readImportValue(row, ["owner", "responsable_twem", "twem"], fallbackOwner));
