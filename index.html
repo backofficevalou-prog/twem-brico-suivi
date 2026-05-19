@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260509a">
+  <link rel="stylesheet" href="styles.css?v=20260519a">
 </head>
 <body>
   <div class="pin-gate" id="pinGate">
@@ -223,6 +223,23 @@
 
                   <div class="role-manager role-manager-inline">
                     <div class="role-manager-head">
+                      <h4 id="intervenantTitle">Intervenant</h4>
+                      <p id="intervenantIntro">Attribuer un statut d intervenant a une personne existante.</p>
+                    </div>
+                    <form id="intervenantForm" class="tool-form">
+                      <select id="intervenantPersonSelect"></select>
+                      <select id="intervenantRoleSelect">
+                        <option value="telephonie_destiny">Telephonie / Destiny</option>
+                        <option value="it">IT</option>
+                        <option value="infra">Infra</option>
+                        <option value="intervenant">Autre intervenant</option>
+                      </select>
+                      <button type="submit" id="assignIntervenantButton">Attribuer</button>
+                    </form>
+                  </div>
+
+                  <div class="role-manager role-manager-inline">
+                    <div class="role-manager-head">
                       <h4 id="rolesTitle">Roles</h4>
                       <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
                     </div>
@@ -253,7 +270,7 @@
                       <input type="text" id="storeCodeInput" placeholder="Ex: BRI-005">
                     </label>
                     <label>
-                      <span id="storeOwnerLabel">Responsable Twem</span>
+                      <span id="storeOwnerLabel">Provenance</span>
                       <select id="storeOwnerSelect"></select>
                     </label>
                     <label>
@@ -591,6 +608,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260509a"></script>
+  <script src="app.js?v=20260519a"></script>
 </body>
 </html>

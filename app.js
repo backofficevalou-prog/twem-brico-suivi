@@ -342,7 +342,7 @@ const translations = {
     connection: "Connexion",
     search: "Recherche",
     status: "Statut",
-    owner: "Responsable Twem",
+    owner: "Provenance",
     userView: "Vue utilisateur",
     language: "Langue",
     importFile: "Import fichier",
@@ -422,7 +422,7 @@ const translations = {
     connection: "Verbinding",
     search: "Zoeken",
     status: "Status",
-    owner: "Twem verantwoordelijke",
+    owner: "Herkomst",
     userView: "Gebruikersweergave",
     language: "Taal",
     importFile: "Bestand importeren",
@@ -768,6 +768,8 @@ const knownTestPeopleNames = [
   "Electricien Nord",
   "Electricien Sud"
 ];
+const knownTestSavNotes = ["test", "test 2"];
+const provenanceOptions = ["Nouveau", "Migration"];
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
 
@@ -827,6 +829,9 @@ const personRoleSelect = document.querySelector("#personRoleSelect");
 const personLanguageSelect = document.querySelector("#personLanguageSelect");
 const personStoreCodeInput = document.querySelector("#personStoreCodeInput");
 const peopleSearchInput = document.querySelector("#peopleSearchInput");
+const intervenantForm = document.querySelector("#intervenantForm");
+const intervenantPersonSelect = document.querySelector("#intervenantPersonSelect");
+const intervenantRoleSelect = document.querySelector("#intervenantRoleSelect");
 const roleForm = document.querySelector("#roleForm");
 const roleInput = document.querySelector("#roleInput");
 const roleList = document.querySelector("#roleList");
@@ -896,6 +901,14 @@ function hydrateAccessProfile(person) {
 
 function stripKnownTestPeople(people = []) {
   return (people || []).filter((person) => !knownTestPeopleNames.includes(person?.name));
+}
+
+function stripKnownTestTickets(tickets = []) {
+  return (tickets || []).filter((ticket) => {
+    const concern = normalizeImportCell(ticket?.concern).toLowerCase();
+    const note = normalizeImportCell(ticket?.initialNote).toLowerCase();
+    return !knownTestSavNotes.includes(concern) && !knownTestSavNotes.includes(note);
+  });
 }
 
 function demoPinPeople() {
@@ -2533,15 +2546,21 @@ function syncSelectors() {
     return `<option value="${escapeHtml(person.name)}" ${selected}>${escapeHtml(person.name)} - ${escapeHtml(person.role)}</option>`;
   }).join("");
 
-  storeOwnerSelect.innerHTML = state.people
-    .filter((person) => ["supadmin_twem", "admin_twem"].includes(person.role))
-    .map((person) => `<option value="${escapeHtml(person.name)}">${escapeHtml(person.name)}</option>`)
+  storeOwnerSelect.innerHTML = provenanceOptions
+    .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
     .join("");
 
   personRoleSelect.innerHTML = renderRoleOptions(personRoleSelect.value || "manager");
   personLanguageSelect.value = personLanguageSelect.value || "fr";
   personStoreCodeInput.innerHTML = renderStoreCodeOptions(personStoreCodeInput.value || "");
   peopleSearchInput.value = state.contactSearch;
+  if (intervenantPersonSelect) {
+    intervenantPersonSelect.innerHTML = state.people
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+      .map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml(person.name)}</option>`)
+      .join("");
+  }
 
   if (pinRoleSelect) {
     pinRoleSelect.innerHTML = renderRoleOptions(pinRoleSelect.value || "manager");
@@ -5470,7 +5489,7 @@ async function loadRemoteState() {
     ? mergePeopleWithPinFallback(peopleDocuments.map(normalizeAppwritePerson))
     : (state.people.length ? mergePeopleWithPinFallback(state.people) : demoPinPeople());
   state.tickets = ticketDocuments.length
-    ? ticketDocuments.map(normalizeAppwriteTicket)
+    ? stripKnownTestTickets(ticketDocuments.map(normalizeAppwriteTicket))
     : [];
 
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
@@ -5488,6 +5507,7 @@ async function loadRemoteState() {
     state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
+  state.people = stripKnownTestPeople(state.people);
   saveState();
   refreshRemoteSyncShadow();
   } finally {
@@ -7706,6 +7726,24 @@ async function handlePersonSubmit(event) {
   window.alert(`PIN attribue a ${name}: ${generatedPin}`);
 }
 
+async function handleIntervenantSubmit(event) {
+  event.preventDefault();
+  const personId = intervenantPersonSelect?.value;
+  const nextRole = intervenantRoleSelect?.value;
+  const person = state.people.find((entry) => entry.id === personId);
+  if (!person || !nextRole) {
+    return;
+  }
+
+  person.role = nextRole;
+  if (hasRemoteData()) {
+    await syncPersonToRemote(person);
+    await loadRemoteState();
+  }
+  saveState();
+  render();
+}
+
 async function handleStoreSubmit(event) {
   event.preventDefault();
   const name = storeNameInput.value.trim();
@@ -7848,6 +7886,7 @@ pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
 pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
 personForm.addEventListener("submit", handlePersonSubmit);
+intervenantForm?.addEventListener("submit", handleIntervenantSubmit);
 storeForm.addEventListener("submit", handleStoreSubmit);
 adminTabs.addEventListener("click", handleAdminTabClick);
 peopleSearchInput.addEventListener("input", (event) => {
@@ -7893,6 +7932,8 @@ async function init() {
   state.roleViewUnlocked = Boolean(stored.roleViewUnlocked);
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
+  state.people = stripKnownTestPeople(state.people);
+  state.tickets = stripKnownTestTickets(state.tickets);
   document.documentElement.lang = state.language;
 
   if (hasImportedStoreSet(state.stores)) {
