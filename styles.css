@@ -1035,6 +1035,11 @@ button {
   min-width: 860px;
 }
 
+.compact-table-summary {
+  min-width: 0;
+  table-layout: fixed;
+}
+
 .compact-table th,
 .compact-table td {
   padding: 8px 10px;
@@ -1052,6 +1057,13 @@ button {
 .compact-table input,
 .compact-table select {
   min-width: 120px;
+}
+
+.compact-table-summary th,
+.compact-table-summary td {
+  padding: 6px 8px;
+  font-size: 0.92rem;
+  word-break: break-word;
 }
 
 .device-stack {

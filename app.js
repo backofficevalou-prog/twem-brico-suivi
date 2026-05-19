@@ -3094,13 +3094,15 @@ function buildConfigurationSummaryCard(store) {
     ["Commande articles", normalizeImportCell(store.poHardware || store.poHw || "-") ? "Reference recue" : "A confirmer"],
     ["Mail configuration", workflow.extensionRequestStatus || "A envoyer"],
     ["Ticket Destiny", workflow.destinyTicketRef || "A confirmer"],
-    ["Date telephonie actuelle", workflow.currentPhoneDate || "A confirmer"]
+    ["Date telephonie actuelle", workflow.currentPhoneDate || "A confirmer"],
+    ["Demande VLAN22", workflow.vlan22Date || workflow.vlan22Status || "A confirmer"]
   ];
 
   const confirmedRows = [
     ["Coordination Destiny", workflow.destinyPmName || workflow.destinyInstallDate ? "Fait" : "A faire"],
     ["Pre-visite", workflow.networkSurveyStatus === "Termine" || workflow.networkSurveyStatus === "OK" ? "Faite" : "A faire"],
     ["Preparation externe", workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" ? "Faite" : "A faire"],
+    ["VLAN22 active", workflow.vlan22Activated || "A faire"],
     ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
     ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"]
   ];
@@ -3116,7 +3118,7 @@ function buildConfigurationSummaryCard(store) {
           <section class="subpanel">
             <h4>Demandes transmises</h4>
             <div class="compact-table-wrap">
-              <table class="compact-table">
+              <table class="compact-table compact-table-summary">
                 <thead>
                   <tr>
                     <th>Element</th>
@@ -3137,7 +3139,7 @@ function buildConfigurationSummaryCard(store) {
           <section class="subpanel">
             <h4>Elements confirmes</h4>
             <div class="compact-table-wrap">
-              <table class="compact-table">
+              <table class="compact-table compact-table-summary">
                 <thead>
                   <tr>
                     <th>Element</th>
@@ -3240,6 +3242,10 @@ function buildPreparationHubCard(store) {
                 </select>
               </label>
               <label>
+                <span>Date demande VLAN22</span>
+                <input type="date" name="vlan22_date" value="${escapeHtml(workflow.vlan22Date || "")}">
+              </label>
+              <label>
                 <span>VLAN22 active</span>
                 <select name="vlan22_activated">
                   ${renderOptions(["Non", "Oui", "Bloque"], workflow.vlan22Activated)}
@@ -3267,6 +3273,9 @@ function buildPreparationHubCard(store) {
                 <span>Nombre chargeurs</span>
                 <input type="number" min="0" name="mobile_charger_count" value="${escapeHtml(workflow.mobileChargerCount)}">
               </label>
+            </div>
+            <div class="posts-skeleton-actions">
+              <button type="submit" class="mini-button">Sauvegarder la preparation</button>
             </div>
           </section>
         </div>
@@ -3583,6 +3592,7 @@ function ensureStoreWorkflowData(store) {
     greetingNotes: "",
     alarmHandledByIt: "A confirmer",
     vlan22Status: "A relancer",
+    vlan22Date: "",
     vlan22Activated: "Non",
     charlesRouxStatus: "A verifier",
     cablingStatus: "A verifier",
@@ -3616,6 +3626,10 @@ function ensureStoreWorkflowData(store) {
 
   if (store.workflow.currentPhoneDate === "1970-01-01") {
     store.workflow.currentPhoneDate = "";
+  }
+
+  if (store.workflow.vlan22Date === "1970-01-01") {
+    store.workflow.vlan22Date = "";
   }
 
   return store.workflow;
@@ -6774,7 +6788,8 @@ function importTelephonyRows(rows) {
     workflow.extensionRequestStatus = "A envoyer";
     workflow.extensionConfigStatus = "En attente";
     workflow.networkConfigConfirmed = false;
-    workflow.vlan22Status = normalizeImportCell(readImportValue(row, ["configuration_vlan_22"], workflow.vlan22Status || "A relancer"));
+    workflow.vlan22Date = formatImportDateValue(readImportValue(row, ["configuration_vlan_22"], workflow.vlan22Date || ""));
+    workflow.vlan22Status = workflow.vlan22Date ? "Recue" : (workflow.vlan22Status || "A relancer");
     workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
     workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
     workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
@@ -7485,6 +7500,7 @@ async function handleStoreEditorSubmit(event) {
   workflow.greetingNotes = form.querySelector('[name="greeting_notes"]').value.trim();
   workflow.alarmHandledByIt = form.querySelector('[name="alarm_handled_by_it"]').value;
   workflow.vlan22Status = form.querySelector('[name="vlan22_status"]').value;
+  workflow.vlan22Date = form.querySelector('[name="vlan22_date"]')?.value || "";
   workflow.vlan22Activated = form.querySelector('[name="vlan22_activated"]').value;
   workflow.charlesRouxStatus = form.querySelector('[name="charles_roux_status"]').value;
   workflow.cablingStatus = form.querySelector('[name="cabling_status"]').value;
