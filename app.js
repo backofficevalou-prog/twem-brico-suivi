@@ -785,6 +785,7 @@ const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
 const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButton");
 const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
+const tabExportStoresCheckXlsxButton = document.querySelector("#tabExportStoresCheckXlsxButton");
 const tabExportStoresXlsxButton = document.querySelector("#tabExportStoresXlsxButton");
 const tabExportStoresPdfButton = document.querySelector("#tabExportStoresPdfButton");
 const tabExportExtensionsXlsxButton = document.querySelector("#tabExportExtensionsXlsxButton");
@@ -6227,6 +6228,32 @@ function exportStoresXlsx() {
   recordImportExportHistory("export", "Export magasins XLSX", `${rows.length - 1} magasin(s) exporte(s).`);
 }
 
+function exportStoresCheckXlsx() {
+  const rows = [
+    ["Code magasin", "Nom magasin", "Licences", "Postes fixes", "Mobiles", "Call buttons", "Panic buttons", "Date telephonie actuelle"]
+  ];
+  getRoleScopedStores().forEach((store) => {
+    const workflow = ensureStoreWorkflowData(store);
+    const quantityPlan = getStoreQuantityPlan(store);
+    rows.push([
+      store.code,
+      store.name,
+      quantityPlan.licenseCount,
+      quantityPlan.fixCount,
+      quantityPlan.mobileCount,
+      quantityPlan.callButtonCount,
+      quantityPlan.panicCount,
+      workflow.currentPhoneDate || ""
+    ]);
+  });
+  exportRowsToXlsx(
+    rows,
+    `twem-brico-controle-magasins-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    "Controle magasins"
+  );
+  recordImportExportHistory("export", "Export controle magasins XLSX", `${rows.length - 1} magasin(s) exporte(s).`);
+}
+
 function exportStoresPdf() {
   const headers = ["Code", "Nom", "Ville", "Type", "Responsable TWEM", "Manager", "Statut", "Etape", "Prochaine action"];
   const bodyRows = getRoleScopedStores().map((store) => ([
@@ -7828,6 +7855,7 @@ tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
 tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telephony"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", () => safeRunExport(exportJsonData));
+tabExportStoresCheckXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresCheckXlsx));
 tabExportStoresXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresXlsx));
 tabExportStoresPdfButton?.addEventListener("click", () => safeRunExport(exportStoresPdf));
 tabExportExtensionsXlsxButton?.addEventListener("click", () => safeRunExport(exportExtensionsXlsx));
