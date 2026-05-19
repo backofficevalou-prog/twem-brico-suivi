@@ -5941,15 +5941,16 @@ async function syncStoresRemoteState(options = {}) {
   const {
     delayMs = 1500,
     every = 1,
-    onProgress = null
+    onProgress = null,
+    stores = state.stores
   } = options;
 
-  for (let index = 0; index < state.stores.length; index += 1) {
+  for (let index = 0; index < stores.length; index += 1) {
     if (typeof onProgress === "function") {
-      onProgress(index + 1, state.stores.length, state.stores[index]);
+      onProgress(index + 1, stores.length, stores[index]);
     }
     await paceRemoteSync(index, every, delayMs);
-    const store = state.stores[index];
+    const store = stores[index];
     await syncStoreToRemote(store);
   }
 }
@@ -6037,7 +6038,7 @@ function isMissingAppwriteDatabaseError(error) {
   );
 }
 
-async function syncImportedStateIfPossible(mode = "full") {
+async function syncImportedStateIfPossible(mode = "full", options = {}) {
   if (!hasRemoteData()) {
     return { synced: false, skipped: true };
   }
@@ -6046,21 +6047,25 @@ async function syncImportedStateIfPossible(mode = "full") {
     if (mode === "stores") {
       await syncStoresRemoteState({ delayMs: 1800, every: 1 });
       await syncSettingsToRemote();
+      await loadRemoteState();
     } else if (mode === "telephony") {
       await syncStoresRemoteState({
-        delayMs: 1800,
+        stores: Array.isArray(options.stores) && options.stores.length ? options.stores : state.stores,
+        delayMs: 2500,
         every: 1,
         onProgress: (current, total, store) => {
           state.importBusyMessage = `Import telephonie en cours... ${current}/${total} - ${store?.code || ""}`;
           renderImportExportHistory();
         }
       });
+      return { synced: true, skipped: false };
     } else if (mode === "extensions") {
       await syncSettingsToRemote();
+      await loadRemoteState();
     } else {
       await syncAllRemoteState();
+      await loadRemoteState();
     }
-    await loadRemoteState();
     return { synced: true, skipped: false };
   } catch (error) {
     if (isMissingAppwriteDatabaseError(error)) {
@@ -6734,6 +6739,7 @@ function importTelephonyRows(rows) {
   });
 
   let matchedCount = 0;
+  const matchedStores = [];
   rows.forEach((rawRow) => {
     const row = normalizeImportRow(rawRow);
     const shopNumber = normalizeImportCell(readImportValue(row, ["store_nr", "shopnumber", "store_number", "store_nr_"], "")).replace(/\.0$/, "");
@@ -6745,6 +6751,7 @@ function importTelephonyRows(rows) {
       return;
     }
     matchedCount += 1;
+    matchedStores.push(store);
     store.status = "planned";
     store.health = "";
     store.steps = freshImportedSteps();
@@ -6776,6 +6783,7 @@ function importTelephonyRows(rows) {
   if (!matchedCount) {
     throw new Error("Aucun Store NR du fichier telephonie ne correspond aux magasins deja importes.");
   }
+  return matchedStores;
 }
 
 function importStoresRows(rows) {
@@ -6926,14 +6934,15 @@ function handleImportInputChange(event) {
         saveState();
         render();
       } else if (state.importMode === "telephony") {
+        let touchedStores = [];
         if (fileName.endsWith(".json")) {
           const payload = JSON.parse(String(reader.result));
           const rows = Array.isArray(payload) ? payload : (payload.telephony || payload.rows || []);
-          importTelephonyRows(rows);
+          touchedStores = importTelephonyRows(rows);
         } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
-          importTelephonyRows(readWorkbookRows(file, reader.result));
+          touchedStores = importTelephonyRows(readWorkbookRows(file, reader.result));
         } else if (fileName.endsWith(".csv")) {
-          importTelephonyRows(parseDelimitedText(reader.result));
+          touchedStores = importTelephonyRows(parseDelimitedText(reader.result));
         } else {
           throw new Error("Pour la telephonie, utilise XLS/XLSX, CSV ou JSON.");
         }
@@ -6941,7 +6950,7 @@ function handleImportInputChange(event) {
         try {
           saveState();
           render();
-          const syncResult = await syncImportedStateIfPossible("telephony");
+          const syncResult = await syncImportedStateIfPossible("telephony", { stores: touchedStores });
           recordImportExportHistory("import", "Import telephonie", file.name);
           saveState();
           render();
