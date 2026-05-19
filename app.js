@@ -3210,6 +3210,9 @@ function buildConfigurationHubCard(store) {
             <textarea name="greeting_notes" rows="5">${escapeHtml(workflow.greetingNotes)}</textarea>
           </label>
         </div>
+        <div class="posts-skeleton-actions">
+          <button type="submit" class="mini-button">Sauvegarder cette configuration</button>
+        </div>
         ${buildNetworkConfigSkeleton(store, { showConfirmBar: false })}
       </article>
     </div>
@@ -6491,7 +6494,7 @@ function importTelephonyRows(rows) {
     store.panicCount = toImportNumber(readImportValue(row, ["panic_button", "_panic_button", "nb_panic_button"], store.panicCount || 0));
 
     const workflow = ensureStoreWorkflowData(store);
-    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "install_date"], workflow.currentPhoneDate || ""));
+    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "installation_on_date", "install_date"], workflow.currentPhoneDate || ""));
     workflow.destinyInstallDate = "";
     workflow.collectDate = "";
     workflow.itValidationDate = "";
@@ -6570,7 +6573,7 @@ function importStoresRows(rows) {
       panicCount
     };
     const workflow = ensureStoreWorkflowData(storeDraft);
-    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "install_date"], workflow.currentPhoneDate || ""));
+    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "installation_on_date", "install_date"], workflow.currentPhoneDate || ""));
     workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
     workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
     workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
