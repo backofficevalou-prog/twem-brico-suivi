@@ -798,6 +798,8 @@ const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
 const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButton");
 const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
+const tabPurgeSavButton = document.querySelector("#tabPurgeSavButton");
+const purgeSavCard = document.querySelector("#purgeSavCard");
 const tabExportStoresCheckXlsxButton = document.querySelector("#tabExportStoresCheckXlsxButton");
 const tabExportStoresXlsxButton = document.querySelector("#tabExportStoresXlsxButton");
 const tabExportStoresPdfButton = document.querySelector("#tabExportStoresPdfButton");
@@ -5141,6 +5143,10 @@ function renderImportExportHistory() {
     return;
   }
 
+  if (purgeSavCard) {
+    purgeSavCard.hidden = !isSupAdmin();
+  }
+
   const compactHistory = cleanImportHistory(state.importExportHistory);
   const count = compactHistory.length;
   importExportHistoryMeta.textContent = state.importBusyMessage
@@ -5164,6 +5170,68 @@ function renderImportExportHistory() {
       <div class="cell-note">${escapeHtml(item.detail || "-")}</div>
     </article>
   `).join("");
+}
+
+function isSavRelatedActivity(activity) {
+  const id = String(activity?.id || "");
+  const comment = normalizeImportCell(activity?.comment).toLowerCase();
+  return /^sav-(create|update|status)-/.test(id)
+    || comment.startsWith("creation sav")
+    || comment.startsWith("suivi sav")
+    || comment.startsWith("ticket sav");
+}
+
+async function handlePurgeSav() {
+  if (!isSupAdmin()) {
+    return;
+  }
+
+  if (!window.confirm("Supprimer tous les SAV actuels de l'application avant l'import historique ?")) {
+    return;
+  }
+
+  const removedTickets = [...(state.tickets || [])];
+  const removedActivities = (state.activities || []).filter((activity) => isSavRelatedActivity(activity));
+  state.importBusyMessage = "Purge SAV en cours...";
+  renderImportExportHistory();
+
+  state.tickets = [];
+  state.activities = (state.activities || []).filter((activity) => !isSavRelatedActivity(activity));
+
+  try {
+    if (hasRemoteData() && appwriteDatabases && !supabaseClient) {
+      for (const ticket of removedTickets) {
+        await withAppwriteRetry(() =>
+          appwriteDatabases.deleteDocument(
+            appwriteDatabaseId,
+            appwriteTicketsCollectionId,
+            ticketRemoteSyncKey(ticket)
+          )
+        );
+      }
+      for (const activity of removedActivities) {
+        await withAppwriteRetry(() =>
+          appwriteDatabases.deleteDocument(
+            appwriteDatabaseId,
+            appwriteActivitiesCollectionId,
+            activityRemoteSyncKey(activity)
+          )
+        );
+      }
+      await loadRemoteState();
+      refreshRemoteSyncShadow();
+    } else {
+      saveState();
+    }
+    recordImportExportHistory("import", "Purge SAV", `${removedTickets.length} SAV supprime(s).`);
+  } catch (error) {
+    console.error("Purge SAV error", error);
+    window.alert(`Purge SAV impossible: ${error.message}`);
+  } finally {
+    state.importBusyMessage = "";
+    saveState();
+    render();
+  }
 }
 
 function handleAutomationFieldChange(event) {
@@ -8376,6 +8444,9 @@ tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
 tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telephony"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", () => safeRunExport(exportJsonData));
+tabPurgeSavButton?.addEventListener("click", () => {
+  handlePurgeSav();
+});
 tabExportStoresCheckXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresCheckXlsx));
 tabExportStoresXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresXlsx));
 tabExportStoresPdfButton?.addEventListener("click", () => safeRunExport(exportStoresPdf));
