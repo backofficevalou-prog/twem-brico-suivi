@@ -1508,6 +1508,10 @@ function recordImportExportHistory(type, label, detail = "") {
   saveState();
 }
 
+function stageForStore(store) {
+  return currentWorkflowStage(store);
+}
+
 function t(key) {
   return translations[state.language]?.[key] || translations.fr[key] || key;
 }
@@ -1649,14 +1653,20 @@ function cleanImportHistory(history = []) {
     const isOldGlobalImport = label.includes("import magasins") && detail.includes("global");
     return !isOldGlobalImport;
   });
+  const ordered = [...filtered].sort((left, right) => {
+    const leftTime = Date.parse(left?.createdAt || "") || 0;
+    const rightTime = Date.parse(right?.createdAt || "") || 0;
+    return rightTime - leftTime;
+  });
   const latestByLabel = new Map();
-  filtered.forEach((item) => {
-    if (!item?.label || latestByLabel.has(item.label)) {
+  ordered.forEach((item) => {
+    const key = normalizeImportCell(item?.label).toLowerCase();
+    if (!key || latestByLabel.has(key)) {
       return;
     }
-    latestByLabel.set(item.label, item);
+    latestByLabel.set(key, item);
   });
-  return [...latestByLabel.values()].slice(0, 20);
+  return [...latestByLabel.values()].slice(0, 8);
 }
 
 function resetImportedStoresForKickoff(stores = []) {
@@ -2695,14 +2705,20 @@ function getStoreQuantityPlan(store) {
   if (
     Number.isFinite(Number(store.licenseCount))
     || Number.isFinite(Number(store.fixCount))
+    || Number.isFinite(Number(store.fixBigCount))
     || Number.isFinite(Number(store.mobileCount))
+    || Number.isFinite(Number(store.mobileSmartphoneCount))
+    || Number.isFinite(Number(store.flashLightCount))
     || Number.isFinite(Number(store.callButtonCount))
     || Number.isFinite(Number(store.panicCount))
   ) {
     return {
       licenseCount: Math.max(0, Number(store.licenseCount) || 0),
       fixCount: Math.max(0, Number(store.fixCount) || 0),
+      fixBigCount: Math.max(0, Number(store.fixBigCount) || 0),
       mobileCount: Math.max(0, Number(store.mobileCount) || 0),
+      mobileSmartphoneCount: Math.max(0, Number(store.mobileSmartphoneCount) || 0),
+      flashLightCount: Math.max(0, Number(store.flashLightCount) || 0),
       callButtonCount: Math.max(0, Number(store.callButtonCount) || 0),
       panicCount: Math.max(0, Number(store.panicCount) || 0)
     };
@@ -2711,15 +2727,18 @@ function getStoreQuantityPlan(store) {
   const codeNumber = Number.parseInt(String(store.code).replace(/\D/g, ""), 10) || 0;
   const licenseCount = 8 + (codeNumber % 6);
   const fixCount = Math.max(2, Math.round(licenseCount * 0.6));
+  const fixBigCount = 0;
   const mobileCount = Math.max(1, Math.round(licenseCount * 0.3));
+  const mobileSmartphoneCount = 0;
+  const flashLightCount = 0;
   const callButtonCount = Math.max(1, Math.round(licenseCount * 0.15));
   const panicCount = Math.max(0, Math.round(licenseCount * 0.08));
 
-  return { licenseCount, fixCount, mobileCount, callButtonCount, panicCount };
+  return { licenseCount, fixCount, fixBigCount, mobileCount, mobileSmartphoneCount, flashLightCount, callButtonCount, panicCount };
 }
 
 function defaultNetworkRowsForStore(store) {
-  const { fixCount, mobileCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
+  const { fixCount, fixBigCount, mobileCount, mobileSmartphoneCount, flashLightCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
   const rows = [];
   const pushRows = (category, count) => {
     for (let index = 1; index <= count; index += 1) {
@@ -2733,7 +2752,10 @@ function defaultNetworkRowsForStore(store) {
     }
   };
   pushRows("Poste fixe", fixCount);
+  pushRows("Poste fixe big", fixBigCount);
   pushRows("Mobile", mobileCount);
+  pushRows("Mobile smartphone", mobileSmartphoneCount);
+  pushRows("Flash light", flashLightCount);
   pushRows("Call button", callButtonCount);
   pushRows("Panic button", panicCount);
   return rows;
@@ -2812,7 +2834,7 @@ function renderPersonSelect(selectedValue = "", includeBlank = true) {
 }
 
 function buildStorePilotSkeleton(store) {
-  const { licenseCount, fixCount, mobileCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
+  const { licenseCount, fixCount, fixBigCount, mobileCount, mobileSmartphoneCount, flashLightCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
 
   return `
     <article class="editor-card">
@@ -2821,7 +2843,10 @@ function buildStorePilotSkeleton(store) {
       <div class="quantity-grid">
         <div class="quantity-card"><span class="mini-label">Licences</span><strong>${licenseCount}</strong></div>
         <div class="quantity-card"><span class="mini-label">Postes fixes</span><strong>${fixCount}</strong></div>
+        <div class="quantity-card"><span class="mini-label">Fix big</span><strong>${fixBigCount}</strong></div>
         <div class="quantity-card"><span class="mini-label">Mobiles</span><strong>${mobileCount}</strong></div>
+        <div class="quantity-card"><span class="mini-label">Mobile smartphone</span><strong>${mobileSmartphoneCount}</strong></div>
+        <div class="quantity-card"><span class="mini-label">Flash light</span><strong>${flashLightCount}</strong></div>
         <div class="quantity-card"><span class="mini-label">Call buttons</span><strong>${callButtonCount}</strong></div>
         <div class="quantity-card"><span class="mini-label">Panic buttons</span><strong>${panicCount}</strong></div>
       </div>
