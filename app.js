@@ -2833,7 +2833,9 @@ function buildNetworkConfigSkeleton(store, options = {}) {
       <div class="network-skeleton-body">
         <p class="posts-skeleton-intro">Le responsable magasin remplit cette partie pour permettre a l IT de programmer les appareils avant installation.</p>
         <input type="hidden" name="network_config_confirmed" value="${workflow.networkConfigConfirmed ? "1" : "0"}">
-        ${workflow.networkConfigConfirmed ? summaryContent : editableContent}
+        ${showConfirmBar
+          ? (workflow.networkConfigConfirmed ? summaryContent : editableContent)
+          : editableContent}
         ${showConfirmBar ? `
           <div class="network-confirm-bar">
             <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Le magasin remplit ses choix puis confirme en bas du module."}</span>
@@ -3457,6 +3459,10 @@ function ensureStoreWorkflowData(store) {
       store.workflow[key] = value;
     }
   });
+
+  if (store.workflow.currentPhoneDate === "1970-01-01") {
+    store.workflow.currentPhoneDate = "";
+  }
 
   return store.workflow;
 }
@@ -6419,6 +6425,9 @@ function formatImportDateValue(value) {
   const numericValue = typeof value === "number"
     ? value
     : (/^\d+(\.\d+)?$/.test(String(value).trim()) ? Number(String(value).trim()) : NaN);
+  if (Number.isFinite(numericValue) && numericValue <= 0) {
+    return "";
+  }
   if (Number.isFinite(numericValue) && numericValue > 59) {
     const excelEpoch = new Date(Date.UTC(1899, 11, 30));
     excelEpoch.setUTCDate(excelEpoch.getUTCDate() + Math.floor(numericValue));
@@ -6429,6 +6438,9 @@ function formatImportDateValue(value) {
   }
   const parsed = normalizeDateOnly(value);
   if (!parsed) {
+    return "";
+  }
+  if (parsed.getFullYear() <= 1970) {
     return "";
   }
   const year = parsed.getFullYear();
