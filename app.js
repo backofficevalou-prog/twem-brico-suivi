@@ -1120,6 +1120,20 @@ function normalizeShopTypeValue(value) {
   return normalizeImportCell(value).toUpperCase();
 }
 
+function normalizeImportClosureValue(value) {
+  const normalized = normalizeImportCell(value).toLowerCase().replace(/[\s_-]+/g, "");
+  if (!normalized) {
+    return "";
+  }
+  if (["done", "cloture", "cloturé", "closed"].includes(normalized)) {
+    return "done";
+  }
+  if (["todo", "planned"].includes(normalized)) {
+    return "planned";
+  }
+  return "";
+}
+
 function buildAppwriteTicketDocument(ticket) {
   return {
     store_id: String(ticket.storeId || ""),
@@ -2859,11 +2873,16 @@ function renderPersonSelect(selectedValue = "", includeBlank = true) {
 
 function buildStorePilotSkeleton(store) {
   const { licenseCount, fixCount, fixBigCount, mobileCount, mobileSmartphoneCount, flashLightCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
+  const workflow = ensureStoreWorkflowData(store);
 
   return `
     <article class="editor-card full-span-card">
       <h3>Quantites magasin</h3>
       <p>Vue de pilotage rapide des besoins reseau et materiel du magasin.</p>
+      <div class="quantity-meta-row">
+        <div><strong>Date telephonie actuelle</strong> ${escapeHtml(workflow.currentPhoneDate || "-")}</div>
+        <div><strong>IP range</strong> ${escapeHtml(store.ipRange || "-")}</div>
+      </div>
       <div class="quantity-grid">
         <div class="quantity-card"><span class="mini-label">Licences</span><strong>${licenseCount}</strong></div>
         <div class="quantity-card"><span class="mini-label">Postes fixes</span><strong>${fixCount}</strong></div>
@@ -3313,6 +3332,12 @@ function buildConfigurationHubCard(store) {
           <label>
             <span>Commentaire logistique</span>
             <input type="text" name="order_note" value="${escapeHtml(workflow.orderNote || "")}">
+          </label>
+        </div>
+        <div class="two-col section-block">
+          <label>
+            <span>IP range</span>
+            <input type="text" value="${escapeHtml(store.ipRange || "")}" readonly>
           </label>
         </div>
         <div class="contacts-form-grid section-block">
@@ -6454,7 +6479,7 @@ function exportStoresXlsx() {
 
 function exportStoresCheckXlsx() {
   const rows = [
-    ["Code magasin", "Nom magasin", "Licences", "Postes fixes", "Mobiles", "Call buttons", "Panic buttons", "Date telephonie actuelle"]
+    ["Code magasin", "Nom magasin", "Licences", "Postes fixes", "Mobiles", "Call buttons", "Panic buttons", "Date telephonie actuelle", "IP range", "Statut"]
   ];
   getRoleScopedStores().forEach((store) => {
     const workflow = ensureStoreWorkflowData(store);
@@ -6467,7 +6492,9 @@ function exportStoresCheckXlsx() {
       quantityPlan.mobileCount,
       quantityPlan.callButtonCount,
       quantityPlan.panicCount,
-      workflow.currentPhoneDate || ""
+      workflow.currentPhoneDate || "",
+      store.ipRange || "",
+      statusLabel(store.status)
     ]);
   });
   exportRowsToXlsx(
@@ -6766,10 +6793,11 @@ function importTelephonyRows(rows) {
     }
     matchedCount += 1;
     matchedStores.push(store);
-    store.status = "planned";
+    store.status = normalizeImportClosureValue(readImportValue(row, ["cloturer"], "")) || "planned";
     store.health = "";
     store.steps = freshImportedSteps();
     store.updatedAt = new Date().toISOString();
+    store.ipRange = normalizeImportCell(readImportValue(row, ["ip_range"], store.ipRange || ""));
 
     store.licenseCount = toImportNumber(readImportValue(row, ["license", "_license", "license_count", "nb_license", "nb_licence"], store.licenseCount || 0));
     store.fixCount = toImportNumber(readImportValue(row, ["fix", "_fix", "nb_fix"], store.fixCount || 0));
@@ -6825,7 +6853,7 @@ function importStoresRows(rows) {
     const fallbackOwner = twemOptions.includes(state.activeUserName) ? state.activeUserName : "Valou";
     const owner = normalizeImportCell(readImportValue(row, ["owner", "responsable_twem", "twem"], fallbackOwner));
     const manager = normalizeImportCell(readImportValue(row, ["nom_manager", "manager", "responsable_magasin", "responsable"], ""));
-    const status = "planned";
+    const status = normalizeImportClosureValue(readImportValue(row, ["cloturer"], "")) || "planned";
     const updatedAt = new Date().toISOString();
     const licenseCount = toImportNumber(readImportValue(row, ["license", "licenses", "license_count", "nb_licence", "nb_licenses"], 0));
     const fixCount = toImportNumber(readImportValue(row, ["fix", "_fix", "nb_fix", "fix_count", "fixes"], 0));
@@ -6848,6 +6876,7 @@ function importStoresRows(rows) {
       owner,
       manager,
       status,
+      ipRange: "",
       health: "",
       updatedAt,
       steps: freshImportedSteps(),

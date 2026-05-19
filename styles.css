@@ -248,6 +248,15 @@ h1 {
   font-size: 0.84rem;
 }
 
+.quantity-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .mini-donut {
   --portion: 0%;
   width: 78px;
