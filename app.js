@@ -2899,6 +2899,8 @@ function buildStorePostsSkeleton(store) {
 }
 
 function buildStoreHeaderCards() {
+  const store = state.stores.find((entry) => entry.id === state.activeStoreId) || state.stores[0];
+  const workflow = store ? ensureStoreWorkflowData(store) : null;
   return `
     <div class="editor-grid">
       <article class="editor-card" data-access-zone="project_prep">
@@ -2908,12 +2910,12 @@ function buildStoreHeaderCards() {
           <label>
             <span>Demande configuration</span>
             <select name="config_status">
-              ${renderOptions(["Pas envoye", "Envoye", "Recue"], "Envoye")}
+              ${renderOptions(["Pas envoye", "Envoye", "Recue"], workflow?.configStatus || "Envoye")}
             </select>
           </label>
           <label>
             <span>Date telephonie actuelle</span>
-            <input type="date" name="current_phone_date" value="2026-04-30">
+            <input type="date" name="current_phone_date" value="${escapeHtml(workflow?.currentPhoneDate || "")}">
           </label>
         </div>
       </article>
@@ -2925,12 +2927,12 @@ function buildStoreHeaderCards() {
           <label>
             <span>Commande</span>
             <select name="order_status">
-              ${renderOptions(["Non transmise", "Transmise fournisseur", "Recue magasin"], "Transmise fournisseur")}
+              ${renderOptions(["Non transmise", "Transmise fournisseur", "Recue magasin"], workflow?.orderStatus || "Transmise fournisseur")}
             </select>
           </label>
           <label>
             <span>Commentaire logistique</span>
-            <input type="text" name="order_note" value="Livraison partielle prevue cette semaine">
+            <input type="text" name="order_note" value="${escapeHtml(workflow?.orderNote || "")}">
           </label>
         </div>
       </article>
@@ -3164,22 +3166,22 @@ function buildConfigurationHubCard(store) {
           <label>
             <span>Demande configuration</span>
             <select name="config_status">
-              ${renderOptions(["Pas envoye", "Envoye", "Recue"], "Envoye")}
+              ${renderOptions(["Pas envoye", "Envoye", "Recue"], workflow.configStatus || "Envoye")}
             </select>
           </label>
           <label>
             <span>Date telephonie actuelle</span>
-            <input type="date" name="current_phone_date" value="2026-04-30">
+            <input type="date" name="current_phone_date" value="${escapeHtml(workflow.currentPhoneDate || "")}">
           </label>
           <label>
             <span>Commande articles</span>
             <select name="order_status">
-              ${renderOptions(["Non transmise", "Transmise fournisseur", "Recue magasin"], "Transmise fournisseur")}
+              ${renderOptions(["Non transmise", "Transmise fournisseur", "Recue magasin"], workflow.orderStatus || "Transmise fournisseur")}
             </select>
           </label>
           <label>
             <span>Commentaire logistique</span>
-            <input type="text" name="order_note" value="Livraison partielle prevue cette semaine">
+            <input type="text" name="order_note" value="${escapeHtml(workflow.orderNote || "")}">
           </label>
         </div>
         <div class="contacts-form-grid section-block">
@@ -3405,7 +3407,10 @@ function ensureStoreWorkflowData(store) {
   const defaults = {
     currentPlatform: "Destiny",
     targetPlatform: "TELEPO",
+    configStatus: "Envoye",
     currentPhoneDate: "",
+    orderStatus: "Transmise fournisseur",
+    orderNote: "",
     collectDate: "",
     itValidationDate: "",
     previsitDate: "",
@@ -6456,7 +6461,7 @@ function importTelephonyRows(rows) {
     store.panicCount = toImportNumber(readImportValue(row, ["panic_button", "_panic_button", "nb_panic_button"], store.panicCount || 0));
 
     const workflow = ensureStoreWorkflowData(store);
-    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date"], workflow.currentPhoneDate || ""));
+    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "install_date"], workflow.currentPhoneDate || ""));
     workflow.destinyInstallDate = "";
     workflow.collectDate = "";
     workflow.itValidationDate = "";
@@ -6535,7 +6540,7 @@ function importStoresRows(rows) {
       panicCount
     };
     const workflow = ensureStoreWorkflowData(storeDraft);
-    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date"], workflow.currentPhoneDate || ""));
+    workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "install_date"], workflow.currentPhoneDate || ""));
     workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
     workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
     workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
@@ -6942,6 +6947,10 @@ async function handleStoreEditorSubmit(event) {
   store.appointments = readAppointments(form, store);
 
   workflow.destinyInstallDate = form.querySelector('[name="destiny_install_date"]').value;
+  workflow.configStatus = form.querySelector('[name="config_status"]')?.value || workflow.configStatus;
+  workflow.currentPhoneDate = form.querySelector('[name="current_phone_date"]')?.value || "";
+  workflow.orderStatus = form.querySelector('[name="order_status"]')?.value || workflow.orderStatus;
+  workflow.orderNote = form.querySelector('[name="order_note"]')?.value.trim() || "";
   workflow.destinyPmName = form.querySelector('[name="destiny_pm_name"]').value.trim();
   workflow.destinyPmEmail = form.querySelector('[name="destiny_pm_email"]').value.trim();
   workflow.destinyTicketRef = form.querySelector('[name="destiny_ticket_ref"]').value.trim();
