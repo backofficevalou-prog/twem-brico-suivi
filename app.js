@@ -3008,6 +3008,16 @@ function renderPersonSelect(selectedValue = "", includeBlank = true) {
 function buildStorePilotSkeleton(store) {
   const { licenseCount, fixCount, fixBigCount, mobileCount, mobileSmartphoneCount, flashLightCount, callButtonCount, panicCount } = getStoreQuantityPlan(store);
   const workflow = ensureStoreWorkflowData(store);
+  const quantityCells = [
+    ["Licences", "license_count", licenseCount],
+    ["Postes fixes", "fix_count", fixCount],
+    ["Fix big", "fix_big_count", fixBigCount],
+    ["Mobiles", "mobile_count", mobileCount],
+    ["Mobile smartphone", "mobile_smartphone_count", mobileSmartphoneCount],
+    ["Flash light", "flash_light_count", flashLightCount],
+    ["Call buttons", "call_button_count", callButtonCount],
+    ["Panic buttons", "panic_count", panicCount]
+  ];
 
   return `
     <article class="editor-card full-span-card">
@@ -3018,14 +3028,14 @@ function buildStorePilotSkeleton(store) {
         <div><strong>IP range</strong> ${escapeHtml(store.ipRange || "-")}</div>
       </div>
       <div class="quantity-grid">
-        <div class="quantity-card"><span class="mini-label">Licences</span><strong>${licenseCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Postes fixes</span><strong>${fixCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Fix big</span><strong>${fixBigCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Mobiles</span><strong>${mobileCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Mobile smartphone</span><strong>${mobileSmartphoneCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Flash light</span><strong>${flashLightCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Call buttons</span><strong>${callButtonCount}</strong></div>
-        <div class="quantity-card"><span class="mini-label">Panic buttons</span><strong>${panicCount}</strong></div>
+        ${quantityCells.map(([label, fieldName, value]) => `
+          <div class="quantity-card">
+            <span class="mini-label">${label}</span>
+            ${isSupAdmin()
+              ? `<input type="number" min="0" name="${fieldName}" value="${escapeHtml(String(value))}">`
+              : `<strong>${value}</strong>`}
+          </div>
+        `).join("")}
       </div>
     </article>
   `;
@@ -7876,24 +7886,25 @@ function buildPrintableStoreHtml(store) {
             </tbody>
           </table>
         </div>
-        <div class="card full">
-          <h3>Configuration du reseau</h3>
-          ${networkRows.length ? `
-            <table>
-              <thead><tr><th>Type</th><th>Slot</th><th>Extension + lieu</th><th>Note</th></tr></thead>
-              <tbody>
-                ${networkRows.map((row) => `
-                  <tr>
-                    <td>${escapeHtml(row.category)}</td>
-                    <td>${escapeHtml(row.slotLabel || "-")}</td>
-                    <td>${escapeHtml(row.extensionLabel || "-")}</td>
-                    <td>${escapeHtml(row.note || "-")}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          ` : "<div class=\"muted\">Aucune configuration reseau renseignee.</div>"}
-        </div>
+          <div class="card full">
+            <h3>Configuration du reseau</h3>
+            ${networkRows.length ? `
+              <table>
+                <thead><tr><th>Type</th><th>Slot</th><th>Extension + lieu</th><th>Etat</th><th>Note</th></tr></thead>
+                <tbody>
+                  ${networkRows.map((row) => `
+                    <tr>
+                      <td>${escapeHtml(row.category)}</td>
+                      <td>${escapeHtml(row.slotLabel || "-")}</td>
+                      <td>${escapeHtml(row.extensionLabel || "-")}</td>
+                      <td>${escapeHtml(row.extensionLabel ? "Configure" : "A confirmer")}</td>
+                      <td>${escapeHtml(row.note || "-")}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            ` : "<div class=\"muted\">Aucune configuration reseau renseignee.</div>"}
+          </div>
         <div class="card full">
           <h3>GSM / SIM</h3>
           ${gsmRows.length ? `
@@ -8094,6 +8105,16 @@ async function handleStoreEditorSubmit(event) {
   store.status = globalStatus;
   store.health = health;
   store.updatedAt = new Date().toISOString();
+  if (isSupAdmin()) {
+    store.licenseCount = Math.max(0, Number(form.querySelector('[name="license_count"]')?.value) || 0);
+    store.fixCount = Math.max(0, Number(form.querySelector('[name="fix_count"]')?.value) || 0);
+    store.fixBigCount = Math.max(0, Number(form.querySelector('[name="fix_big_count"]')?.value) || 0);
+    store.mobileCount = Math.max(0, Number(form.querySelector('[name="mobile_count"]')?.value) || 0);
+    store.mobileSmartphoneCount = Math.max(0, Number(form.querySelector('[name="mobile_smartphone_count"]')?.value) || 0);
+    store.flashLightCount = Math.max(0, Number(form.querySelector('[name="flash_light_count"]')?.value) || 0);
+    store.callButtonCount = Math.max(0, Number(form.querySelector('[name="call_button_count"]')?.value) || 0);
+    store.panicCount = Math.max(0, Number(form.querySelector('[name="panic_count"]')?.value) || 0);
+  }
 
   stepFor(store, "store_manager").status = form.querySelector('[name="store_manager_status"]')?.value || stepFor(store, "store_manager").status;
   stepFor(store, "installer").status = form.querySelector('[name="installer_status"]')?.value || stepFor(store, "installer").status;

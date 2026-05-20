@@ -1250,6 +1250,15 @@ button {
   font-family: "Space Grotesk", sans-serif;
 }
 
+.quantity-card input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  background: #fff;
+}
+
 .external-prep-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
