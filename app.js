@@ -27,6 +27,21 @@ const extensionReferenceOptions = [
   "923 - safe room",
   "924 - drive in till zone"
 ];
+
+function availableExtensionReferenceOptions() {
+  const importedOptions = extensionCatalogRows
+    .map((row) => {
+      const number = normalizeImportCell(row?.number);
+      const label = normalizeImportCell(row?.label);
+      if (!number && !label) {
+        return "";
+      }
+      return label ? `${number} - ${label}` : number;
+    })
+    .filter(Boolean);
+
+  return importedOptions.length ? importedOptions : extensionReferenceOptions;
+}
 const storeRequestTypeOptions = [
   "SAV",
   "Demande d'info",
@@ -2985,6 +3000,7 @@ function buildNetworkConfigSkeleton(store, options = {}) {
   const { showConfirmBar = true } = options;
   const workflow = ensureStoreWorkflowData(store);
   const rows = getNetworkConfigRows(store);
+  const extensionOptions = availableExtensionReferenceOptions();
   const groupedRows = rows.reduce((accumulator, row) => {
     accumulator[row.category] ||= [];
     accumulator[row.category].push(row);
@@ -3005,7 +3021,7 @@ function buildNetworkConfigSkeleton(store, options = {}) {
               <span>Extension + lieu</span>
               <select name="network_extension_${escapeHtml(row.id)}">
                 <option value="">Choisir une extension / un lieu</option>
-                ${extensionReferenceOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
               </select>
             </label>
             <label>
@@ -3508,6 +3524,7 @@ function buildStoreDocumentsCard(store) {
 function buildEquipmentCards(store) {
   const workflow = ensureStoreWorkflowData(store);
   const gsmRows = getGsmRows(store);
+  const extensionOptions = availableExtensionReferenceOptions();
   return `
     <div class="editor-grid section-anchor" id="section-equipment">
       <article class="editor-card full-span-card grouped-card" data-access-zone="store_posts">
@@ -3531,7 +3548,7 @@ function buildEquipmentCards(store) {
                     <span>Extension liee</span>
                     <select name="gsm_extension_${escapeHtml(row.id)}">
                       <option value="">Choisir une extension</option>
-                      ${extensionReferenceOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                      ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
                     </select>
                   </label>
                   <label>
@@ -4718,6 +4735,7 @@ function getFilteredTickets() {
 function buildSavCard(store) {
   const storeTickets = ticketsForStore(store.id);
   const requesterName = currentUser()?.name || state.activeUserName || store.manager || "-";
+  const extensionOptions = availableExtensionReferenceOptions();
   return `
     <article class="editor-card full-span-card sav-ticket-card" data-access-zone="sav_ticket">
       <h3>Demande SAV / ticket</h3>
@@ -4773,7 +4791,7 @@ function buildSavCard(store) {
               <span>Extension liee</span>
               <select name="new_ticket_extension">
                 <option value="">Choisir une extension</option>
-                ${extensionReferenceOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}
+                ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}
               </select>
             </label>
             <label>
