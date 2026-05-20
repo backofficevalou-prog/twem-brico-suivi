@@ -933,13 +933,28 @@ function stripKnownTestPeople(people = []) {
 }
 
 function normalizeSpecialPeople(people = []) {
-  return (people || []).map((person) => {
+  const entries = people || [];
+  const canonicalValou = entries.find((person) => {
+    if (!person || person.name !== "Valou") {
+      return false;
+    }
+    const email = normalizeImportCell(person.email).toLowerCase();
+    const phone = normalizeImportCell(person.phone);
+    return email === "backoffice@twem.be" || phone === "0488231773";
+  });
+
+  return entries.map((person) => {
     if (!person) {
       return person;
     }
     const email = normalizeImportCell(person.email).toLowerCase();
     const phone = normalizeImportCell(person.phone);
-    if (person.name === "Valou" && email === "valou@twem.be" && phone === "0470 00 00 02") {
+    const shouldRenameLegacyValou = person.name === "Valou"
+      && canonicalValou
+      && canonicalValou.id !== person.id
+      && (email === "valou@twem.be" || phone === "0470 00 00 02");
+
+    if (shouldRenameLegacyValou) {
       return hydrateAccessProfile({
         ...person,
         name: "Georgette Larix",
@@ -1006,7 +1021,7 @@ function mergePeopleWithPinFallback(people = []) {
     byKey.set(key, merged);
   });
 
-  return stripKnownTestPeople([...byKey.values()]);
+  return normalizeSpecialPeople(stripKnownTestPeople([...byKey.values()]));
 }
 
 function hasRemoteData() {
