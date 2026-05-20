@@ -2441,9 +2441,20 @@ function matchesDateScope(store) {
 
 function getFilteredStores() {
   return getRoleScopedStores().filter((store) => {
-    const nextAction = sortedAppointments(store)[0]?.note || store.health || "";
+    const appointments = sortedAppointments(store);
+    const nextAction = appointments[0]?.note || store.health || "";
     const stage = currentWorkflowStage(store);
-    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage}`.toLowerCase();
+    const workflow = ensureStoreWorkflowData(store);
+    const appointmentHaystack = appointments.map((appointment) => [
+      appointment.status || "",
+      appointment.note || "",
+      peopleLabel(appointment.people || []),
+      formatDateTime(appointment.datetime || "")
+    ].join(" ")).join(" ");
+    const plannedInstallKeywords = appointments.length || workflow.destinyInstallDate
+      ? "installation prevue installation planifiee rendez-vous planifie"
+      : "";
+    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords}`.toLowerCase();
     const matchesSearch = haystack.includes(state.filters.search);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || storeProvenance(store) === state.filters.owner;
@@ -2725,7 +2736,7 @@ function buildAppointmentsEditor(store) {
   return `
     <article class="appointments-card full-span-card" data-access-zone="appointments">
       <h3>Rendez-vous</h3>
-      <p>Plusieurs rendez-vous possibles par magasin.</p>
+      <p>Plusieurs rendez-vous et plusieurs jours d installation possibles par magasin.</p>
       <div class="appointments-split">
         <div>
           <div class="appointments-list">${rows}</div>
