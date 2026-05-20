@@ -1418,7 +1418,7 @@ function settingsRemoteSyncSnapshot() {
 function refreshRemoteSyncShadow() {
   remoteSyncShadow.stores = new Map((state.stores || []).map((store) => [storeRemoteSyncKey(store), stableSerialize(store)]));
   remoteSyncShadow.people = new Map((state.people || []).map((person) => [personRemoteSyncKey(person), stableSerialize(person)]));
-  remoteSyncShadow.tickets = new Map((state.tickets || []).map((ticket) => [ticketRemoteSyncKey(ticket), stableSerialize(ticket)]));
+  remoteSyncShadow.tickets = new Map((state.tickets || []).filter(Boolean).map((ticket) => [ticketRemoteSyncKey(ticket), stableSerialize(ticket)]));
   remoteSyncShadow.activities = new Map((state.activities || []).map((activity) => [activityRemoteSyncKey(activity), stableSerialize(activity)]));
   remoteSyncShadow.settings = settingsRemoteSyncSnapshot();
 }
@@ -4609,7 +4609,8 @@ function ticketBadgeClass(status) {
 }
 
 function ticketsForStore(storeId) {
-  return state.tickets
+  return (state.tickets || [])
+    .filter(Boolean)
     .filter((ticket) => String(ticket.storeId) === String(storeId))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
@@ -4617,7 +4618,8 @@ function ticketsForStore(storeId) {
 function getFilteredTickets() {
   const visibleStoreIds = new Set(getFilteredStores().map((store) => String(store.id)));
   const search = state.filters.search;
-  return state.tickets
+  return (state.tickets || [])
+    .filter(Boolean)
     .filter((ticket) => visibleStoreIds.has(String(ticket.storeId)))
     .filter((ticket) => {
       if (!search) {
@@ -6077,9 +6079,10 @@ async function syncTicketsRemoteState(options = {}) {
     return;
   }
 
-  for (let index = 0; index < state.tickets.length; index += 1) {
+  const liveTickets = (state.tickets || []).filter((ticket) => ticket && ticket.id && ticket.storeId !== undefined && ticket.storeId !== null);
+  for (let index = 0; index < liveTickets.length; index += 1) {
     await paceRemoteSync(index, every, delayMs);
-    const ticket = state.tickets[index];
+    const ticket = liveTickets[index];
     await upsertAppwriteDocument(
       appwriteTicketsCollectionId,
       safeDocumentId("ticket", ticket.id || `${ticket.storeCode}-${ticket.createdAt}`),
@@ -7102,7 +7105,7 @@ function importSavHistoryRows(rows) {
     throw new Error("Aucun ticket historique n a pu etre construit depuis ce fichier.");
   }
 
-  state.tickets = [...importedTickets, ...(state.tickets || [])];
+  state.tickets = importedTickets.filter((ticket) => ticket && ticket.id && ticket.storeId !== undefined && ticket.storeId !== null);
   return {
     importedTickets: importedTickets.length,
     orphanedRows
