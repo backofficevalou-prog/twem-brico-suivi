@@ -3031,10 +3031,10 @@ function buildStorePilotSkeleton(store) {
   `;
 }
 
-function buildNetworkConfigSkeleton(store, options = {}) {
-  const { showConfirmBar = true } = options;
-  const workflow = ensureStoreWorkflowData(store);
-  const rows = getNetworkConfigRows(store);
+  function buildNetworkConfigSkeleton(store, options = {}) {
+    const { showConfirmBar = true } = options;
+    const workflow = ensureStoreWorkflowData(store);
+    const rows = getNetworkConfigRows(store);
   const extensionOptions = availableExtensionReferenceOptions();
   const groupedRows = rows.reduce((accumulator, row) => {
     accumulator[row.category] ||= [];
@@ -3042,11 +3042,11 @@ function buildNetworkConfigSkeleton(store, options = {}) {
     return accumulator;
   }, {});
 
-  const editableContent = Object.entries(groupedRows).map(([category, categoryRows]) => `
-    <article class="network-category">
-      <div class="network-category-head">
-        <h4>${escapeHtml(category)}</h4>
-        <span>${categoryRows.length} ligne(s)</span>
+    const editableContent = Object.entries(groupedRows).map(([category, categoryRows]) => `
+      <article class="network-category">
+        <div class="network-category-head">
+          <h4>${escapeHtml(category)}</h4>
+          <span>${categoryRows.length} ligne(s)</span>
       </div>
       <div class="network-rows">
         ${categoryRows.map((row, index) => `
@@ -3063,11 +3063,14 @@ function buildNetworkConfigSkeleton(store, options = {}) {
               <span>Note</span>
               <input type="text" name="network_note_${escapeHtml(row.id)}" value="${escapeHtml(row.note || "")}" placeholder="Ex: personnaliser la touche / commentaire">
             </label>
-          </div>
-        `).join("")}
-      </div>
-    </article>
-  `).join("");
+            </div>
+          `).join("")}
+        </div>
+        <div class="posts-skeleton-actions">
+          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+        </div>
+      </article>
+    `).join("");
 
   const summaryRows = rows.filter((row) => row.extensionLabel || row.note);
   const summaryContent = summaryRows.length
@@ -3231,25 +3234,29 @@ function buildStoreSectionNav(mode = "stores") {
   `;
 }
 
-function buildConfigurationSummaryCard(store) {
-  const workflow = ensureStoreWorkflowData(store);
-  const transmittedRows = [
-    ["Demande configuration", workflow.extensionRequestStatus || "A envoyer"],
-    ["Commande articles", normalizeImportCell(store.poHardware || store.poHw || "-") ? "Reference recue" : "A confirmer"],
-    ["Mail configuration", workflow.extensionRequestStatus || "A envoyer"],
-    ["Ticket Destiny", workflow.destinyTicketRef || "A confirmer"],
+  function buildConfigurationSummaryCard(store) {
+    const workflow = ensureStoreWorkflowData(store);
+    const networkRows = getNetworkConfigRows(store);
+    const configuredRows = networkRows.filter((row) => row.extensionLabel || row.note).length;
+    const missingRows = Math.max(0, networkRows.length - configuredRows);
+    const transmittedRows = [
+      ["Demande configuration", workflow.extensionRequestStatus || "A envoyer"],
+      ["Commande articles", normalizeImportCell(store.poHardware || store.poHw || "-") ? "Reference recue" : "A confirmer"],
+      ["Mail configuration", workflow.extensionRequestStatus || "A envoyer"],
+      ["Ticket Destiny", workflow.destinyTicketRef || "A confirmer"],
     ["Date telephonie actuelle", workflow.currentPhoneDate || "A confirmer"],
     ["Configuration VLAN22", workflow.vlan22Date || workflow.vlan22Status || "A confirmer"]
   ];
 
-  const confirmedRows = [
-    ["Coordination Destiny", workflow.destinyPmName || workflow.destinyInstallDate ? "Fait" : "A faire"],
-    ["Pre-visite", workflow.networkSurveyStatus === "Termine" || workflow.networkSurveyStatus === "OK" ? "Faite" : "A faire"],
-    ["Preparation externe", workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" ? "Faite" : "A faire"],
-    ["VLAN22 active", workflow.vlan22Date ? "Oui" : (workflow.vlan22Activated || "A faire")],
-    ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
-    ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"]
-  ];
+    const confirmedRows = [
+      ["Coordination Destiny", workflow.destinyPmName || workflow.destinyInstallDate ? "Fait" : "A faire"],
+      ["Pre-visite", workflow.networkSurveyStatus === "Termine" || workflow.networkSurveyStatus === "OK" ? "Faite" : "A faire"],
+      ["Preparation externe", workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" ? "Faite" : "A faire"],
+      ["VLAN22 active", workflow.vlan22Date ? "Oui" : (workflow.vlan22Activated || "A faire")],
+      ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
+      ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"],
+      ["Configuration reseau", networkRows.length ? `${configuredRows}/${networkRows.length} configures${missingRows ? ` - ${missingRows} manquant(s)` : ""}` : "A definir"]
+    ];
 
   return `
     <div class="editor-grid section-anchor" id="section-configuration-summary">
@@ -3608,11 +3615,11 @@ function buildEquipmentCards(store) {
           <button type="submit" class="mini-button">Sauvegarder les GSM</button>
         </div>
       </article>
-      <article class="editor-card">
-        <h3>Alarme</h3>
-        <div class="two-col">
-          <label>
-            <span>Type d alarme</span>
+        <article class="editor-card full-span-card">
+          <h3>Alarme</h3>
+          <div class="two-col">
+            <label>
+              <span>Type d alarme</span>
             <select name="alarm_type">
               ${renderOptions(["PSTN", "DATA", "PSTN / DATA", "A confirmer"], workflow.alarmType)}
             </select>
@@ -3630,24 +3637,24 @@ function buildEquipmentCards(store) {
             <textarea name="alarm_other" rows="4">${escapeHtml(workflow.alarmOther)}</textarea>
           </label>
         </div>
-        <div class="posts-skeleton-actions">
-          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
-        </div>
-      </article>
-      <article class="editor-card">
-        <h3>Groupes d appel</h3>
-        <label>
-          <span>Groupes d appel</span>
-          <textarea name="call_groups_note" rows="6" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
-        </label>
-        <div class="posts-skeleton-actions">
-          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
-        </div>
-      </article>
-      <article class="editor-card">
-        <h3>Cascades</h3>
-        <label>
-          <span>Cascades</span>
+          <div class="posts-skeleton-actions">
+            <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+          </div>
+        </article>
+        <article class="editor-card full-span-card">
+          <h3>Groupes d appel</h3>
+          <label>
+            <span>Groupes d appel</span>
+            <textarea name="call_groups_note" rows="6" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
+          </label>
+          <div class="posts-skeleton-actions">
+            <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+          </div>
+        </article>
+        <article class="editor-card full-span-card">
+          <h3>Cascades</h3>
+          <label>
+            <span>Cascades</span>
           <textarea name="cascade_note" rows="6" placeholder="Ex: si non reponse, renvoi vers permanence">${escapeHtml(workflow.cascadeNote)}</textarea>
         </label>
         <div class="posts-skeleton-actions">
@@ -4120,11 +4127,7 @@ function buildStoreDetailForm(store, mode = "stores") {
 
         ${buildConfigurationHubCard(store)}
 
-        <div class="editor-grid section-anchor" id="section-equipment">
-          ${buildStorePostsSkeleton(store)}
-        </div>
-
-        ${buildEquipmentCards(store)}
+          ${buildEquipmentCards(store)}
 
         <div class="editor-grid section-anchor" id="section-closing">
           ${buildClosureWorkflowCard(store)}
