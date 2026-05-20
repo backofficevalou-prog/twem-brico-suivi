@@ -2938,6 +2938,7 @@ function getNetworkConfigRows(store) {
   if (!Array.isArray(workflow.networkRows) || !workflow.networkRows.length) {
     workflow.networkRows = defaultNetworkRowsForStore(store);
   }
+  reconcileNetworkRowsWithQuantities(store);
   return workflow.networkRows;
 }
 
@@ -2979,6 +2980,7 @@ function getGsmRows(store) {
   if (!Array.isArray(workflow.gsmRows) || !workflow.gsmRows.length) {
     workflow.gsmRows = defaultGsmRowsForStore(store);
   }
+  reconcileGsmRowsWithQuantities(store);
   return workflow.gsmRows;
 }
 
@@ -3213,6 +3215,74 @@ function buildStorePostsSkeleton(store) {
         ` : '<div class="empty-state">Aucun choix telephonie enregistre pour le moment.</div>'}
       </div>
     </details>
+  `;
+}
+
+function buildStoreConfigurationReadbackCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const gsmRows = getGsmRows(store);
+  return `
+    <div class="editor-grid">
+      <article class="editor-card full-span-card grouped-card">
+        <div class="grouped-card-head">
+          <h3>Configuration detaillee</h3>
+          <p>Lecture directe de toute la configuration sans devoir repasser par l onglet Configuration magasin.</p>
+        </div>
+        <div class="two-col">
+          <section class="subpanel">
+            <h4>Alarme</h4>
+            <table class="compact-table compact-table-summary">
+              <tbody>
+                <tr><td>Type d alarme</td><td>${escapeHtml(workflow.alarmType || "A confirmer")}</td></tr>
+                <tr><td>Societe</td><td>${escapeHtml(workflow.alarmCompany || "A renseigner")}</td></tr>
+                <tr><td>Tel centrale alarme</td><td>${escapeHtml(workflow.alarmCentralPhone || "A renseigner")}</td></tr>
+                <tr><td>Autres</td><td>${escapeHtml(workflow.alarmOther || "A renseigner")}</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section class="subpanel">
+            <h4>Groupes d appel et cascades</h4>
+            <table class="compact-table compact-table-summary">
+              <tbody>
+                <tr><td>Groupes d appel</td><td>${escapeHtml(workflow.callGroupsNote || "A renseigner")}</td></tr>
+                <tr><td>Cascades</td><td>${escapeHtml(workflow.cascadeNote || "A renseigner")}</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+        <section class="subpanel">
+          <h4>GSM / SIM</h4>
+          ${gsmRows.length ? `
+            <div class="compact-table-wrap">
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th>GSM</th>
+                    <th>Modele</th>
+                    <th>Extension</th>
+                    <th>Utilisateur</th>
+                    <th>Numero</th>
+                    <th>Reseau</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${gsmRows.map((row, index) => `
+                    <tr>
+                      <td>GSM ${index + 1}</td>
+                      <td>${escapeHtml(row.model || "A confirmer")}</td>
+                      <td>${escapeHtml(row.extensionLinked || "A confirmer")}</td>
+                      <td>${escapeHtml(row.user || "A renseigner")}</td>
+                      <td>${escapeHtml(row.mobileNumber || "A renseigner")}</td>
+                      <td>${escapeHtml(row.mobileNetwork || "A renseigner")}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          ` : '<div class="empty-state">Aucun GSM renseigne.</div>'}
+        </section>
+      </article>
+    </div>
   `;
 }
 
@@ -4190,15 +4260,17 @@ function buildStoreDetailForm(store, mode = "stores") {
           ${buildStorePilotSkeleton(store)}
         </div>
 
-        ${buildConfigurationSummaryCard(store)}
+          ${buildConfigurationSummaryCard(store)}
 
-        <div class="editor-grid section-anchor" id="section-overview">
-          ${buildStorePostsSkeleton(store)}
-        </div>
+          <div class="editor-grid section-anchor" id="section-overview">
+            ${buildStorePostsSkeleton(store)}
+          </div>
 
-        <div class="editor-grid section-anchor" id="section-closing">
-          ${buildClosureWorkflowCard(store)}
-        </div>
+          ${buildStoreConfigurationReadbackCard(store)}
+
+          <div class="editor-grid section-anchor" id="section-closing">
+            ${buildClosureWorkflowCard(store)}
+          </div>
 
         <div class="editor-grid">
           <article class="editor-card full-span-card">
