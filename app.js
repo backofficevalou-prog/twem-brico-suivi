@@ -932,6 +932,26 @@ function stripKnownTestPeople(people = []) {
   return (people || []).filter((person) => !knownTestPeopleNames.includes(person?.name));
 }
 
+function normalizeSpecialPeople(people = []) {
+  return (people || []).map((person) => {
+    if (!person) {
+      return person;
+    }
+    const email = normalizeImportCell(person.email).toLowerCase();
+    const phone = normalizeImportCell(person.phone);
+    if (person.name === "Valou" && email === "valou@twem.be" && phone === "0470 00 00 02") {
+      return hydrateAccessProfile({
+        ...person,
+        name: "Georgette Larix",
+        role: "intervenant",
+        accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
+        accessibleBlocks: ["appointments", "sav_ticket", "problem_notes"]
+      });
+    }
+    return person;
+  });
+}
+
 function stripKnownTestTickets(tickets = []) {
   return (tickets || []).filter((ticket) => {
     const concern = normalizeImportCell(ticket?.concern).toLowerCase();
@@ -5857,7 +5877,7 @@ async function loadRemoteState() {
     state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
-  state.people = stripKnownTestPeople(state.people);
+  state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
   saveState();
   refreshRemoteSyncShadow();
   } finally {
@@ -8868,7 +8888,7 @@ async function init() {
   const stored = loadState();
   state.stores = stored.stores;
   state.activities = stored.activities;
-  state.people = stored.people;
+  state.people = normalizeSpecialPeople(stored.people);
   state.activeUserName = stored.activeUserName;
   state.language = stored.language || "fr";
   state.activeAdminTab = stored.activeAdminTab || "dashboard";
@@ -8882,7 +8902,7 @@ async function init() {
   state.roleViewUnlocked = Boolean(stored.roleViewUnlocked);
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
-  state.people = stripKnownTestPeople(state.people);
+  state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
   state.tickets = stripKnownTestTickets(state.tickets);
   document.documentElement.lang = state.language;
 
