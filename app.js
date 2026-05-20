@@ -3086,53 +3086,43 @@ function buildNetworkConfigSkeleton(store, options = {}) {
 }
 
 function buildStorePostsSkeleton(store) {
-  const base = String(store.code).replace(/\D/g, "").slice(-2) || "01";
-  const rows = [
-    { extension: `${base}01`, type: "Poste fixe", model: "Yealink T54W", department: "Accueil", language: "FR", status: "OK", note: "Poste principal installe et teste" },
-    { extension: `${base}02`, type: "Poste fixe", model: "Yealink T54W", department: "Caisse", language: "FR", status: "En cours", note: "Configuration en attente" },
-    { extension: `${base}03`, type: "Call button", model: "Helios IP Verso", department: "Drive-in", language: "NL", status: "Bloque", note: "Raccordement reseau a verifier" }
-  ];
+  const workflow = ensureStoreWorkflowData(store);
+  const rows = getNetworkConfigRows(store).filter((row) => row.extensionLabel || row.note);
 
   return `
     <details class="posts-skeleton" open data-access-zone="store_posts">
       <summary>
         <span>Postes magasin</span>
-        <span>${rows.length} ligne(s) de demonstration</span>
+        <span>${rows.length ? `${rows.length} ligne(s) configuree(s)` : "Aucune ligne configuree"}</span>
       </summary>
       <div class="posts-skeleton-body">
-        <p class="posts-skeleton-intro">Squelette visuel: import automatique des lignes puis possibilite d ajouter, modifier ou supprimer une ligne manuellement.</p>
-        <div class="posts-table-wrap">
-          <table class="posts-table">
-            <thead>
-              <tr>
-                <th>Extension</th>
-                <th>Type</th>
-                <th>Modele</th>
-                <th>Departement</th>
-                <th>Langue</th>
-                <th>Statut</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map((row) => `
+        <p class="posts-skeleton-intro">${workflow.networkConfigConfirmed ? "Choix telephonie confirmes et visibles ici sans devoir ouvrir l onglet configuration." : "Les choix enregistres dans Configuration magasin remonteront ici des qu ils seront completes."}</p>
+        ${rows.length ? `
+          <div class="posts-table-wrap">
+            <table class="posts-table">
+              <thead>
                 <tr>
-                  <td>${escapeHtml(row.extension)}</td>
-                  <td>${escapeHtml(row.type)}</td>
-                  <td>${escapeHtml(row.model)}</td>
-                  <td>${escapeHtml(row.department)}</td>
-                  <td>${escapeHtml(row.language)}</td>
-                  <td><span class="${badgeClass(row.status === "OK" ? "ok" : row.status === "En cours" ? "in_progress" : "issue")}">${escapeHtml(row.status)}</span></td>
-                  <td>${escapeHtml(row.note)}</td>
+                  <th>Type</th>
+                  <th>Poste</th>
+                  <th>Extension + lieu</th>
+                  <th>Etat</th>
+                  <th>Note</th>
                 </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-        <div class="posts-skeleton-actions">
-          <button type="button" class="mini-button">Importer le fichier magasin</button>
-          <button type="button" class="mini-button">Ajouter une ligne poste</button>
-        </div>
+              </thead>
+              <tbody>
+                ${rows.map((row) => `
+                  <tr>
+                    <td>${escapeHtml(row.category || "-")}</td>
+                    <td>${escapeHtml(row.slotLabel || "-")}</td>
+                    <td>${escapeHtml(row.extensionLabel || "-")}</td>
+                    <td><span class="${badgeClass(row.extensionLabel ? "ok" : "planned")}">${escapeHtml(row.extensionLabel ? "Configure" : "A confirmer")}</span></td>
+                    <td>${escapeHtml(row.note || "-")}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : '<div class="empty-state">Aucun choix telephonie enregistre pour le moment.</div>'}
       </div>
     </details>
   `;
