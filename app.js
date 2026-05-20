@@ -3087,7 +3087,7 @@ function buildNetworkConfigSkeleton(store, options = {}) {
 
 function buildStorePostsSkeleton(store) {
   const workflow = ensureStoreWorkflowData(store);
-  const rows = getNetworkConfigRows(store).filter((row) => row.extensionLabel || row.note);
+  const rows = getNetworkConfigRows(store);
 
   return `
     <details class="posts-skeleton" open data-access-zone="store_posts">
