@@ -3428,6 +3428,22 @@ function buildConfigurationHubCard(store) {
             <input type="text" value="${escapeHtml(store.ipRange || "")}" readonly>
           </label>
         </div>
+        <div class="two-col section-block">
+          <label>
+            <span>N client contrat actuel</span>
+            <input type="text" name="current_contract_client_number" value="${escapeHtml(workflow.currentContractClientNumber || "")}">
+          </label>
+          <label>
+            <span>Numero principal actuel</span>
+            <input type="text" name="current_contract_main_number" value="${escapeHtml(workflow.currentContractMainNumber || "")}">
+          </label>
+        </div>
+        <div class="section-block">
+          <label>
+            <span>Autres numeros releves</span>
+            <textarea name="current_contract_other_numbers" rows="4">${escapeHtml(workflow.currentContractOtherNumbers || "")}</textarea>
+          </label>
+        </div>
         <div class="contacts-form-grid section-block">
           <label>
             <span>Mail configuration envoye</span>
@@ -3686,6 +3702,9 @@ function ensureStoreWorkflowData(store) {
     currentPhoneDate: "",
     orderStatus: "Transmise fournisseur",
     orderNote: "",
+    currentContractClientNumber: "",
+    currentContractMainNumber: "",
+    currentContractOtherNumbers: "",
     collectDate: "",
     itValidationDate: "",
     previsitDate: "",
@@ -7771,6 +7790,8 @@ function buildPrintableStoreHtml(store) {
             <tbody>
               <tr><th>Demande configuration</th><td>${escapeHtml(workflow.configStatus || "-")}</td><th>Commande articles</th><td>${escapeHtml(workflow.orderStatus || "-")}</td></tr>
               <tr><th>Commentaire logistique</th><td>${escapeHtml(workflow.orderNote || "-")}</td><th>Mail configuration</th><td>${escapeHtml(workflow.extensionRequestStatus || "-")}</td></tr>
+              <tr><th>N client contrat actuel</th><td>${escapeHtml(workflow.currentContractClientNumber || "-")}</td><th>Numero principal actuel</th><td>${escapeHtml(workflow.currentContractMainNumber || "-")}</td></tr>
+              <tr><th>Autres numeros releves</th><td colspan="3">${escapeHtml(workflow.currentContractOtherNumbers || "-")}</td></tr>
               <tr><th>Configuration extensions recue</th><td>${escapeHtml(workflow.extensionConfigStatus || "-")}</td><th>Date installation Destiny</th><td>${escapeHtml(workflow.destinyInstallDate || "-")}</td></tr>
               <tr><th>Ticket Destiny</th><td>${escapeHtml(workflow.destinyTicketRef || "-")}</td><th>Dossier Destiny</th><td>${escapeHtml(workflow.destinyCaseRef || "-")}</td></tr>
               <tr><th>PM Destiny</th><td>${escapeHtml(workflow.destinyPmName || "-")}</td><th>Diffusion</th><td>${escapeHtml(workflow.destinyDistribution || "-")}</td></tr>
@@ -8017,6 +8038,9 @@ async function handleStoreEditorSubmit(event) {
   workflow.currentPhoneDate = form.querySelector('[name="current_phone_date"]')?.value || "";
   workflow.orderStatus = form.querySelector('[name="order_status"]')?.value || workflow.orderStatus;
   workflow.orderNote = form.querySelector('[name="order_note"]')?.value.trim() || "";
+  workflow.currentContractClientNumber = form.querySelector('[name="current_contract_client_number"]')?.value.trim() || "";
+  workflow.currentContractMainNumber = form.querySelector('[name="current_contract_main_number"]')?.value.trim() || "";
+  workflow.currentContractOtherNumbers = form.querySelector('[name="current_contract_other_numbers"]')?.value.trim() || "";
   workflow.destinyPmName = form.querySelector('[name="destiny_pm_name"]').value.trim();
   workflow.destinyPmEmail = form.querySelector('[name="destiny_pm_email"]').value.trim();
   workflow.destinyTicketRef = form.querySelector('[name="destiny_ticket_ref"]').value.trim();
