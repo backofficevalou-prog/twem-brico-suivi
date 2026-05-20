@@ -8217,18 +8217,21 @@ async function handleStoreEditorSubmit(event) {
   store.status = globalStatus;
   store.health = health;
   store.updatedAt = new Date().toISOString();
-    if (isSupAdmin()) {
-      store.licenseCount = Math.max(0, Number(form.querySelector('[name="license_count"]')?.value) || 0);
-      store.fixCount = Math.max(0, Number(form.querySelector('[name="fix_count"]')?.value) || 0);
-      store.fixBigCount = Math.max(0, Number(form.querySelector('[name="fix_big_count"]')?.value) || 0);
-      store.mobileCount = Math.max(0, Number(form.querySelector('[name="mobile_count"]')?.value) || 0);
-      store.mobileSmartphoneCount = Math.max(0, Number(form.querySelector('[name="mobile_smartphone_count"]')?.value) || 0);
-      store.flashLightCount = Math.max(0, Number(form.querySelector('[name="flash_light_count"]')?.value) || 0);
-      store.callButtonCount = Math.max(0, Number(form.querySelector('[name="call_button_count"]')?.value) || 0);
-      store.panicCount = Math.max(0, Number(form.querySelector('[name="panic_count"]')?.value) || 0);
-      reconcileNetworkRowsWithQuantities(store);
-      reconcileGsmRowsWithQuantities(store);
-    }
+  const quantityInputsPresent = form.querySelector('[name="license_count"]')
+    || form.querySelector('[name="fix_count"]')
+    || form.querySelector('[name="mobile_count"]');
+  if (isSupAdmin() && quantityInputsPresent) {
+    store.licenseCount = Math.max(0, Number(form.querySelector('[name="license_count"]')?.value) || 0);
+    store.fixCount = Math.max(0, Number(form.querySelector('[name="fix_count"]')?.value) || 0);
+    store.fixBigCount = Math.max(0, Number(form.querySelector('[name="fix_big_count"]')?.value) || 0);
+    store.mobileCount = Math.max(0, Number(form.querySelector('[name="mobile_count"]')?.value) || 0);
+    store.mobileSmartphoneCount = Math.max(0, Number(form.querySelector('[name="mobile_smartphone_count"]')?.value) || 0);
+    store.flashLightCount = Math.max(0, Number(form.querySelector('[name="flash_light_count"]')?.value) || 0);
+    store.callButtonCount = Math.max(0, Number(form.querySelector('[name="call_button_count"]')?.value) || 0);
+    store.panicCount = Math.max(0, Number(form.querySelector('[name="panic_count"]')?.value) || 0);
+    reconcileNetworkRowsWithQuantities(store);
+    reconcileGsmRowsWithQuantities(store);
+  }
 
   stepFor(store, "store_manager").status = form.querySelector('[name="store_manager_status"]')?.value || stepFor(store, "store_manager").status;
   stepFor(store, "installer").status = form.querySelector('[name="installer_status"]')?.value || stepFor(store, "installer").status;
