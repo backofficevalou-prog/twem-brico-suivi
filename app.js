@@ -27,6 +27,30 @@ const extensionReferenceOptions = [
   "923 - safe room",
   "924 - drive in till zone"
 ];
+const storeRequestTypeOptions = [
+  "SAV",
+  "Demande d'info",
+  "Commande materiel casse",
+  "Commande materiel supplementaire"
+];
+const storeMaterialOptions = [
+  "Bouton Appel",
+  "HELIOS IP Verso1 B PoE / Fixed",
+  "VVX250 / Fixed",
+  "VVX411 + MOD / Fixed",
+  "VVX450 + MOD / Flash light",
+  "ALGO 8128 SIP FLASH / Mobile",
+  "HAmerLT / ALGO PLAGER",
+  "Algo 8180 Loud ringer & voice"
+];
+const extraMaterialWorkflowOptions = [
+  "Demande creee",
+  "En attente direction",
+  "Refusee",
+  "Validee",
+  "N de commande recu",
+  "Commande passee"
+];
 const extensionCatalogRows = [
   { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "900", label: "Zaagmachine", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
   { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "901", label: "tuin", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
@@ -4638,14 +4662,50 @@ function buildSavCard(store) {
 
           <div class="two-col">
             <label>
+              <span>Type de demande</span>
+              <select name="new_ticket_kind">
+                ${renderOptions(storeRequestTypeOptions, "SAV")}
+              </select>
+            </label>
+            <label>
               <span>Service a mobiliser</span>
               <select name="new_ticket_service">
                 ${renderOptions(["TWEM", "Destiny", "IT", "Infra", "Magasin", "Autre"], "Destiny")}
               </select>
             </label>
+          </div>
+
+          <div class="two-col">
             <label>
               <span>Ce que ca concerne</span>
               <input type="text" name="new_ticket_concern" placeholder="Ex: poste caisse, GSM, transfert, VLAN, accueil">
+            </label>
+            <label>
+              <span>Materiel concerne / commande</span>
+              <select name="new_ticket_material">
+                <option value="">Choisir un materiel</option>
+                ${storeMaterialOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+
+          <div class="three-col sav-request-grid">
+            <label>
+              <span>Extension liee</span>
+              <select name="new_ticket_extension">
+                <option value="">Choisir une extension</option>
+                ${extensionReferenceOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}
+              </select>
+            </label>
+            <label>
+              <span>Quantite demandee</span>
+              <input type="number" min="1" name="new_ticket_quantity" value="1">
+            </label>
+            <label>
+              <span>Workflow materiel supplementaire</span>
+              <select name="new_ticket_order_status">
+                ${renderOptions(extraMaterialWorkflowOptions, "Demande creee")}
+              </select>
             </label>
           </div>
 
@@ -4673,6 +4733,13 @@ function buildSavCard(store) {
 
 function buildTicketThread(store, ticket) {
   const updates = [...(ticket.updates || [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const contextRows = [
+    ticket.requestKind ? `<div><strong>Type</strong> ${escapeHtml(ticket.requestKind)}</div>` : "",
+    ticket.materialLabel ? `<div><strong>Materiel</strong> ${escapeHtml(ticket.materialLabel)}</div>` : "",
+    ticket.extensionLabel ? `<div><strong>Extension</strong> ${escapeHtml(ticket.extensionLabel)}</div>` : "",
+    ticket.quantityRequested ? `<div><strong>Quantite</strong> ${escapeHtml(String(ticket.quantityRequested))}</div>` : "",
+    ticket.orderWorkflowStatus ? `<div><strong>Workflow</strong> ${escapeHtml(ticket.orderWorkflowStatus)}</div>` : ""
+  ].filter(Boolean).join("");
   return `
     <article class="sav-thread-card">
       <div class="sav-thread-head">
@@ -4685,6 +4752,7 @@ function buildTicketThread(store, ticket) {
 
       <div class="sav-thread-request">
         <div class="sav-thread-label">Demande initiale</div>
+        ${contextRows ? `<div class="sav-thread-context">${contextRows}</div>` : ""}
         <div class="sav-thread-box">${escapeHtml(ticket.initialNote || "-")}</div>
       </div>
 
@@ -7721,7 +7789,19 @@ async function handleSavCreate(event) {
   const concern = form.querySelector('[name="new_ticket_concern"]').value.trim();
   const initialNote = form.querySelector('[name="new_ticket_note"]').value.trim();
   const targetService = form.querySelector('[name="new_ticket_service"]').value;
-  if (!concern || !initialNote) {
+  const requestKind = form.querySelector('[name="new_ticket_kind"]')?.value || "SAV";
+  const materialLabel = form.querySelector('[name="new_ticket_material"]')?.value || "";
+  const extensionLabel = form.querySelector('[name="new_ticket_extension"]')?.value || "";
+  const quantityRequested = Number(form.querySelector('[name="new_ticket_quantity"]')?.value || 1) || 1;
+  const orderWorkflowStatus = form.querySelector('[name="new_ticket_order_status"]')?.value || "Demande creee";
+  const resolvedConcern = concern || (
+    requestKind === "Commande materiel casse"
+      ? `Materiel casse - ${materialLabel || "a preciser"}`
+      : requestKind === "Commande materiel supplementaire"
+        ? `Commande materiel supplementaire - ${materialLabel || "a preciser"}`
+        : requestKind
+  );
+  if (!resolvedConcern || !initialNote) {
     if (feedback) {
       feedback.textContent = "Le sujet et la note du ticket sont obligatoires.";
     }
@@ -7736,8 +7816,13 @@ async function handleSavCreate(event) {
     storeName: store.name,
     requesterName: currentUser()?.name || state.activeUserName || store.manager || "-",
     targetService,
-    concern,
+    concern: resolvedConcern,
     initialNote,
+    requestKind,
+    materialLabel,
+    extensionLabel,
+    quantityRequested,
+    orderWorkflowStatus,
     status: "open",
     createdAt: now,
     updates: []
@@ -7748,7 +7833,7 @@ async function handleSavCreate(event) {
     id: `sav-create-${Date.now()}`,
     storeName: store.name,
     result: "issue",
-    comment: `Creation SAV ${concern}`,
+    comment: `Creation ${requestKind} ${resolvedConcern}`,
     confirmedBy: ticket.requesterName,
     createdAt: now
   });
@@ -7756,6 +7841,11 @@ async function handleSavCreate(event) {
   form.querySelector('[name="new_ticket_concern"]').value = "";
   form.querySelector('[name="new_ticket_note"]').value = "";
   form.querySelector('[name="new_ticket_service"]').value = "Destiny";
+  form.querySelector('[name="new_ticket_kind"]').value = "SAV";
+  form.querySelector('[name="new_ticket_material"]').value = "";
+  form.querySelector('[name="new_ticket_extension"]').value = "";
+  form.querySelector('[name="new_ticket_quantity"]').value = "1";
+  form.querySelector('[name="new_ticket_order_status"]').value = "Demande creee";
   if (feedback) {
     feedback.textContent = "Ticket SAV cree.";
   }

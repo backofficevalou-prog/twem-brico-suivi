@@ -1095,6 +1095,15 @@ button {
   margin-bottom: 10px;
 }
 
+.sav-thread-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-bottom: 10px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
 .sav-request-actions {
   margin-top: 14px;
 }
