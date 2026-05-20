@@ -7006,6 +7006,7 @@ function importSavHistoryRows(rows) {
 
   const importedTickets = [];
   const secondaryPointerKeys = new Set();
+  const secondaryStoreNotes = new Map();
   let currentThread = null;
   let orphanedRows = 0;
 
@@ -7066,24 +7067,7 @@ function importSavHistoryRows(rows) {
           return;
         }
         secondaryPointerKeys.add(pointerKey);
-        importedTickets.push({
-          id: `SAV-HIST-LINK-${secondaryStore.code}-${store.code}-${index + 1}`,
-          storeId: secondaryStore.id,
-          storeCode: secondaryStore.code,
-          storeName: secondaryStore.name,
-          requesterName: author || state.activeUserName || "-",
-          targetService: recipients || "-",
-          concern: "Demande d'info",
-          initialNote: `Voir SAV magasin ${store.code}`,
-          requestKind: "Demande d'info",
-          materialLabel: "",
-          extensionLabel: "",
-          quantityRequested: "",
-          orderWorkflowStatus: "",
-          status: normalizeImportedSavStatus(importedStatus),
-          createdAt,
-          updates: []
-        });
+        secondaryStoreNotes.set(secondaryStore.id, `Voir SAV magasin ${store.code}`);
       });
       return;
     }
@@ -7104,6 +7088,17 @@ function importSavHistoryRows(rows) {
   if (!importedTickets.length) {
     throw new Error("Aucun ticket historique n a pu etre construit depuis ce fichier.");
   }
+
+  secondaryStoreNotes.forEach((note, storeId) => {
+    const linkedStore = state.stores.find((store) => String(store.id) === String(storeId));
+    if (!linkedStore) {
+      return;
+    }
+    const existing = normalizeImportCell(linkedStore.health || "");
+    if (!existing.includes(note)) {
+      linkedStore.health = existing ? `${existing}\n${note}` : note;
+    }
+  });
 
   state.tickets = importedTickets.filter((ticket) => ticket && ticket.id && ticket.storeId !== undefined && ticket.storeId !== null);
   return {
