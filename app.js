@@ -3338,6 +3338,10 @@ function buildConfigurationHubCard(store) {
         </div>
         <div class="two-col section-block">
           <label>
+            <span>Type magasin</span>
+            <select name="shop_type">${renderOptions(["DOS", "FOS", "FOSDOS"], normalizeShopTypeValue(store.shopType) || "DOS")}</select>
+          </label>
+          <label>
             <span>IP range</span>
             <input type="text" value="${escapeHtml(store.ipRange || "")}" readonly>
           </label>
@@ -4023,10 +4027,6 @@ function buildStoreDetailForm(store, mode = "stores") {
               <label>
                 <span>Responsable magasin</span>
                 <input type="text" name="manager" value="${escapeHtml(store.manager || "")}">
-              </label>
-              <label>
-                <span>Type magasin</span>
-                <select name="shop_type">${renderOptions(["DOS", "FOS", "FOSDOS"], normalizeShopTypeValue(store.shopType) || "DOS")}</select>
               </label>
             </div>
           </article>
