@@ -5798,7 +5798,7 @@ function applyReadOnlyRules() {
   });
 }
 
-function handleNetworkConfirm(event) {
+async function handleNetworkConfirm(event) {
   const button = event.target.closest("[data-network-confirm]");
   if (!button) {
     return;
@@ -5813,10 +5813,16 @@ function handleNetworkConfirm(event) {
     return;
   }
   const workflow = ensureStoreWorkflowData(store);
+  workflow.networkRows = readNetworkRows(form, store);
   workflow.networkConfigConfirmed = true;
+  store.updatedAt = new Date().toISOString();
   const hiddenField = form.querySelector('[name="network_config_confirmed"]');
   if (hiddenField) {
     hiddenField.value = "1";
+  }
+  if (hasRemoteData()) {
+    await syncStoreToRemote(store, "Choix telephonie confirmes");
+    await loadRemoteState();
   }
   saveState();
   render();
