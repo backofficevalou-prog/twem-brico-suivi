@@ -4024,6 +4024,10 @@ function buildStoreDetailForm(store, mode = "stores") {
                 <span>Responsable magasin</span>
                 <input type="text" name="manager" value="${escapeHtml(store.manager || "")}">
               </label>
+              <label>
+                <span>Type magasin</span>
+                <select name="shop_type">${renderOptions(["DOS", "FOS", "FOSDOS"], normalizeShopTypeValue(store.shopType) || "DOS")}</select>
+              </label>
             </div>
           </article>
           <article class="editor-card" data-access-zone="problem_notes">
@@ -7351,6 +7355,8 @@ function buildPrintableStoreHtml(store) {
   const quantityPlan = getStoreQuantityPlan(store);
   const appointments = sortedAppointments(store);
   const tickets = getFilteredTickets().filter((ticket) => ticket.storeId === store.id);
+  const networkRows = getNetworkConfigRows(store).filter((row) => row.extensionLabel || row.note);
+  const gsmRows = getGsmRows(store).filter((row) => row.model || row.mobileNumber || row.user || row.extensionLinked || row.mobileNetwork || row.iccid || row.puk || row.callGroup);
 
   return `
     <!doctype html>
@@ -7383,14 +7389,78 @@ function buildPrintableStoreHtml(store) {
           <div><strong>Manager</strong> ${escapeHtml(store.manager || "-")}</div>
           <div><strong>Provenance</strong> ${escapeHtml(storeProvenance(store))}</div>
           <div><strong>Date telephonie actuelle</strong> ${escapeHtml(workflow.currentPhoneDate || "-")}</div>
+          <div><strong>IP range</strong> ${escapeHtml(store.ipRange || "-")}</div>
         </div>
         <div class="card">
           <h3>Quantites telephonie</h3>
           <div><strong>Licences</strong> ${quantityPlan.licenseCount}</div>
           <div><strong>Postes fixes</strong> ${quantityPlan.fixCount}</div>
+          <div><strong>Fix big</strong> ${quantityPlan.fixBigCount}</div>
           <div><strong>Mobiles</strong> ${quantityPlan.mobileCount}</div>
+          <div><strong>Mobile smartphone</strong> ${quantityPlan.mobileSmartphoneCount}</div>
+          <div><strong>Flash light</strong> ${quantityPlan.flashLightCount}</div>
           <div><strong>Call buttons</strong> ${quantityPlan.callButtonCount}</div>
           <div><strong>Panic buttons</strong> ${quantityPlan.panicCount}</div>
+        </div>
+        <div class="card full">
+          <h3>Configuration et preparation</h3>
+          <table>
+            <tbody>
+              <tr><th>Demande configuration</th><td>${escapeHtml(workflow.configStatus || "-")}</td><th>Commande articles</th><td>${escapeHtml(workflow.orderStatus || "-")}</td></tr>
+              <tr><th>Commentaire logistique</th><td>${escapeHtml(workflow.orderNote || "-")}</td><th>Mail configuration</th><td>${escapeHtml(workflow.extensionRequestStatus || "-")}</td></tr>
+              <tr><th>Configuration extensions recue</th><td>${escapeHtml(workflow.extensionConfigStatus || "-")}</td><th>Date installation Destiny</th><td>${escapeHtml(workflow.destinyInstallDate || "-")}</td></tr>
+              <tr><th>Ticket Destiny</th><td>${escapeHtml(workflow.destinyTicketRef || "-")}</td><th>Dossier Destiny</th><td>${escapeHtml(workflow.destinyCaseRef || "-")}</td></tr>
+              <tr><th>PM Destiny</th><td>${escapeHtml(workflow.destinyPmName || "-")}</td><th>Diffusion</th><td>${escapeHtml(workflow.destinyDistribution || "-")}</td></tr>
+              <tr><th>Pre-visite</th><td>${escapeHtml(workflow.networkSurveyStatus || "-")}</td><th>Couverture mobile</th><td>${escapeHtml(workflow.mobileCoverage || "-")}</td></tr>
+              <tr><th>Configuration VLAN22</th><td>${escapeHtml(workflow.vlan22Date || workflow.vlan22Status || "-")}</td><th>VLAN22 active</th><td>${escapeHtml(workflow.vlan22Date ? "Oui" : (workflow.vlan22Activated || "-"))}</td></tr>
+              <tr><th>Alarme geree par IT</th><td>${escapeHtml(workflow.alarmHandledByIt || "-")}</td><th>Charles Roux</th><td>${escapeHtml(workflow.charlesRouxStatus || "-")}</td></tr>
+              <tr><th>Cablage</th><td>${escapeHtml(workflow.cablingStatus || "-")}</td><th>Chargeurs mobiles envoyes</th><td>${escapeHtml(workflow.mobileChargersSent || "-")}</td></tr>
+              <tr><th>Nombre chargeurs</th><td>${escapeHtml(workflow.mobileChargerCount || "-")}</td><th>Type alarme</th><td>${escapeHtml(workflow.alarmType || "-")}</td></tr>
+              <tr><th>Reseau mobile</th><td>${escapeHtml(workflow.mobileOperator || "-")}</td><th>Call flow</th><td>${escapeHtml(workflow.callFlowNote || "-")}</td></tr>
+              <tr><th>Message accueil / IVR</th><td>${escapeHtml(workflow.ivrNotes || "-")}</td><th>Autres consignes Brico</th><td>${escapeHtml(workflow.greetingNotes || "-")}</td></tr>
+              <tr><th>Validation finale installation</th><td>${escapeHtml(workflow.destinyInstallDone || "-")}</td><th>Mail final Brico</th><td>${escapeHtml(workflow.bricoFinalMailStatus || "-")}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card full">
+          <h3>Configuration du reseau</h3>
+          ${networkRows.length ? `
+            <table>
+              <thead><tr><th>Type</th><th>Slot</th><th>Extension + lieu</th><th>Note</th></tr></thead>
+              <tbody>
+                ${networkRows.map((row) => `
+                  <tr>
+                    <td>${escapeHtml(row.category)}</td>
+                    <td>${escapeHtml(row.slotLabel || "-")}</td>
+                    <td>${escapeHtml(row.extensionLabel || "-")}</td>
+                    <td>${escapeHtml(row.note || "-")}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : "<div class=\"muted\">Aucune configuration reseau renseignee.</div>"}
+        </div>
+        <div class="card full">
+          <h3>GSM / SIM</h3>
+          ${gsmRows.length ? `
+            <table>
+              <thead><tr><th>Modele</th><th>Numero mobile</th><th>Reseau</th><th>ICCID</th><th>PUK</th><th>Extension liee</th><th>Utilisateur</th><th>Groupe appel</th></tr></thead>
+              <tbody>
+                ${gsmRows.map((row) => `
+                  <tr>
+                    <td>${escapeHtml(row.model || "-")}</td>
+                    <td>${escapeHtml(row.mobileNumber || "-")}</td>
+                    <td>${escapeHtml(row.mobileNetwork || "-")}</td>
+                    <td>${escapeHtml(row.iccid || "-")}</td>
+                    <td>${escapeHtml(row.puk || "-")}</td>
+                    <td>${escapeHtml(row.extensionLinked || "-")}</td>
+                    <td>${escapeHtml(row.user || "-")}</td>
+                    <td>${escapeHtml(row.callGroup || "-")}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : "<div class=\"muted\">Aucun GSM renseigne.</div>"}
         </div>
         <div class="card full">
           <h3>Rendez-vous</h3>
@@ -7566,6 +7636,7 @@ async function handleStoreEditorSubmit(event) {
   const workflow = ensureStoreWorkflowData(store);
   store.owner = form.querySelector('[name="owner"]')?.value || store.owner || "";
   store.manager = form.querySelector('[name="manager"]')?.value.trim() || store.manager || "";
+  store.shopType = normalizeShopTypeValue(form.querySelector('[name="shop_type"]')?.value || store.shopType || "DOS");
   store.status = globalStatus;
   store.health = health;
   store.updatedAt = new Date().toISOString();
