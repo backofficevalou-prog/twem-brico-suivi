@@ -1343,7 +1343,7 @@ function loadState() {
       activities: clone(demoActivities),
       tickets: clone(demoTickets),
       people: demoPinPeople(),
-      activeUserName: "Emir",
+      activeUserName: "",
       language: "fr",
       activeAdminTab: "dashboard",
         toolItems: [],
@@ -1369,7 +1369,7 @@ function loadState() {
         storeCode: "",
         ...person
       }))),
-      activeUserName: parsed.activeUserName || "Emir",
+      activeUserName: parsed.activeUserName || "",
       language: parsed.language || "fr",
       activeAdminTab: parsed.activeAdminTab || "dashboard",
         toolItems: parsed.toolItems || [],
@@ -1388,7 +1388,7 @@ function loadState() {
       activities: clone(demoActivities),
       tickets: clone(demoTickets),
       people: demoPinPeople(),
-      activeUserName: "Emir",
+      activeUserName: "",
       language: "fr",
       activeAdminTab: "dashboard",
         toolItems: [],
@@ -5837,7 +5837,7 @@ async function loadRemoteState() {
     const sessionPerson = roleValueFromSession(authData.session);
     if (sessionPerson) {
       state.activeUserName = sessionPerson.name;
-    } else if (!state.people.some((person) => person.name === state.activeUserName)) {
+    } else if (state.activeUserName && !state.people.some((person) => person.name === state.activeUserName)) {
       state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || "";
     }
 
@@ -5888,7 +5888,7 @@ async function loadRemoteState() {
     state.accessOverrides = state.accessOverrides || [];
   }
 
-  if (!state.people.some((person) => person.name === state.activeUserName)) {
+  if (state.activeUserName && !state.people.some((person) => person.name === state.activeUserName)) {
     state.activeUserName = state.people.find((person) => person.role === "supadmin_twem")?.name || state.people[0]?.name || state.activeUserName;
   }
 
@@ -8931,12 +8931,9 @@ async function init() {
     state.activeUserName = queryUserName;
     state.pinValidated = presentationBypassUsers.includes(queryUserName);
     state.activeAdminTab = "dashboard";
-  } else if (presentationBypassUsers.length) {
-    state.activeUserName = state.people.find((person) => person.name === state.activeUserName)?.name
-      || state.people.find((person) => person.name === "Valou")?.name
-      || state.people.find((person) => person.name === "Emir")?.name
-      || state.activeUserName;
-    state.pinValidated = presentationBypassUsers.includes(state.activeUserName);
+  } else if (state.activeUserName && presentationBypassUsers.includes(state.activeUserName)) {
+    state.activeUserName = state.people.find((person) => person.name === state.activeUserName)?.name || state.activeUserName;
+    state.pinValidated = true;
     state.activeAdminTab = "dashboard";
   }
 
