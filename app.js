@@ -820,6 +820,7 @@ const reportButton = document.querySelector("#reportButton");
 const tabImportButton = document.querySelector("#tabImportButton");
 const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
 const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButton");
+const tabImportSavHistoryButton = document.querySelector("#tabImportSavHistoryButton");
 const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
 const tabPurgeSavButton = document.querySelector("#tabPurgeSavButton");
@@ -6901,6 +6902,213 @@ function formatImportDateValue(value) {
   return `${year}-${month}-${day}`;
 }
 
+function formatImportedSavTimeValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return "00:00";
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+  }
+  const raw = normalizeImportCell(value);
+  if (!raw) {
+    return "00:00";
+  }
+  const numericValue = typeof value === "number"
+    ? value
+    : (/^\d+(\.\d+)?$/.test(raw) ? Number(raw) : NaN);
+  if (Number.isFinite(numericValue) && numericValue > 0 && numericValue < 1) {
+    const totalMinutes = Math.round(numericValue * 24 * 60);
+    const hours = String(Math.floor(totalMinutes / 60) % 24).padStart(2, "0");
+    const minutes = String(totalMinutes % 60).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  const parsed = raw.match(/^(\d{1,2})[:h.](\d{2})(?::\d{2})?$/i);
+  if (parsed) {
+    return `${String(Number(parsed[1])).padStart(2, "0")}:${parsed[2]}`;
+  }
+  return "00:00";
+}
+
+function buildImportedSavTimestamp(dateValue, timeValue) {
+  const datePart = formatImportDateValue(dateValue);
+  if (!datePart) {
+    return new Date().toISOString();
+  }
+  return `${datePart}T${formatImportedSavTimeValue(timeValue)}:00`;
+}
+
+function normalizeImportedSavStatus(value) {
+  const raw = normalizeImportCell(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (!raw) {
+    return "open";
+  }
+  if (raw.includes("resolu") || raw.includes("cloture") || raw.includes("clos")) {
+    return "closed";
+  }
+  if (raw.includes("cours")) {
+    return "in_progress";
+  }
+  return "open";
+}
+
+function normalizeImportedRequestKind(value) {
+  const raw = normalizeImportCell(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const matched = storeRequestTypeOptions.find((option) => option.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === raw);
+  return matched || normalizeImportCell(value) || "SAV";
+}
+
+function normalizeImportStoreCode(value) {
+  const raw = normalizeImportCell(value);
+  if (!raw) {
+    return "";
+  }
+  const match = raw.match(/\d{4}/);
+  return match ? match[0] : raw.replace(/\.0$/, "");
+}
+
+function parseSecondaryStoreCodes(value) {
+  const raw = normalizeImportCell(value);
+  if (!raw) {
+    return [];
+  }
+  return [...new Set((raw.match(/\d{4}/g) || []).map((entry) => entry.trim()).filter(Boolean))];
+}
+
+function buildImportedSavMessage(recipients, copies, summary) {
+  const parts = [];
+  if (normalizeImportCell(recipients)) {
+    parts.push(`Envoye a : ${normalizeImportCell(recipients)}`);
+  }
+  if (normalizeImportCell(copies)) {
+    parts.push(`En copie : ${normalizeImportCell(copies)}`);
+  }
+  if (normalizeImportCell(summary)) {
+    parts.push(normalizeImportCell(summary));
+  }
+  return parts.join("\n\n") || "-";
+}
+
+function findStoreByImportCode(code) {
+  const normalizedCode = normalizeImportStoreCode(code);
+  if (!normalizedCode) {
+    return null;
+  }
+  return state.stores.find((store) => normalizeImportStoreCode(store.shopNumber) === normalizedCode || normalizeImportStoreCode(store.code) === normalizedCode) || null;
+}
+
+function importSavHistoryRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error("Aucune ligne historique SAV exploitable.");
+  }
+
+  const importedTickets = [];
+  const secondaryPointerKeys = new Set();
+  let currentThread = null;
+  let orphanedRows = 0;
+
+  rows.forEach((rawRow, index) => {
+    const row = normalizeImportRow(rawRow);
+    const importedStatus = normalizeImportCell(readImportValue(row, ["statut"], ""));
+    const importedType = normalizeImportCell(readImportValue(row, ["type_de_demande", "type", "typededemande"], ""));
+    const primaryStoreCode = normalizeImportStoreCode(readImportValue(row, ["code_magasin", "ref_magasin_principal", "store_nr", "store_code"], ""));
+    const secondaryStoreCodes = parseSecondaryStoreCodes(readImportValue(row, ["ref_magasin_secondaire", "refs_magasins_secondaires", "ref_magasin_secondaires"], ""));
+    const author = normalizeImportCell(readImportValue(row, ["auteur"], ""));
+    const recipients = normalizeImportCell(readImportValue(row, ["envoye_a", "envoye_a_"], ""));
+    const copies = normalizeImportCell(readImportValue(row, ["en_copie", "copie", "copies"], ""));
+    const summary = normalizeImportCell(readImportValue(row, ["resume", "resume_du_sujet_du_mail", "resume_du_mail"], ""));
+    const dateValue = readImportValue(row, ["date"], "");
+    const timeValue = readImportValue(row, ["heure"], "");
+    const startsNewThread = Boolean(importedStatus || importedType || primaryStoreCode || secondaryStoreCodes.length);
+    const lineHasContent = [importedStatus, importedType, primaryStoreCode, author, recipients, copies, summary, normalizeImportCell(String(dateValue || "")), normalizeImportCell(String(timeValue || ""))].some(Boolean);
+    if (!lineHasContent) {
+      return;
+    }
+
+    if (startsNewThread) {
+      const store = findStoreByImportCode(primaryStoreCode);
+      if (!store) {
+        orphanedRows += 1;
+        currentThread = null;
+        return;
+      }
+      const createdAt = buildImportedSavTimestamp(dateValue, timeValue);
+      const ticket = {
+        id: `SAV-HIST-${store.code}-${createdAt.replace(/[^0-9]/g, "").slice(0, 12)}-${index + 1}`,
+        storeId: store.id,
+        storeCode: store.code,
+        storeName: store.name,
+        requesterName: author || state.activeUserName || "-",
+        targetService: recipients || "-",
+        concern: normalizeImportCell(importedType) || "SAV historique",
+        initialNote: buildImportedSavMessage(recipients, copies, summary),
+        requestKind: normalizeImportedRequestKind(importedType),
+        materialLabel: "",
+        extensionLabel: "",
+        quantityRequested: "",
+        orderWorkflowStatus: "",
+        status: normalizeImportedSavStatus(importedStatus),
+        createdAt,
+        updates: []
+      };
+      importedTickets.push(ticket);
+      currentThread = { ticket };
+
+      secondaryStoreCodes.forEach((secondaryCode) => {
+        const secondaryStore = findStoreByImportCode(secondaryCode);
+        if (!secondaryStore || String(secondaryStore.id) === String(store.id)) {
+          return;
+        }
+        const pointerKey = `${store.code}|${secondaryStore.code}`;
+        if (secondaryPointerKeys.has(pointerKey)) {
+          return;
+        }
+        secondaryPointerKeys.add(pointerKey);
+        importedTickets.push({
+          id: `SAV-HIST-LINK-${secondaryStore.code}-${store.code}-${index + 1}`,
+          storeId: secondaryStore.id,
+          storeCode: secondaryStore.code,
+          storeName: secondaryStore.name,
+          requesterName: author || state.activeUserName || "-",
+          targetService: recipients || "-",
+          concern: "Demande d'info",
+          initialNote: `Voir SAV magasin ${store.code}`,
+          requestKind: "Demande d'info",
+          materialLabel: "",
+          extensionLabel: "",
+          quantityRequested: "",
+          orderWorkflowStatus: "",
+          status: normalizeImportedSavStatus(importedStatus),
+          createdAt,
+          updates: []
+        });
+      });
+      return;
+    }
+
+    if (!currentThread?.ticket) {
+      orphanedRows += 1;
+      return;
+    }
+
+    currentThread.ticket.updates.push({
+      id: `sav-hist-update-${currentThread.ticket.id}-${currentThread.ticket.updates.length + 1}`,
+      authorName: author || currentThread.ticket.requesterName || "-",
+      createdAt: buildImportedSavTimestamp(dateValue, timeValue),
+      note: buildImportedSavMessage(recipients, copies, summary)
+    });
+  });
+
+  if (!importedTickets.length) {
+    throw new Error("Aucun ticket historique n a pu etre construit depuis ce fichier.");
+  }
+
+  state.tickets = [...importedTickets, ...(state.tickets || [])];
+  return {
+    importedTickets: importedTickets.length,
+    orphanedRows
+  };
+}
+
 function freshImportedSteps() {
   return [
     { actorType: "store_manager", label: "Magasin", status: "planned", note: "A lancer" },
@@ -7091,6 +7299,8 @@ function handleImportInputChange(event) {
 
   const importLabel = state.importMode === "telephony"
     ? "Import telephonie en cours..."
+    : state.importMode === "sav-history"
+      ? "Import historique SAV en cours..."
     : state.importMode === "extensions"
       ? "Import extensions en cours..."
       : "Import magasins en cours...";
@@ -7117,6 +7327,36 @@ function handleImportInputChange(event) {
         recordImportExportHistory("import", "Import extensions", file.name);
         saveState();
         render();
+      } else if (state.importMode === "sav-history") {
+        let importResult = { importedTickets: 0, orphanedRows: 0 };
+        if (fileName.endsWith(".json")) {
+          const payload = JSON.parse(String(reader.result));
+          const rows = Array.isArray(payload) ? payload : (payload.savHistory || payload.rows || []);
+          importResult = importSavHistoryRows(rows);
+        } else if (fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) {
+          importResult = importSavHistoryRows(readWorkbookRows(file, reader.result));
+        } else if (fileName.endsWith(".csv")) {
+          importResult = importSavHistoryRows(parseDelimitedText(reader.result));
+        } else {
+          throw new Error("Pour l historique SAV, utilise XLS/XLSX, CSV ou JSON.");
+        }
+        remoteSyncSuppressed = true;
+        try {
+          saveState();
+          render();
+          if (hasRemoteData()) {
+            await syncTicketsRemoteState({ delayMs: 900, every: 1 });
+            await loadRemoteState();
+            refreshRemoteSyncShadow();
+          }
+          recordImportExportHistory("import", "Import historique SAV", `${file.name} - ${importResult.importedTickets} ticket(s) / ${importResult.orphanedRows} ligne(s) ignoree(s)`);
+          saveState();
+          render();
+          window.alert(`Import historique SAV termine. ${importResult.importedTickets} ticket(s) importes.${importResult.orphanedRows ? ` ${importResult.orphanedRows} ligne(s) ignoree(s).` : ""}`);
+        } finally {
+          remoteSyncSuppressed = false;
+          refreshRemoteSyncShadow();
+        }
       } else if (state.importMode === "telephony") {
         let touchedStores = [];
         if (fileName.endsWith(".json")) {
@@ -8603,6 +8843,7 @@ reportButton.addEventListener("click", handleReportButtonClick);
 tabImportButton?.addEventListener("click", handleImportButtonClick);
 tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
 tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telephony"));
+tabImportSavHistoryButton?.addEventListener("click", () => triggerImport("sav-history"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", () => safeRunExport(exportJsonData));
 tabPurgeSavButton?.addEventListener("click", () => {
