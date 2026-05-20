@@ -8901,7 +8901,7 @@ async function init() {
       || state.people.find((person) => person.name === "Valou")?.name
       || state.people.find((person) => person.name === "Emir")?.name
       || state.activeUserName;
-    state.pinValidated = true;
+    state.pinValidated = presentationBypassUsers.includes(state.activeUserName);
     state.activeAdminTab = "dashboard";
   }
 
