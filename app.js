@@ -2941,6 +2941,23 @@ function getNetworkConfigRows(store) {
   return workflow.networkRows;
 }
 
+function reconcileNetworkRowsWithQuantities(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const blueprintRows = defaultNetworkRowsForStore(store);
+  const existingRows = Array.isArray(workflow.networkRows) ? workflow.networkRows : [];
+  const existingById = new Map(existingRows.map((row) => [row.id, row]));
+  workflow.networkRows = blueprintRows.map((row) => {
+    const previous = existingById.get(row.id);
+    return previous
+      ? {
+          ...row,
+          extensionLabel: previous.extensionLabel || "",
+          note: previous.note || ""
+        }
+      : row;
+  });
+}
+
 function defaultGsmRowsForStore(store) {
   const { mobileCount } = getStoreQuantityPlan(store);
   const count = Math.max(2, Math.min(4, mobileCount));
@@ -2963,6 +2980,29 @@ function getGsmRows(store) {
     workflow.gsmRows = defaultGsmRowsForStore(store);
   }
   return workflow.gsmRows;
+}
+
+function reconcileGsmRowsWithQuantities(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const blueprintRows = defaultGsmRowsForStore(store);
+  const existingRows = Array.isArray(workflow.gsmRows) ? workflow.gsmRows : [];
+  workflow.gsmRows = blueprintRows.map((row, index) => {
+    const previous = existingRows[index];
+    return previous
+      ? {
+          ...row,
+          id: previous.id || row.id,
+          model: previous.model || "",
+          mobileNumber: previous.mobileNumber || "",
+          mobileNetwork: previous.mobileNetwork || "",
+          iccid: previous.iccid || "",
+          puk: previous.puk || "",
+          extensionLinked: previous.extensionLinked || "",
+          user: previous.user || "",
+          callGroup: previous.callGroup || ""
+        }
+      : row;
+  });
 }
 
 function gsmModelOptions() {
@@ -8105,16 +8145,18 @@ async function handleStoreEditorSubmit(event) {
   store.status = globalStatus;
   store.health = health;
   store.updatedAt = new Date().toISOString();
-  if (isSupAdmin()) {
-    store.licenseCount = Math.max(0, Number(form.querySelector('[name="license_count"]')?.value) || 0);
-    store.fixCount = Math.max(0, Number(form.querySelector('[name="fix_count"]')?.value) || 0);
-    store.fixBigCount = Math.max(0, Number(form.querySelector('[name="fix_big_count"]')?.value) || 0);
-    store.mobileCount = Math.max(0, Number(form.querySelector('[name="mobile_count"]')?.value) || 0);
-    store.mobileSmartphoneCount = Math.max(0, Number(form.querySelector('[name="mobile_smartphone_count"]')?.value) || 0);
-    store.flashLightCount = Math.max(0, Number(form.querySelector('[name="flash_light_count"]')?.value) || 0);
-    store.callButtonCount = Math.max(0, Number(form.querySelector('[name="call_button_count"]')?.value) || 0);
-    store.panicCount = Math.max(0, Number(form.querySelector('[name="panic_count"]')?.value) || 0);
-  }
+    if (isSupAdmin()) {
+      store.licenseCount = Math.max(0, Number(form.querySelector('[name="license_count"]')?.value) || 0);
+      store.fixCount = Math.max(0, Number(form.querySelector('[name="fix_count"]')?.value) || 0);
+      store.fixBigCount = Math.max(0, Number(form.querySelector('[name="fix_big_count"]')?.value) || 0);
+      store.mobileCount = Math.max(0, Number(form.querySelector('[name="mobile_count"]')?.value) || 0);
+      store.mobileSmartphoneCount = Math.max(0, Number(form.querySelector('[name="mobile_smartphone_count"]')?.value) || 0);
+      store.flashLightCount = Math.max(0, Number(form.querySelector('[name="flash_light_count"]')?.value) || 0);
+      store.callButtonCount = Math.max(0, Number(form.querySelector('[name="call_button_count"]')?.value) || 0);
+      store.panicCount = Math.max(0, Number(form.querySelector('[name="panic_count"]')?.value) || 0);
+      reconcileNetworkRowsWithQuantities(store);
+      reconcileGsmRowsWithQuantities(store);
+    }
 
   stepFor(store, "store_manager").status = form.querySelector('[name="store_manager_status"]')?.value || stepFor(store, "store_manager").status;
   stepFor(store, "installer").status = form.querySelector('[name="installer_status"]')?.value || stepFor(store, "installer").status;
