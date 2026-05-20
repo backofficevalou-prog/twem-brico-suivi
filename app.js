@@ -4331,7 +4331,7 @@ function renderTimelineRows(stores) {
         note: "Collecte infos magasin"
       },
       {
-        date: workflow.vlan22Date || workflow.itValidationDate || formatDateTime(store.updatedAt).split(" ")[0],
+        date: workflow.vlan22Date || workflow.itValidationDate || "",
         label: "IT",
         status: workflow.vlan22Activated === "Oui" ? "done" : (store.status === "blocked" ? "blocked" : "in_progress"),
         note: "Validation reseau / VLAN"
