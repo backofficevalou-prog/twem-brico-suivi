@@ -763,6 +763,11 @@ const hasAppwriteDataConfig = Boolean(
 let realtimeChannel = null;
 let appwriteRealtimeUnsubscribe = null;
 let appwritePollHandle = null;
+let storeEditorDraftLock = {
+  active: false,
+  storeId: null,
+  lastTouchedAt: 0
+};
 
 const state = {
   mode: "demo",
@@ -812,6 +817,36 @@ const knownTestPeopleNames = [
 ];
 const knownTestSavNotes = ["test", "test 2"];
 const provenanceOptions = ["Nouveau", "Migration"];
+
+function markStoreEditorDirty(storeId) {
+  storeEditorDraftLock = {
+    active: true,
+    storeId: Number(storeId) || null,
+    lastTouchedAt: Date.now()
+  };
+}
+
+function clearStoreEditorDirty(storeId = null) {
+  if (storeId !== null && storeEditorDraftLock.storeId !== Number(storeId)) {
+    return;
+  }
+  storeEditorDraftLock = {
+    active: false,
+    storeId: null,
+    lastTouchedAt: 0
+  };
+}
+
+function isStoreEditorDirty() {
+  const activeForm = document.activeElement?.closest?.("[data-store-editor]");
+  if (activeForm) {
+    return true;
+  }
+  if (!storeEditorDraftLock.active) {
+    return false;
+  }
+  return Date.now() - storeEditorDraftLock.lastTouchedAt < 15 * 60 * 1000;
+}
 
 const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
 
@@ -4181,6 +4216,15 @@ function attachStoreInteractiveHandlers() {
 
   projectTableBody.querySelectorAll("[data-store-editor]").forEach((form) => {
     form.addEventListener("submit", handleStoreEditorSubmit);
+    form.addEventListener("input", () => {
+      markStoreEditorDirty(form.getAttribute("data-store-editor"));
+    });
+    form.addEventListener("change", () => {
+      markStoreEditorDirty(form.getAttribute("data-store-editor"));
+    });
+    form.addEventListener("focusin", () => {
+      markStoreEditorDirty(form.getAttribute("data-store-editor"));
+    });
   });
 
   projectTableBody.querySelectorAll("[data-sav-create]").forEach((button) => {
@@ -6445,6 +6489,9 @@ function setupAppwritePolling() {
     if (state.connectionState === "initializing") {
       return;
     }
+    if (isStoreEditorDirty()) {
+      return;
+    }
     try {
       await loadRemoteState();
       render();
@@ -8104,6 +8151,7 @@ async function handleStoreEditorSubmit(event) {
     await syncStoreToRemote(store, `Mise a jour magasin - statut ${statusLabel(store.status)}`);
     await loadRemoteState();
   }
+  clearStoreEditorDirty(storeId);
   saveState();
   state.expandedStoreIds.delete(storeId);
   render();
