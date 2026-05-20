@@ -699,6 +699,8 @@ const statusLabels = {
 };
 
 const storageKey = "twem-brico-dashboard-v6";
+const authResetVersionKey = `${storageKey}-auth-reset-version`;
+const authResetVersion = "2026-05-20-pin-reset-1";
 const appConfig = window.APP_CONFIG || {
   mode: "demo",
   supabaseUrl: "",
@@ -1336,8 +1338,10 @@ function localUiState() {
 }
 
 function loadState() {
+  const storedAuthResetVersion = window.localStorage.getItem(authResetVersionKey);
   const raw = window.localStorage.getItem(storageKey);
   if (!raw) {
+    window.localStorage.setItem(authResetVersionKey, authResetVersion);
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
@@ -1360,6 +1364,12 @@ function loadState() {
 
   try {
     const parsed = JSON.parse(raw);
+    const shouldResetRememberedNonBypassUser = storedAuthResetVersion !== authResetVersion
+      && parsed.activeUserName
+      && !presentationBypassUsers.includes(parsed.activeUserName);
+    if (storedAuthResetVersion !== authResetVersion) {
+      window.localStorage.setItem(authResetVersionKey, authResetVersion);
+    }
     return {
       stores: parsed.stores || clone(demoStores),
       activities: parsed.activities || clone(demoActivities),
@@ -1369,7 +1379,7 @@ function loadState() {
         storeCode: "",
         ...person
       }))),
-      activeUserName: parsed.activeUserName || "",
+      activeUserName: shouldResetRememberedNonBypassUser ? "" : (parsed.activeUserName || ""),
       language: parsed.language || "fr",
       activeAdminTab: parsed.activeAdminTab || "dashboard",
         toolItems: parsed.toolItems || [],
@@ -1383,6 +1393,7 @@ function loadState() {
         importExportHistory: parsed.importExportHistory || []
       };
   } catch {
+    window.localStorage.setItem(authResetVersionKey, authResetVersion);
     return {
       stores: clone(demoStores),
       activities: clone(demoActivities),
