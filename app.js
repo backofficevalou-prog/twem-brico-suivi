@@ -3554,62 +3554,59 @@ function buildEquipmentCards(store) {
     <div class="editor-grid section-anchor" id="section-equipment">
       <article class="editor-card full-span-card grouped-card" data-access-zone="store_posts">
         <h3>GSM / SIM</h3>
-        <div class="device-stack">
+        <div class="gsm-compact-stack">
           ${gsmRows.map((row, index) => `
-            <article class="network-category">
+            <article class="gsm-compact-item">
               <div class="network-category-head">
                 <h4>GSM ${index + 1}</h4>
                 <span>${escapeHtml(row.user || row.mobileNumber || "A definir")}</span>
               </div>
-              <div class="network-rows">
-                <div class="network-row gsm-row">
-                  <label>
-                    <span>Modele appareil</span>
-                    <select name="gsm_model_${escapeHtml(row.id)}">
-                      ${gsmModelOptions().map((option) => `<option value="${escapeHtml(option)}" ${row.model === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Extension liee</span>
-                    <select name="gsm_extension_${escapeHtml(row.id)}">
-                      <option value="">Choisir une extension</option>
-                      ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Utilisateur</span>
-                    <input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}">
-                  </label>
-                  <label>
-                    <span>Numero mobile</span>
-                    <input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}">
-                  </label>
-                  <label>
-                    <span>Reseau mobile</span>
-                    <input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}">
-                  </label>
-                  <label>
-                    <span>ICCID</span>
-                    <input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}">
-                  </label>
-                  <label>
-                    <span>Code PUK</span>
-                    <input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}">
-                  </label>
-                  <label>
-                    <span>Groupe appel</span>
-                    <input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}">
-                  </label>
-                </div>
+              <div class="gsm-compact-grid">
+                <label>
+                  <span>Modele appareil</span>
+                  <select name="gsm_model_${escapeHtml(row.id)}">
+                    ${gsmModelOptions().map((option) => `<option value="${escapeHtml(option)}" ${row.model === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                  </select>
+                </label>
+                <label>
+                  <span>Extension liee</span>
+                  <select name="gsm_extension_${escapeHtml(row.id)}">
+                    <option value="">Choisir une extension</option>
+                    ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                  </select>
+                </label>
+                <label>
+                  <span>Utilisateur</span>
+                  <input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}">
+                </label>
+                <label>
+                  <span>Numero mobile</span>
+                  <input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}">
+                </label>
+                <label>
+                  <span>Reseau mobile</span>
+                  <input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}">
+                </label>
+                <label>
+                  <span>ICCID</span>
+                  <input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}">
+                </label>
+                <label>
+                  <span>Code PUK</span>
+                  <input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}">
+                </label>
+                <label>
+                  <span>Groupe appel</span>
+                  <input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}">
+                </label>
               </div>
             </article>
           `).join("")}
         </div>
-        ${isSupAdmin() ? `
-          <div class="posts-skeleton-actions">
-            <button type="button" class="mini-button" data-gsm-add="${store.id}">Ajouter un GSM</button>
-          </div>
-        ` : ""}
+        <div class="posts-skeleton-actions">
+          ${isSupAdmin() ? `<button type="button" class="mini-button" data-gsm-add="${store.id}">Ajouter un GSM</button>` : ""}
+          <button type="submit" class="mini-button">Sauvegarder les GSM</button>
+        </div>
       </article>
       <article class="editor-card">
         <h3>Alarme</h3>
@@ -3633,6 +3630,9 @@ function buildEquipmentCards(store) {
             <textarea name="alarm_other" rows="4">${escapeHtml(workflow.alarmOther)}</textarea>
           </label>
         </div>
+        <div class="posts-skeleton-actions">
+          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+        </div>
       </article>
       <article class="editor-card">
         <h3>Groupes d appel</h3>
@@ -3640,6 +3640,9 @@ function buildEquipmentCards(store) {
           <span>Groupes d appel</span>
           <textarea name="call_groups_note" rows="6" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
         </label>
+        <div class="posts-skeleton-actions">
+          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+        </div>
       </article>
       <article class="editor-card">
         <h3>Cascades</h3>
@@ -3647,6 +3650,9 @@ function buildEquipmentCards(store) {
           <span>Cascades</span>
           <textarea name="cascade_note" rows="6" placeholder="Ex: si non reponse, renvoi vers permanence">${escapeHtml(workflow.cascadeNote)}</textarea>
         </label>
+        <div class="posts-skeleton-actions">
+          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+        </div>
       </article>
       <article class="editor-card full-span-card">
         <div class="network-confirm-bar">

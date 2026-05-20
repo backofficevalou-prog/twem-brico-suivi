@@ -1080,6 +1080,26 @@ button {
   gap: 12px;
 }
 
+.gsm-compact-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.gsm-compact-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.gsm-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .gsm-row {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
