@@ -7366,26 +7366,84 @@ function exportExtensionsXlsx() {
 }
 
 function exportExtensionsPdf() {
-  const headers = ["Categorie", "Modele", "Numero", "Libelle FR", "Libelle NL", "Libelle EN", "Ancien numero", "Item", "Activation", "Usage"];
-  const bodyRows = extensionCatalogRows.map((row) => ([
-    row.category,
-    row.model,
-    row.number,
-    row.labelFr || row.label,
-    row.labelNl || row.label,
-    row.labelEn || row.label,
-    row.oldNumber,
-    row.item,
-    row.activation,
-    row.usage || ""
-  ]));
-  exportRowsToPdf(
-    "Catalogue extensions TWEM Brico",
-    headers,
-    bodyRows,
-    `twem-brico-extensions-${new Date().toISOString().slice(0, 10)}.pdf`
-  );
-  recordImportExportHistory("export", "Export extensions PDF", `${bodyRows.length} extension(s) exportee(s).`);
+  if (!pdfAvailable()) {
+    throw new Error("Bibliotheque PDF indisponible.");
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const groupedRows = [
+    ["Boutons d appel", extensionRowsForCategory("Bouton Appel")],
+    ["Panic Button", extensionCatalogRows.filter((row) => ["panic", "other"].includes(extensionCategoryKey(row.category)))],
+    ["Flash light", extensionRowsForCategory("Flash light")],
+    ["Fix", extensionRowsForCategory("Fixed")],
+    ["Mobile", extensionRowsForCategory("Mobile")]
+  ].filter(([, rows]) => rows.length);
+
+  doc.setFillColor(255, 222, 59);
+  doc.rect(0, 0, 210, 22, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(36, 33, 20);
+  doc.setFontSize(15);
+  doc.text("Liste des extensions magasin", 12, 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text(`TWEM x Brico - Genere le ${formatDateTime(new Date().toISOString())}`, 12, 18);
+  doc.setTextColor(36, 33, 20);
+
+  groupedRows.forEach(([title, rows], sectionIndex) => {
+    if (sectionIndex > 0) {
+      doc.addPage();
+    }
+    let currentY = sectionIndex === 0 ? 30 : 18;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(195, 55, 46);
+    doc.text(`${title} (${rows.length})`, 12, currentY);
+    currentY += 5;
+    doc.setTextColor(36, 33, 20);
+    doc.autoTable({
+      head: [["Numero", "Libelle FR", "Libelle NL", "Item"]],
+      body: rows.map((row) => ([
+        normalizeImportCell(row.number) || "-",
+        normalizeImportCell(row.labelFr || row.label) || "-",
+        normalizeImportCell(row.labelNl || row.label) || "-",
+        normalizeImportCell(row.item) || "-"
+      ])),
+      startY: currentY,
+      margin: { left: 12, right: 12 },
+      tableWidth: "auto",
+      styles: {
+        fontSize: 8,
+        cellPadding: { top: 1.6, right: 2, bottom: 1.6, left: 2 },
+        overflow: "linebreak",
+        lineColor: [224, 218, 199],
+        lineWidth: 0.1,
+        textColor: [36, 33, 20]
+      },
+      headStyles: {
+        fillColor: [255, 243, 174],
+        textColor: [36, 33, 20],
+        fontStyle: "bold"
+      },
+      alternateRowStyles: { fillColor: [255, 253, 246] },
+      columnStyles: {
+        0: { cellWidth: 22, fontStyle: "bold", halign: "left" },
+        1: { cellWidth: 66 },
+        2: { cellWidth: 66 },
+        3: { cellWidth: 24 }
+      },
+      didDrawPage: (data) => {
+        const pageCount = doc.internal.getNumberOfPages();
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(110, 104, 82);
+        doc.text(`Page ${pageCount}`, 184, 288);
+      }
+    });
+  });
+
+  doc.save(`twem-brico-liste-extensions-responsable-${new Date().toISOString().slice(0, 10)}.pdf`);
+  recordImportExportHistory("export", "Export liste extensions responsable PDF", `${extensionCatalogRows.length} extension(s) exportee(s).`);
 }
 
 async function safeRunExport(action) {
