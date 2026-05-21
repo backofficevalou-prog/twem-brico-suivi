@@ -419,6 +419,24 @@ const defaultAutomations = [
     notes: "Rappel doux au responsable du magasin uniquement: J-2 puis J-1 avant l'installation. Pas d'escalade automatique."
   },
   {
+    id: "daily_operations_digest",
+    category: "notifications",
+    title: "Digest quotidien Emir + Valou",
+    description: "Envoyer chaque matin a Emir et Valou le recap des installations du lendemain, des blocages et des SAV ouverts/en cours.",
+    active: true,
+    trigger: "Tous les matins a partir du 2026-05-22",
+    recipients: "Emir + Valou",
+    channels: "Mail quotidien",
+    responseDelayHours: 9,
+    escalationHours: 0,
+    repeatHours: 24,
+    maxEscalations: 0,
+    finalAlertRecipient: "",
+    linkTarget: "Planning, blocages et SAV",
+    languageMode: "FR",
+    notes: "A envoyer tous les matins: installations prevues le lendemain pour controle planning, magasins bloques, SAV ouverts et SAV en cours."
+  },
+  {
     id: "no_response_escalation",
     category: "followup",
     title: "Action sans réponse → relance + escalade",
@@ -438,11 +456,6 @@ const defaultAutomations = [
   }
 ];
 const futureAutomationIdeas = [
-  {
-    id: "daily_blocked_digest",
-    title: "Digest quotidien des blocages",
-    description: "Envoyer chaque matin à TWEM la liste condensée des magasins bloqués ou à risque."
-  },
   {
     id: "manager_validation_followup",
     title: "Relance validation magasin après installation",
