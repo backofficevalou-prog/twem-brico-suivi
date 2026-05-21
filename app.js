@@ -376,9 +376,11 @@ const defaultAutomations = [
     responseDelayHours: 0,
     escalationHours: 0,
     repeatHours: 0,
+    maxEscalations: 3,
+    finalAlertRecipient: "Valou / TWEM",
     linkTarget: "Lien vers l'élément concerné",
     languageMode: "Langue du contact",
-    notes: "Option recommandée: ne pas renvoyer l'alerte à la personne qui vient de créer l'élément."
+    notes: "Option recommandée: ne pas renvoyer l'alerte à la personne qui vient de créer l'élément. Si le lien n'a toujours pas été consulté après 3 escalades, prévenir Valou."
   },
   {
     id: "new_person_welcome",
@@ -408,9 +410,11 @@ const defaultAutomations = [
     responseDelayHours: 24,
     escalationHours: 24,
     repeatHours: 12,
+    maxEscalations: 3,
+    finalAlertRecipient: "Valou / TWEM",
     linkTarget: "Lien vers la fiche magasin",
     languageMode: "Langue de la personne relancée",
-    notes: "Après 24h: rappel. Si toujours rien: alerte Valou pour appel/SMS. Ensuite mail toutes les 12h tant qu'il n'y a pas de réaction."
+    notes: "Après 24h: rappel. Si toujours rien: escalade. A la 3e escalade sans consultation, prévenir Valou pour reprise manuelle."
   }
 ];
 const futureAutomationIdeas = [
@@ -5576,6 +5580,16 @@ function renderAutomations() {
                   <span>${state.language === "nl" ? "Herhaling (u)" : "Repetition (h)"}</span>
                   <input type="number" min="0" step="1" data-automation-id="${escapeHtml(item.id)}" data-automation-field="repeatHours" value="${escapeHtml(item.repeatHours)}">
                 </label>
+                ${Object.prototype.hasOwnProperty.call(item, "maxEscalations") ? `
+                  <label class="automation-field">
+                    <span>${state.language === "nl" ? "Maximum escalaties" : "Escalades max"}</span>
+                    <input type="number" min="0" step="1" data-automation-id="${escapeHtml(item.id)}" data-automation-field="maxEscalations" value="${escapeHtml(item.maxEscalations)}">
+                  </label>
+                  <label class="automation-field">
+                    <span>${state.language === "nl" ? "Na max." : "Apres max."}</span>
+                    <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="finalAlertRecipient" value="${escapeHtml(item.finalAlertRecipient || "")}">
+                  </label>
+                ` : ""}
                 <label class="automation-field automation-field-wide">
                   <span>${state.language === "nl" ? "Regel / note" : "Regle / note"}</span>
                   <textarea rows="3" data-automation-id="${escapeHtml(item.id)}" data-automation-field="notes">${escapeHtml(item.notes)}</textarea>
