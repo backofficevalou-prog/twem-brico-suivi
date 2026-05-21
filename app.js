@@ -28,8 +28,46 @@ const extensionReferenceOptions = [
   "924 - drive in till zone"
 ];
 
-function availableExtensionReferenceOptions() {
-  const importedOptions = extensionCatalogRows
+function extensionCategoryKey(category) {
+  const normalized = normalizeImportCell(category).toLowerCase();
+  if (normalized.includes("panic")) return "panic";
+  if (normalized.includes("appel") || normalized.includes("call")) return "call";
+  if (normalized.includes("flash")) return "flash";
+  if (normalized.includes("fixed") || normalized.includes("fixe")) return "fixed";
+  if (normalized.includes("mobile")) return "mobile";
+  return "other";
+}
+
+function extensionRowsForCategory(categoryFilter = "") {
+  const targetKey = extensionCategoryKey(categoryFilter);
+  return extensionCatalogRows
+    .filter((row) => {
+      if (!categoryFilter) return true;
+      const rowKey = extensionCategoryKey(row.category);
+      if (targetKey === "fixed") return rowKey === "fixed";
+      if (targetKey === "mobile") return rowKey === "mobile";
+      if (targetKey === "flash") return rowKey === "flash";
+      if (targetKey === "call") return rowKey === "call";
+      if (targetKey === "panic") return rowKey === "panic";
+      return true;
+    })
+    .slice()
+    .sort((left, right) => {
+      const leftLabel = normalizeImportCell(left.label).toLowerCase();
+      const rightLabel = normalizeImportCell(right.label).toLowerCase();
+      const leftNumber = normalizeImportCell(left.number);
+      const rightNumber = normalizeImportCell(right.number);
+      if (targetKey === "fixed" || targetKey === "mobile") {
+        return leftLabel.localeCompare(rightLabel, "fr", { sensitivity: "base" })
+          || leftNumber.localeCompare(rightNumber, "fr", { numeric: true, sensitivity: "base" });
+      }
+      return leftNumber.localeCompare(rightNumber, "fr", { numeric: true, sensitivity: "base" })
+        || leftLabel.localeCompare(rightLabel, "fr", { sensitivity: "base" });
+    });
+}
+
+function availableExtensionReferenceOptions(categoryFilter = "") {
+  const importedOptions = extensionRowsForCategory(categoryFilter)
     .map((row) => {
       const number = normalizeImportCell(row?.number);
       const label = normalizeImportCell(row?.label);
@@ -1207,7 +1245,8 @@ function buildAppwriteSettingsDocument() {
   return {
     role_options_json: JSON.stringify(state.roleOptions || []),
     tool_items_json: JSON.stringify(state.toolItems || []),
-    access_overrides_json: JSON.stringify(state.accessOverrides || [])
+    access_overrides_json: JSON.stringify(state.accessOverrides || []),
+    extension_catalog_json: JSON.stringify(extensionCatalogRows || [])
   };
 }
 
@@ -1383,7 +1422,8 @@ function localUiState() {
     visibilityEditorRole: state.visibilityEditorRole,
     roleViewUnlocked: state.roleViewUnlocked,
     contactSearch: state.contactSearch,
-    importExportHistory: state.importExportHistory
+    importExportHistory: state.importExportHistory,
+    extensionCatalogRows
   };
 }
 
@@ -1408,7 +1448,8 @@ function loadState() {
         visibilityEditorRole: "supadmin_twem",
         roleViewUnlocked: false,
         contactSearch: "",
-        importExportHistory: []
+        importExportHistory: [],
+        extensionCatalogRows: extensionCatalogRows
       };
   }
 
@@ -1440,7 +1481,8 @@ function loadState() {
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
         roleViewUnlocked: Boolean(parsed.roleViewUnlocked),
         contactSearch: parsed.contactSearch || "",
-        importExportHistory: parsed.importExportHistory || []
+        importExportHistory: parsed.importExportHistory || [],
+        extensionCatalogRows: Array.isArray(parsed.extensionCatalogRows) && parsed.extensionCatalogRows.length ? parsed.extensionCatalogRows : extensionCatalogRows
       };
   } catch {
     window.localStorage.setItem(authResetVersionKey, authResetVersion);
@@ -1460,9 +1502,10 @@ function loadState() {
         visibilityEditorRole: "supadmin_twem",
         roleViewUnlocked: false,
         contactSearch: "",
-        importExportHistory: []
+        importExportHistory: [],
+        extensionCatalogRows: extensionCatalogRows
       };
-  }
+}
 }
 
 function saveState() {
@@ -3087,7 +3130,7 @@ function buildStorePilotSkeleton(store) {
     const { showConfirmBar = true } = options;
     const workflow = ensureStoreWorkflowData(store);
     const rows = getNetworkConfigRows(store);
-  const extensionOptions = availableExtensionReferenceOptions();
+  const extensionOptionsForCategory = (category) => availableExtensionReferenceOptions(category);
   const groupedRows = rows.reduce((accumulator, row) => {
     accumulator[row.category] ||= [];
     accumulator[row.category].push(row);
@@ -3108,7 +3151,7 @@ function buildStorePilotSkeleton(store) {
               <span>Extension + lieu</span>
               <select name="network_extension_${escapeHtml(row.id)}">
                 <option value="">Choisir une extension / un lieu</option>
-                ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                ${extensionOptionsForCategory(category).map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
               </select>
             </label>
             <label>
@@ -4873,6 +4916,137 @@ function ticketsForStore(storeId) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+async function handleAddExtensionSubmit(event) {
+  event.preventDefault();
+  if (!isSupAdmin()) {
+    return;
+  }
+  const form = event.currentTarget;
+  const category = normalizeImportCell(form.querySelector('[name="category"]')?.value);
+  const model = normalizeImportCell(form.querySelector('[name="model"]')?.value);
+  const number = normalizeImportCell(form.querySelector('[name="number"]')?.value);
+  const label = normalizeImportCell(form.querySelector('[name="label"]')?.value);
+  if (!category || !number) {
+    window.alert("La categorie et le numero sont obligatoires.");
+    return;
+  }
+  extensionCatalogRows.push({
+    category,
+    model,
+    number,
+    label,
+    oldNumber: "",
+    language: "",
+    item: "",
+    activation: "",
+    usage: ""
+  });
+  if (hasRemoteData()) {
+    await syncSettingsToRemote();
+    await loadRemoteState();
+  }
+  saveState();
+  render();
+}
+
+function renderExtensionsRowsV2(stores) {
+  setMainTableHeaders(["Categorie", "Modele", "Numero", "Libelle", "Langue", "Item", "Activation", "Ancien", "Usage"]);
+  const filteredExtensions = extensionCatalogRows.filter((row) => {
+    const search = state.filters.search;
+    if (!search) {
+      return true;
+    }
+    const haystack = `${row.category} ${row.model} ${row.number} ${row.label} ${row.language} ${row.item} ${row.activation} ${row.oldNumber || ""} ${row.usage || ""}`.toLowerCase();
+    return haystack.includes(search);
+  });
+
+  if (!filteredExtensions.length) {
+    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucune extension ne correspond a la recherche.</td></tr>';
+    return;
+  }
+
+  const groupedExtensions = [
+    ["Boutons d appel", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "call")],
+    ["Boutons panique", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "panic")],
+    ["Flash light", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "flash")],
+    ["Fix", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "fixed").sort((a, b) => normalizeImportCell(a.label).localeCompare(normalizeImportCell(b.label), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
+    ["Mobile", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "mobile").sort((a, b) => normalizeImportCell(a.label).localeCompare(normalizeImportCell(b.label), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
+    ["Autres", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "other")]
+  ].filter(([, rows]) => rows.length);
+
+  projectTableBody.innerHTML = `
+    <tr>
+      <td colspan="9">
+        <article class="extensions-store">
+          <div class="extensions-store-head">
+            <div>
+              <h3>Reference complete des extensions disponibles</h3>
+              <span class="cell-note">${filteredExtensions.length} ligne(s) du tableau ConfigVoIPExt</span>
+            </div>
+            ${isSupAdmin() ? `
+              <form class="extensions-add-form" id="extensionsAddForm">
+                <select name="category">
+                  <option value="Bouton Appel">Bouton d appel</option>
+                  <option value="Bouton Panique">Bouton panique</option>
+                  <option value="Flash light">Flash light</option>
+                  <option value="Fixed">Fix</option>
+                  <option value="Mobile">Mobile</option>
+                </select>
+                <input type="text" name="model" placeholder="Modele">
+                <input type="text" name="number" placeholder="Numero">
+                <input type="text" name="label" placeholder="Lieu / libelle">
+                <button type="submit" class="mini-button">Ajouter extension</button>
+              </form>
+            ` : ""}
+          </div>
+          <div class="extensions-store-body">
+            ${groupedExtensions.map(([title, rows]) => `
+              <section class="extensions-section">
+                <div class="extensions-section-head">
+                  <h4>${escapeHtml(title)}</h4>
+                  <span class="cell-note">${rows.length} ligne(s)</span>
+                </div>
+                <table class="extensions-table">
+                  <thead>
+                    <tr>
+                      <th>Categorie</th>
+                      <th>Modele</th>
+                      <th>Numero</th>
+                      <th>Libelle / lieu</th>
+                      <th>Langue</th>
+                      <th>Item</th>
+                      <th>Activation</th>
+                      <th>Ancien n°</th>
+                      <th>Usage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows.map((row) => `
+                      <tr>
+                        <td>${escapeHtml(row.category || "-")}</td>
+                        <td>${escapeHtml(row.model || "-")}</td>
+                        <td><strong>${escapeHtml(row.number || "-")}</strong></td>
+                        <td>${escapeHtml(row.label || "-")}</td>
+                        <td>${escapeHtml(row.language || "-")}</td>
+                        <td>${escapeHtml(row.item || "-")}</td>
+                        <td>${escapeHtml(row.activation || "-")}</td>
+                        <td>${escapeHtml(row.oldNumber || "-")}</td>
+                        <td>${escapeHtml(row.usage || "-")}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </section>
+            `).join("")}
+          </div>
+        </article>
+      </td>
+    </tr>
+  `;
+
+  projectTableBody.querySelector("#extensionsAddForm")?.addEventListener("submit", handleAddExtensionSubmit);
+}
+
 function getFilteredTickets() {
   const visibleStoreIds = new Set(getFilteredStores().map((store) => String(store.id)));
   const search = state.filters.search;
@@ -5073,7 +5247,7 @@ function renderStores() {
       return;
     case "extensions":
       projectTable?.classList.add("compact-rows-table");
-      renderExtensionsRows(stores);
+      renderExtensionsRowsV2(stores);
       return;
     case "dashboard":
       projectTable?.classList.add("compact-rows-table");
@@ -6097,6 +6271,20 @@ async function loadRemoteState() {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
+    const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
+    if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
+      extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row) => ({
+        category: normalizeImportCell(row.category || row.categorie || row.type || "Extension"),
+        model: normalizeImportCell(row.model || row.modele || ""),
+        number: normalizeImportCell(row.number || row.numero || ""),
+        label: normalizeImportCell(row.label || row.libelle || row.lieu || ""),
+        oldNumber: normalizeImportCell(row.oldNumber || row.old_number || row.ancien_numero || ""),
+        language: normalizeImportCell(row.language || row.langue || ""),
+        item: normalizeImportCell(row.item || ""),
+        activation: normalizeImportCell(row.activation || ""),
+        usage: normalizeImportCell(row.usage || "")
+      })));
+    }
   } else {
     state.roleOptions = state.roleOptions?.length ? normalizedRoleOptions(state.roleOptions) : [...defaultRoleOptions];
     state.toolItems = state.toolItems || [];
@@ -6707,6 +6895,19 @@ async function importJsonData(payload) {
   }
   if (Array.isArray(payload.automations)) {
     state.automations = normalizedAutomations(payload.automations);
+  }
+  if (Array.isArray(payload.extensionCatalogRows) && payload.extensionCatalogRows.length) {
+    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...payload.extensionCatalogRows.map((row) => ({
+      category: normalizeImportCell(row.category || row.categorie || row.type || "Extension"),
+      model: normalizeImportCell(row.model || row.modele || ""),
+      number: normalizeImportCell(row.number || row.numero || ""),
+      label: normalizeImportCell(row.label || row.libelle || row.lieu || ""),
+      oldNumber: normalizeImportCell(row.oldNumber || row.old_number || row.ancien_numero || ""),
+      language: normalizeImportCell(row.language || row.langue || ""),
+      item: normalizeImportCell(row.item || ""),
+      activation: normalizeImportCell(row.activation || ""),
+      usage: normalizeImportCell(row.usage || "")
+    })));
   }
   if (payload.roleVisibilityConfig && typeof payload.roleVisibilityConfig === "object") {
     state.roleVisibilityConfig = payload.roleVisibilityConfig;
@@ -9270,6 +9471,19 @@ async function init() {
   state.roleViewUnlocked = Boolean(stored.roleViewUnlocked);
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
+  if (Array.isArray(stored.extensionCatalogRows) && stored.extensionCatalogRows.length) {
+    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...stored.extensionCatalogRows.map((row) => ({
+      category: normalizeImportCell(row.category || row.categorie || row.type || "Extension"),
+      model: normalizeImportCell(row.model || row.modele || ""),
+      number: normalizeImportCell(row.number || row.numero || ""),
+      label: normalizeImportCell(row.label || row.libelle || row.lieu || ""),
+      oldNumber: normalizeImportCell(row.oldNumber || row.old_number || row.ancien_numero || ""),
+      language: normalizeImportCell(row.language || row.langue || ""),
+      item: normalizeImportCell(row.item || ""),
+      activation: normalizeImportCell(row.activation || ""),
+      usage: normalizeImportCell(row.usage || "")
+    })));
+  }
   state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
   state.tickets = stripKnownTestTickets(state.tickets);
   document.documentElement.lang = state.language;

@@ -626,6 +626,34 @@ button {
   overflow-x: auto;
 }
 
+.extensions-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.extensions-add-form select,
+.extensions-add-form input {
+  min-width: 140px;
+}
+
+.extensions-section + .extensions-section {
+  border-top: 1px solid var(--line);
+}
+
+.extensions-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px 0;
+}
+
+.extensions-section-head h4 {
+  margin: 0;
+}
+
 .extensions-table {
   width: 100%;
   min-width: 760px;
