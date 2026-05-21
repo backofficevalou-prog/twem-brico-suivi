@@ -6124,7 +6124,9 @@ function handleAutomationEmailFieldChange(event) {
     automation.emailBody = email.body;
   }
   saveState();
-  renderAutomationEmailQueue();
+  if (field !== "body") {
+    renderAutomationEmailQueue();
+  }
 }
 
 function renderConnectionStatus() {
