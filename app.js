@@ -6123,6 +6123,11 @@ function handleAutomationEmailFieldChange(event) {
   if (automation && field === "body") {
     automation.emailBody = email.body;
   }
+  if (field === "body" && event.type === "input") {
+    window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
+    return;
+  }
+
   saveState();
   if (field !== "body") {
     renderAutomationEmailQueue();
