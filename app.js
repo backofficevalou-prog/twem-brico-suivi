@@ -401,6 +401,24 @@ const defaultAutomations = [
     notes: "Nouvel utilisateur: envoyer le lien app + PIN, faire une seule relance après 24h si aucune connexion, puis attendre 12h. Si toujours pas de connexion, prévenir Valou: l'accès ou le mail peut ne pas être arrivé."
   },
   {
+    id: "install_reminder",
+    category: "followup",
+    title: "Rappel avant installation",
+    description: "Envoyer un rappel doux uniquement au responsable du magasin avant une installation planifiée.",
+    active: false,
+    trigger: "Date d'installation planifiée dans une fiche magasin",
+    recipients: "Responsable du magasin uniquement",
+    channels: "Mail doux FR/NL",
+    responseDelayHours: 48,
+    escalationHours: 24,
+    repeatHours: 0,
+    maxEscalations: 0,
+    finalAlertRecipient: "",
+    linkTarget: "Lien vers la fiche magasin",
+    languageMode: "Langue du responsable magasin",
+    notes: "Rappel doux au responsable du magasin uniquement: J-2 puis J-1 avant l'installation. Pas d'escalade automatique."
+  },
+  {
     id: "no_response_escalation",
     category: "followup",
     title: "Action sans réponse → relance + escalade",
@@ -420,11 +438,6 @@ const defaultAutomations = [
   }
 ];
 const futureAutomationIdeas = [
-  {
-    id: "install_reminder",
-    title: "Rappel avant installation",
-    description: "Envoyer un rappel doux uniquement au responsable du magasin, J-2 et J-1 avant une installation planifiée."
-  },
   {
     id: "daily_blocked_digest",
     title: "Digest quotidien des blocages",
