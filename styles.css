@@ -146,12 +146,17 @@ h1 {
 }
 
 .toolbar {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
   padding: 10px 12px;
   display: grid;
   grid-template-columns: 1.25fr repeat(6, minmax(105px, 1fr)) auto;
   gap: 10px;
   margin-bottom: 12px;
   border-top: 4px solid var(--brand-yellow);
+  background: rgba(255, 253, 250, 0.96);
+  backdrop-filter: blur(10px);
 }
 
 .toolbar-actions {
