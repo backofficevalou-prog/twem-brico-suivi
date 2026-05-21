@@ -30,7 +30,7 @@ const extensionReferenceOptions = [
 
 function extensionCategoryKey(category) {
   const normalized = normalizeImportCell(category).toLowerCase();
-  if (normalized.includes("panic")) return "panic";
+  if (normalized.includes("panic") || normalized.includes("panique")) return "panic";
   if (normalized.includes("appel") || normalized.includes("call")) return "call";
   if (normalized.includes("flash")) return "flash";
   if (normalized.includes("fixed") || normalized.includes("fixe")) return "fixed";
@@ -5073,12 +5073,16 @@ async function handleAddExtensionSubmit(event) {
     activation: "",
     usage: ""
   });
-  if (hasRemoteData()) {
-    await syncSettingsToRemote();
-    await loadRemoteState();
-  }
   saveState();
   render();
+  if (hasRemoteData()) {
+    try {
+      await syncSettingsToRemote();
+    } catch (error) {
+      console.error("Impossible de synchroniser l extension ajoutee.", error);
+      window.alert("Extension ajoutee localement, mais la synchronisation distante a echoue.");
+    }
+  }
 }
 
 function renderExtensionsRowsV2(stores) {
@@ -5099,11 +5103,10 @@ function renderExtensionsRowsV2(stores) {
 
   const groupedExtensions = [
     ["Boutons d appel", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "call")],
-    ["Boutons panique", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "panic")],
+    ["Panic Button", filteredExtensions.filter((row) => ["panic", "other"].includes(extensionCategoryKey(row.category)))],
     ["Flash light", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "flash")],
     ["Fix", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "fixed").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
-    ["Mobile", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "mobile").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
-    ["Autres", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "other")]
+    ["Mobile", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "mobile").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))]
   ].filter(([, rows]) => rows.length);
 
   projectTableBody.innerHTML = `
