@@ -6972,7 +6972,7 @@ function storesForFicheZipExport() {
     case "with_installation_date":
       return scopedStores.filter((store) => {
         const workflow = ensureStoreWorkflowData(store);
-        return Boolean(String(workflow.currentPhoneDate || "").trim());
+        return Boolean(String(workflow.destinyInstallDate || "").trim());
       });
     case "blocked":
       return scopedStores.filter((store) => store.status === "blocked");
