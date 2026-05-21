@@ -423,7 +423,7 @@ const futureAutomationIdeas = [
   {
     id: "install_reminder",
     title: "Rappel avant installation",
-    description: "Envoyer automatiquement un rappel J-2 et J-1 avant une installation planifiée."
+    description: "Envoyer un rappel doux uniquement au responsable du magasin, J-2 et J-1 avant une installation planifiée."
   },
   {
     id: "daily_blocked_digest",
