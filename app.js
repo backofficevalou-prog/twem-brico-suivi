@@ -875,8 +875,6 @@ const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButt
 const tabImportSavHistoryButton = document.querySelector("#tabImportSavHistoryButton");
 const tabImportExtensionsButton = document.querySelector("#tabImportExtensionsButton");
 const tabExportButton = document.querySelector("#tabExportButton");
-const tabPurgeSavButton = document.querySelector("#tabPurgeSavButton");
-const purgeSavCard = document.querySelector("#purgeSavCard");
 const tabExportStoresCheckXlsxButton = document.querySelector("#tabExportStoresCheckXlsxButton");
 const tabExportStoresXlsxButton = document.querySelector("#tabExportStoresXlsxButton");
 const tabExportStoresPdfButton = document.querySelector("#tabExportStoresPdfButton");
@@ -5479,10 +5477,6 @@ function renderImportExportHistory() {
     return;
   }
 
-  if (purgeSavCard) {
-    purgeSavCard.hidden = !isSupAdmin();
-  }
-
   const compactHistory = cleanImportHistory(state.importExportHistory);
   const count = compactHistory.length;
   importExportHistoryMeta.textContent = state.importBusyMessage
@@ -9251,9 +9245,6 @@ tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telepho
 tabImportSavHistoryButton?.addEventListener("click", () => triggerImport("sav-history"));
 tabImportExtensionsButton?.addEventListener("click", () => triggerImport("extensions"));
 tabExportButton?.addEventListener("click", () => safeRunExport(exportJsonData));
-tabPurgeSavButton?.addEventListener("click", () => {
-  handlePurgeSav();
-});
 tabExportStoresCheckXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresCheckXlsx));
 tabExportStoresXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresXlsx));
 tabExportStoresPdfButton?.addEventListener("click", () => safeRunExport(exportStoresPdf));
