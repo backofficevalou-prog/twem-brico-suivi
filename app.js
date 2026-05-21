@@ -130,14 +130,18 @@ function normalizeExtensionCatalogRow(row, index = 0) {
   return {
     category: normalizeImportCell(
       row.category
+      || row.Category
+      || row.Categorie
       || row.categorie
       || row.type
       || row.Type
       || "Extension"
     ),
-    model: normalizeImportCell(row.model || row.modele || row.Model || ""),
+    model: normalizeImportCell(row.model || row.modele || row.Model || row.Modele || ""),
     number: normalizeImportCell(
       row.number
+      || row.Number
+      || row.Numero
       || row.numero
       || row.extension
       || row["NEW NUMBER"]
