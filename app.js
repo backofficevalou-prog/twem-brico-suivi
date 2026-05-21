@@ -8401,19 +8401,225 @@ function buildPrintableStoreHtml(store) {
   const gsmRows = getGsmRows(store);
   const intervenantRows = getIntervenantRows(store);
   const planName = workflow.planPdfName || "";
-  const printableValue = (value, emptyLabel = "A renseigner") => {
+  const storeLanguage = normalizeLanguageCode(store.language || state.language || "fr");
+  const isNl = storeLanguage === "nl";
+  const labels = isNl
+    ? {
+        fiche: "Winkelfiche verantwoordelijke",
+        installDate: "Installatiedatum Destiny",
+        verifyPlanning: "Te controleren met de werfplanning voor definitieve afdruk.",
+        noInstallDate: "",
+        identity: "Identiteit",
+        type: "Type",
+        size: "Grootte",
+        manager: "Manager",
+        twemOwner: "TWEM verantwoordelijke",
+        provenance: "Herkomst",
+        currentPhoneDate: "Datum huidige telefonie",
+        ipRange: "IP range",
+        globalStatus: "Globale status",
+        issueNotes: "Probleem / notities",
+        quantities: "Telefonie aantallen",
+        licences: "Licenties",
+        fixed: "Vaste toestellen",
+        mobiles: "Mobiele toestellen",
+        intervenants: "Intervenanten",
+        block: "Blok",
+        person: "Persoon",
+        noteRole: "Nota / rol",
+        noIntervenants: "Geen intervenanten ingevuld.",
+        configPrep: "Configuratie en voorbereiding",
+        configRequest: "Configuratieaanvraag",
+        orderArticles: "Artikelenbestelling",
+        logisticComment: "Logistieke opmerking",
+        configMail: "Configuratiemail",
+        clientNumber: "Klantnummer huidig contract",
+        mainNumber: "Huidig hoofdnummer",
+        otherNumbers: "Andere nummers",
+        configReceived: "Extensieconfiguratie ontvangen",
+        destinyTicket: "Destiny ticket",
+        destinyCase: "Destiny dossier",
+        pmDestiny: "PM Destiny",
+        distribution: "Distributie",
+        preVisit: "Pre-visit",
+        mobileCoverage: "Mobiele dekking",
+        vlanConfig: "VLAN22 configuratie",
+        vlanActive: "VLAN22 actief",
+        alarmByIt: "Alarm beheerd door IT",
+        cabling: "Bekabeling",
+        chargersSent: "Mobiele laders verzonden",
+        chargerCount: "Aantal laders",
+        alarmType: "Alarmtype",
+        mobileNetwork: "Mobiel netwerk",
+        callFlow: "Call flow",
+        welcomeMessage: "Welkombericht / IVR",
+        otherInstructions: "Andere Brico instructies",
+        finalValidation: "Eindvalidatie installatie",
+        finalMail: "Finale mail Brico",
+        installRemark: "Opmerking installatie Destiny",
+        finalRemark: "Finale opmerking Brico",
+        platformSwitch: "Switch platform LT",
+        storePlan: "Winkelplan PDF",
+        networkConfig: "Netwerkconfiguratie",
+        category: "Type",
+        slot: "Slot",
+        assignedExtension: "Toegekende extensie",
+        managerNote: "Nota verantwoordelijke",
+        writeNote: "De kolom Toegekende extensie is bewust leeg gelaten voor notities ter plaatse.",
+        noNetwork: "Geen netwerkconfiguratie ingevuld.",
+        gsmSim: "GSM / SIM",
+        model: "Model",
+        mobileNumber: "Mobiel nummer",
+        network: "Netwerk",
+        linkedExtension: "Gelinkte extensie",
+        user: "Gebruiker",
+        callGroup: "Oproepgroep",
+        noGsm: "Geen GSM ingevuld.",
+        alarmGroups: "Alarm, oproepgroepen en cascades",
+        alarmCompany: "Firma",
+        alarmCentralPhone: "Tel alarmcentrale",
+        other: "Andere",
+        callGroups: "Oproepgroepen",
+        cascades: "Cascades",
+        appointments: "Afspraken",
+        date: "Datum",
+        status: "Status",
+        people: "Personen",
+        note: "Nota",
+        noAppointments: "Geen afspraak gepland.",
+        tickets: "SAV / tickets",
+        reference: "Referentie",
+        service: "Dienst",
+        subject: "Onderwerp",
+        noTickets: "Geen SAV-ticket."
+      }
+    : {
+        fiche: "Fiche magasin responsable",
+        installDate: "Date installation Destiny",
+        verifyPlanning: "A verifier avec le planning chantier avant impression finale.",
+        noInstallDate: "",
+        identity: "Identite",
+        type: "Type",
+        size: "Taille",
+        manager: "Manager",
+        twemOwner: "Responsable TWEM",
+        provenance: "Provenance",
+        currentPhoneDate: "Date telephonie actuelle",
+        ipRange: "IP range",
+        globalStatus: "Statut global",
+        issueNotes: "Probleme / notes",
+        quantities: "Quantites telephonie",
+        licences: "Licences",
+        fixed: "Postes fixes",
+        mobiles: "Mobiles",
+        intervenants: "Intervenants",
+        block: "Bloc",
+        person: "Personne",
+        noteRole: "Note / role",
+        noIntervenants: "Aucun intervenant renseigne.",
+        configPrep: "Configuration et preparation",
+        configRequest: "Demande configuration",
+        orderArticles: "Commande articles",
+        logisticComment: "Commentaire logistique",
+        configMail: "Mail configuration",
+        clientNumber: "N client contrat actuel",
+        mainNumber: "Numero principal actuel",
+        otherNumbers: "Autres numeros releves",
+        configReceived: "Configuration extensions recue",
+        destinyTicket: "Ticket Destiny",
+        destinyCase: "Dossier Destiny",
+        pmDestiny: "PM Destiny",
+        distribution: "Diffusion",
+        preVisit: "Pre-visite",
+        mobileCoverage: "Couverture mobile",
+        vlanConfig: "Configuration VLAN22",
+        vlanActive: "VLAN22 active",
+        alarmByIt: "Alarme geree par IT",
+        cabling: "Cablage",
+        chargersSent: "Chargeurs mobiles envoyes",
+        chargerCount: "Nombre chargeurs",
+        alarmType: "Type alarme",
+        mobileNetwork: "Reseau mobile",
+        callFlow: "Call flow",
+        welcomeMessage: "Message accueil / IVR",
+        otherInstructions: "Autres consignes Brico",
+        finalValidation: "Validation finale installation",
+        finalMail: "Mail final Brico",
+        installRemark: "Remarque installation Destiny",
+        finalRemark: "Remarque finale Brico",
+        platformSwitch: "Switch plateforme LT",
+        storePlan: "Plan magasin PDF",
+        networkConfig: "Configuration du reseau",
+        category: "Type",
+        slot: "Slot",
+        assignedExtension: "Extension attribuee",
+        managerNote: "Note responsable",
+        writeNote: "La colonne Extension attribuee est volontairement vide pour annotation sur site.",
+        noNetwork: "Aucune configuration reseau renseignee.",
+        gsmSim: "GSM / SIM",
+        model: "Modele",
+        mobileNumber: "Numero mobile",
+        network: "Reseau",
+        linkedExtension: "Extension liee",
+        user: "Utilisateur",
+        callGroup: "Groupe appel",
+        noGsm: "Aucun GSM renseigne.",
+        alarmGroups: "Alarme, groupes d appel et cascades",
+        alarmCompany: "Societe",
+        alarmCentralPhone: "Tel centrale alarme",
+        other: "Autres",
+        callGroups: "Groupes d appel",
+        cascades: "Cascades",
+        appointments: "Rendez-vous",
+        date: "Date",
+        status: "Statut",
+        people: "Personnes",
+        note: "Note",
+        noAppointments: "Aucun rendez-vous planifie.",
+        tickets: "SAV / tickets",
+        reference: "Reference",
+        service: "Service",
+        subject: "Sujet",
+        noTickets: "Aucun ticket SAV."
+      };
+  const printableValue = (value, emptyLabel = "") => {
     const normalized = String(value ?? "").trim();
+    const placeholderValues = new Set([
+      "a confirmer",
+      "a renseigner",
+      "a envoyer",
+      "a planifier",
+      "a verifier",
+      "a choisir",
+      "en attente",
+      "pas de date",
+      "non renseigne",
+      "te bevestigen",
+      "in te vullen",
+      "te versturen",
+      "te plannen",
+      "te controleren",
+      "te kiezen",
+      "in afwachting"
+    ]);
+    const normalizedPlaceholder = normalized
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (placeholderValues.has(normalizedPlaceholder)) {
+      return emptyLabel;
+    }
     return normalized ? normalized : emptyLabel;
   };
-  const installDate = printableValue(workflow.destinyInstallDate, "A confirmer");
+  const installDate = printableValue(workflow.destinyInstallDate, labels.noInstallDate);
   const hasInstallDate = Boolean(String(workflow.destinyInstallDate || "").trim());
 
   return `
     <!doctype html>
-    <html lang="${state.language}">
+    <html lang="${storeLanguage}">
     <head>
       <meta charset="UTF-8">
-      <title>Fiche magasin - ${escapeHtml(store.name)}</title>
+      <title>${escapeHtml(labels.fiche)} - ${escapeHtml(store.name)}</title>
       <style>
         @page { margin: 12mm; }
         * { box-sizing: border-box; }
@@ -8423,9 +8629,9 @@ function buildPrintableStoreHtml(store) {
         .eyebrow { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: #7a3a2f; margin-bottom: 4px; }
         .hero h1 { font-size: 22px; line-height: 1.05; }
         .meta { color: #5c553c; margin-top: 5px; }
-        .install-banner { border: 2px solid #c3372e; background: #fff3ae; border-radius: 12px; padding: 11px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; gap: 14px; align-items: center; break-inside: avoid; }
-        .install-banner .label { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #7a3a2f; }
-        .install-banner .date { font-size: 21px; font-weight: 800; color: #242114; }
+        .install-banner { border: 3px solid #c3372e; background: #fff3ae; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; display: flex; justify-content: space-between; gap: 14px; align-items: center; break-inside: avoid; box-shadow: inset 0 -3px 0 rgba(195,55,46,0.12); }
+        .install-banner .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; color: #7a3a2f; }
+        .install-banner .date { font-size: 34px; line-height: 1; font-weight: 900; color: #242114; margin-top: 4px; }
         .install-banner.is-missing { border-color: #e0dac7; background: #fffdf6; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
         .card { border: 1px solid #e0dac7; border-radius: 10px; padding: 12px; break-inside: avoid; background: #fffefa; }
@@ -8447,171 +8653,171 @@ function buildPrintableStoreHtml(store) {
     </head>
     <body>
       <section class="hero">
-        <div class="eyebrow">TWEM x Brico - Fiche magasin responsable</div>
+        <div class="eyebrow">TWEM x Brico - ${escapeHtml(labels.fiche)}</div>
         <h1>${escapeHtml(store.name)}</h1>
-        <div class="meta">${escapeHtml(store.code)} - ${escapeHtml(store.city || "-")} - ${escapeHtml(store.address || "-")}</div>
+        <div class="meta">${escapeHtml([store.code, store.city, store.address].map(printableValue).filter(Boolean).join(" - "))}</div>
       </section>
       <section class="install-banner ${hasInstallDate ? "" : "is-missing"}">
         <div>
-          <div class="label">Date installation Destiny</div>
+          <div class="label">${escapeHtml(labels.installDate)}</div>
           <div class="date">${escapeHtml(installDate)}</div>
         </div>
-        <div class="muted">A verifier avec le planning chantier avant impression finale.</div>
+        <div class="muted">${escapeHtml(labels.verifyPlanning)}</div>
       </section>
       <div class="grid">
         <div class="card">
-          <h3>Identite</h3>
-          <div><strong>Type</strong> ${escapeHtml(store.shopType || "-")}</div>
-          <div><strong>Taille</strong> ${escapeHtml(store.shopSize || "-")}</div>
-          <div><strong>Manager</strong> ${escapeHtml(store.manager || "-")}</div>
-          <div><strong>Responsable TWEM</strong> ${escapeHtml(store.owner || "-")}</div>
-          <div><strong>Provenance</strong> ${escapeHtml(storeProvenance(store))}</div>
-          <div><strong>Date telephonie actuelle</strong> ${escapeHtml(workflow.currentPhoneDate || "-")}</div>
-          <div><strong>IP range</strong> ${escapeHtml(store.ipRange || "-")}</div>
-          <div><strong>Statut global</strong> ${escapeHtml(statusLabel(store.status))}</div>
-          <div><strong>Probleme / notes</strong> ${escapeHtml(store.health || "Aucun probleme signale")}</div>
+          <h3>${escapeHtml(labels.identity)}</h3>
+          <div><strong>${escapeHtml(labels.type)}</strong> ${escapeHtml(printableValue(store.shopType))}</div>
+          <div><strong>${escapeHtml(labels.size)}</strong> ${escapeHtml(printableValue(store.shopSize))}</div>
+          <div><strong>${escapeHtml(labels.manager)}</strong> ${escapeHtml(printableValue(store.manager))}</div>
+          <div><strong>${escapeHtml(labels.twemOwner)}</strong> ${escapeHtml(printableValue(store.owner))}</div>
+          <div><strong>${escapeHtml(labels.provenance)}</strong> ${escapeHtml(storeProvenance(store))}</div>
+          <div><strong>${escapeHtml(labels.currentPhoneDate)}</strong> ${escapeHtml(printableValue(workflow.currentPhoneDate))}</div>
+          <div><strong>${escapeHtml(labels.ipRange)}</strong> ${escapeHtml(printableValue(store.ipRange))}</div>
+          <div><strong>${escapeHtml(labels.globalStatus)}</strong> ${escapeHtml(statusLabel(store.status))}</div>
+          <div><strong>${escapeHtml(labels.issueNotes)}</strong> ${escapeHtml(printableValue(store.health))}</div>
         </div>
         <div class="card">
-          <h3>Quantites telephonie</h3>
-          <div><strong>Licences</strong> ${quantityPlan.licenseCount}</div>
-          <div><strong>Postes fixes</strong> ${quantityPlan.fixCount}</div>
+          <h3>${escapeHtml(labels.quantities)}</h3>
+          <div><strong>${escapeHtml(labels.licences)}</strong> ${quantityPlan.licenseCount}</div>
+          <div><strong>${escapeHtml(labels.fixed)}</strong> ${quantityPlan.fixCount}</div>
           <div><strong>Fix big</strong> ${quantityPlan.fixBigCount}</div>
-          <div><strong>Mobiles</strong> ${quantityPlan.mobileCount}</div>
+          <div><strong>${escapeHtml(labels.mobiles)}</strong> ${quantityPlan.mobileCount}</div>
           <div><strong>Mobile smartphone</strong> ${quantityPlan.mobileSmartphoneCount}</div>
           <div><strong>Flash light</strong> ${quantityPlan.flashLightCount}</div>
           <div><strong>Call buttons</strong> ${quantityPlan.callButtonCount}</div>
           <div><strong>Panic buttons</strong> ${quantityPlan.panicCount}</div>
         </div>
         <div class="card full">
-          <h3>Intervenants</h3>
+          <h3>${escapeHtml(labels.intervenants)}</h3>
           ${intervenantRows.length ? `
             <table>
-              <thead><tr><th>Bloc</th><th>Personne</th><th>Note / role</th></tr></thead>
+              <thead><tr><th>${escapeHtml(labels.block)}</th><th>${escapeHtml(labels.person)}</th><th>${escapeHtml(labels.noteRole)}</th></tr></thead>
               <tbody>
                 ${intervenantRows.map((row) => `
                   <tr>
-                    <td>${escapeHtml(row.slotName || row.id || "-")}</td>
-                    <td>${escapeHtml(row.personName || row.person || "A attribuer")}</td>
-                    <td>${escapeHtml(row.note || "A preciser")}</td>
+                    <td>${escapeHtml(printableValue(row.slotName || row.id))}</td>
+                    <td>${escapeHtml(printableValue(row.personName || row.person))}</td>
+                    <td>${escapeHtml(printableValue(row.note))}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
-          ` : "<div class=\"muted\">Aucun intervenant renseigne.</div>"}
+          ` : `<div class="muted">${escapeHtml(labels.noIntervenants)}</div>`}
         </div>
         <div class="card full">
-          <h3>Configuration et preparation</h3>
+          <h3>${escapeHtml(labels.configPrep)}</h3>
           <table>
             <tbody>
-              <tr><th>Demande configuration</th><td>${escapeHtml(printableValue(workflow.configStatus, "A envoyer"))}</td><th>Commande articles</th><td>${escapeHtml(printableValue(workflow.orderStatus, "A confirmer"))}</td></tr>
-              <tr><th>Commentaire logistique</th><td>${escapeHtml(printableValue(workflow.orderNote))}</td><th>Mail configuration</th><td>${escapeHtml(printableValue(workflow.extensionRequestStatus, "A envoyer"))}</td></tr>
-              <tr><th>N client contrat actuel</th><td>${escapeHtml(printableValue(workflow.currentContractClientNumber))}</td><th>Numero principal actuel</th><td>${escapeHtml(printableValue(workflow.currentContractMainNumber))}</td></tr>
-              <tr><th>Autres numeros releves</th><td colspan="3">${escapeHtml(printableValue(workflow.currentContractOtherNumbers))}</td></tr>
-              <tr><th>Configuration extensions recue</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus, "En attente"))}</td><th>Date installation Destiny</th><td>${escapeHtml(installDate)}</td></tr>
-              <tr><th>Ticket Destiny</th><td>${escapeHtml(printableValue(workflow.destinyTicketRef, "A confirmer"))}</td><th>Dossier Destiny</th><td>${escapeHtml(printableValue(workflow.destinyCaseRef, "A confirmer"))}</td></tr>
-              <tr><th>PM Destiny</th><td>${escapeHtml(printableValue(workflow.destinyPmName, "A confirmer"))}</td><th>Diffusion</th><td>${escapeHtml(printableValue(workflow.destinyDistribution, "A confirmer"))}</td></tr>
-              <tr><th>Pre-visite</th><td>${escapeHtml(printableValue(workflow.networkSurveyStatus, "A planifier"))}</td><th>Couverture mobile</th><td>${escapeHtml(printableValue(workflow.mobileCoverage, "A verifier"))}</td></tr>
-              <tr><th>Configuration VLAN22</th><td>${escapeHtml(printableValue(workflow.vlan22Date || workflow.vlan22Status, "Pas de date"))}</td><th>VLAN22 active</th><td>${escapeHtml(workflow.vlan22Date ? "Oui" : printableValue(workflow.vlan22Activated, "Non"))}</td></tr>
-              <tr><th>Alarme geree par IT</th><td>${escapeHtml(printableValue(workflow.alarmHandledByIt, "A confirmer"))}</td><th>Charles Roux</th><td>${escapeHtml(printableValue(workflow.charlesRouxStatus, "A verifier"))}</td></tr>
-              <tr><th>Cablage</th><td>${escapeHtml(printableValue(workflow.cablingStatus, "A verifier"))}</td><th>Chargeurs mobiles envoyes</th><td>${escapeHtml(printableValue(workflow.mobileChargersSent, "A confirmer"))}</td></tr>
-              <tr><th>Nombre chargeurs</th><td>${escapeHtml(printableValue(workflow.mobileChargerCount, "0"))}</td><th>Type alarme</th><td>${escapeHtml(printableValue(workflow.alarmType, "A confirmer"))}</td></tr>
-              <tr><th>Reseau mobile</th><td>${escapeHtml(printableValue(workflow.mobileOperator))}</td><th>Call flow</th><td>${escapeHtml(printableValue(workflow.callFlowNote))}</td></tr>
-              <tr><th>Message accueil / IVR</th><td>${escapeHtml(printableValue(workflow.ivrNotes))}</td><th>Autres consignes Brico</th><td>${escapeHtml(printableValue(workflow.greetingNotes))}</td></tr>
-              <tr><th>Validation finale installation</th><td>${escapeHtml(printableValue(workflow.destinyInstallDone, "Non"))}</td><th>Mail final Brico</th><td>${escapeHtml(printableValue(workflow.bricoFinalMailStatus, "A envoyer"))}</td></tr>
-              <tr><th>Remarque installation Destiny</th><td>${escapeHtml(printableValue(workflow.destinyInstallRemark))}</td><th>Remarque finale Brico</th><td>${escapeHtml(printableValue(workflow.bricoFinalRemark))}</td></tr>
-              <tr><th>Switch plateforme LT</th><td>${escapeHtml(printableValue(workflow.ltSwitchStatus, "A confirmer"))}</td><th>Plan magasin PDF</th><td>${escapeHtml(printableValue(planName, "Non renseigne"))}</td></tr>
+              <tr><th>${escapeHtml(labels.configRequest)}</th><td>${escapeHtml(printableValue(workflow.configStatus))}</td><th>${escapeHtml(labels.orderArticles)}</th><td>${escapeHtml(printableValue(workflow.orderStatus))}</td></tr>
+              <tr><th>${escapeHtml(labels.logisticComment)}</th><td>${escapeHtml(printableValue(workflow.orderNote))}</td><th>${escapeHtml(labels.configMail)}</th><td>${escapeHtml(printableValue(workflow.extensionRequestStatus))}</td></tr>
+              <tr><th>${escapeHtml(labels.clientNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractClientNumber))}</td><th>${escapeHtml(labels.mainNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractMainNumber))}</td></tr>
+              <tr><th>${escapeHtml(labels.otherNumbers)}</th><td colspan="3">${escapeHtml(printableValue(workflow.currentContractOtherNumbers))}</td></tr>
+              <tr><th>${escapeHtml(labels.configReceived)}</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus))}</td><th>${escapeHtml(labels.installDate)}</th><td>${escapeHtml(hasInstallDate ? installDate : "")}</td></tr>
+              <tr><th>${escapeHtml(labels.destinyTicket)}</th><td>${escapeHtml(printableValue(workflow.destinyTicketRef))}</td><th>${escapeHtml(labels.destinyCase)}</th><td>${escapeHtml(printableValue(workflow.destinyCaseRef))}</td></tr>
+              <tr><th>${escapeHtml(labels.pmDestiny)}</th><td>${escapeHtml(printableValue(workflow.destinyPmName))}</td><th>${escapeHtml(labels.distribution)}</th><td>${escapeHtml(printableValue(workflow.destinyDistribution))}</td></tr>
+              <tr><th>${escapeHtml(labels.preVisit)}</th><td>${escapeHtml(printableValue(workflow.networkSurveyStatus))}</td><th>${escapeHtml(labels.mobileCoverage)}</th><td>${escapeHtml(printableValue(workflow.mobileCoverage))}</td></tr>
+              <tr><th>${escapeHtml(labels.vlanConfig)}</th><td>${escapeHtml(printableValue(workflow.vlan22Date || workflow.vlan22Status))}</td><th>${escapeHtml(labels.vlanActive)}</th><td>${escapeHtml(printableValue(workflow.vlan22Date ? (isNl ? "Ja" : "Oui") : workflow.vlan22Activated))}</td></tr>
+              <tr><th>${escapeHtml(labels.alarmByIt)}</th><td>${escapeHtml(printableValue(workflow.alarmHandledByIt))}</td><th>Charles Roux</th><td>${escapeHtml(printableValue(workflow.charlesRouxStatus))}</td></tr>
+              <tr><th>${escapeHtml(labels.cabling)}</th><td>${escapeHtml(printableValue(workflow.cablingStatus))}</td><th>${escapeHtml(labels.chargersSent)}</th><td>${escapeHtml(printableValue(workflow.mobileChargersSent))}</td></tr>
+              <tr><th>${escapeHtml(labels.chargerCount)}</th><td>${escapeHtml(printableValue(workflow.mobileChargerCount))}</td><th>${escapeHtml(labels.alarmType)}</th><td>${escapeHtml(printableValue(workflow.alarmType))}</td></tr>
+              <tr><th>${escapeHtml(labels.mobileNetwork)}</th><td>${escapeHtml(printableValue(workflow.mobileOperator))}</td><th>${escapeHtml(labels.callFlow)}</th><td>${escapeHtml(printableValue(workflow.callFlowNote))}</td></tr>
+              <tr><th>${escapeHtml(labels.welcomeMessage)}</th><td>${escapeHtml(printableValue(workflow.ivrNotes))}</td><th>${escapeHtml(labels.otherInstructions)}</th><td>${escapeHtml(printableValue(workflow.greetingNotes))}</td></tr>
+              <tr><th>${escapeHtml(labels.finalValidation)}</th><td>${escapeHtml(printableValue(workflow.destinyInstallDone))}</td><th>${escapeHtml(labels.finalMail)}</th><td>${escapeHtml(printableValue(workflow.bricoFinalMailStatus))}</td></tr>
+              <tr><th>${escapeHtml(labels.installRemark)}</th><td>${escapeHtml(printableValue(workflow.destinyInstallRemark))}</td><th>${escapeHtml(labels.finalRemark)}</th><td>${escapeHtml(printableValue(workflow.bricoFinalRemark))}</td></tr>
+              <tr><th>${escapeHtml(labels.platformSwitch)}</th><td>${escapeHtml(printableValue(workflow.ltSwitchStatus))}</td><th>${escapeHtml(labels.storePlan)}</th><td>${escapeHtml(printableValue(planName))}</td></tr>
             </tbody>
           </table>
         </div>
         <div class="card full">
-          <h3>Configuration du reseau</h3>
+          <h3>${escapeHtml(labels.networkConfig)}</h3>
           ${networkRows.length ? `
             <table class="network-table">
-              <thead><tr><th>Type</th><th>Slot</th><th>Extension attribuee</th><th>Note responsable</th></tr></thead>
+              <thead><tr><th>${escapeHtml(labels.category)}</th><th>${escapeHtml(labels.slot)}</th><th>${escapeHtml(labels.assignedExtension)}</th><th>${escapeHtml(labels.managerNote)}</th></tr></thead>
               <tbody>
                 ${networkRows.map((row) => `
                   <tr>
                     <td>${escapeHtml(row.category)}</td>
-                    <td>${escapeHtml(row.slotLabel || "-")}</td>
+                    <td>${escapeHtml(printableValue(row.slotLabel))}</td>
                     <td class="write-cell"></td>
                     <td>${escapeHtml(row.note || "")}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
-            <div class="print-note">La colonne Extension attribuee est volontairement vide pour annotation sur site.</div>
-          ` : "<div class=\"muted\">Aucune configuration reseau renseignee.</div>"}
+            <div class="print-note">${escapeHtml(labels.writeNote)}</div>
+          ` : `<div class="muted">${escapeHtml(labels.noNetwork)}</div>`}
         </div>
         <div class="card full">
-          <h3>GSM / SIM</h3>
+          <h3>${escapeHtml(labels.gsmSim)}</h3>
           ${gsmRows.length ? `
             <table>
-              <thead><tr><th>Modele</th><th>Numero mobile</th><th>Reseau</th><th>ICCID</th><th>PUK</th><th>Extension liee</th><th>Utilisateur</th><th>Groupe appel</th></tr></thead>
+              <thead><tr><th>${escapeHtml(labels.model)}</th><th>${escapeHtml(labels.mobileNumber)}</th><th>${escapeHtml(labels.network)}</th><th>ICCID</th><th>PUK</th><th>${escapeHtml(labels.linkedExtension)}</th><th>${escapeHtml(labels.user)}</th><th>${escapeHtml(labels.callGroup)}</th></tr></thead>
               <tbody>
                 ${gsmRows.map((row) => `
                   <tr>
-                    <td>${escapeHtml(printableValue(row.model, "A confirmer"))}</td>
+                    <td>${escapeHtml(printableValue(row.model))}</td>
                     <td>${escapeHtml(printableValue(row.mobileNumber))}</td>
                     <td>${escapeHtml(printableValue(row.mobileNetwork))}</td>
                     <td>${escapeHtml(printableValue(row.iccid))}</td>
                     <td>${escapeHtml(printableValue(row.puk))}</td>
-                    <td>${escapeHtml(printableValue(row.extensionLinked, "A choisir"))}</td>
+                    <td>${escapeHtml(printableValue(row.extensionLinked))}</td>
                     <td>${escapeHtml(printableValue(row.user))}</td>
                     <td>${escapeHtml(printableValue(row.callGroup))}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
-          ` : "<div class=\"muted\">Aucun GSM renseigne.</div>"}
+          ` : `<div class="muted">${escapeHtml(labels.noGsm)}</div>`}
         </div>
         <div class="card full">
-          <h3>Alarme, groupes d appel et cascades</h3>
+          <h3>${escapeHtml(labels.alarmGroups)}</h3>
           <table>
             <tbody>
-              <tr><th>Type d alarme</th><td>${escapeHtml(printableValue(workflow.alarmType, "A confirmer"))}</td><th>Societe</th><td>${escapeHtml(printableValue(workflow.alarmCompany))}</td></tr>
-              <tr><th>Tel centrale alarme</th><td>${escapeHtml(printableValue(workflow.alarmCentralPhone))}</td><th>Autres</th><td>${escapeHtml(printableValue(workflow.alarmOther))}</td></tr>
-              <tr><th>Groupes d appel</th><td colspan="3">${escapeHtml(printableValue(workflow.callGroupsNote))}</td></tr>
-              <tr><th>Cascades</th><td colspan="3">${escapeHtml(printableValue(workflow.cascadeNote))}</td></tr>
+              <tr><th>${escapeHtml(labels.alarmType)}</th><td>${escapeHtml(printableValue(workflow.alarmType))}</td><th>${escapeHtml(labels.alarmCompany)}</th><td>${escapeHtml(printableValue(workflow.alarmCompany))}</td></tr>
+              <tr><th>${escapeHtml(labels.alarmCentralPhone)}</th><td>${escapeHtml(printableValue(workflow.alarmCentralPhone))}</td><th>${escapeHtml(labels.other)}</th><td>${escapeHtml(printableValue(workflow.alarmOther))}</td></tr>
+              <tr><th>${escapeHtml(labels.callGroups)}</th><td colspan="3">${escapeHtml(printableValue(workflow.callGroupsNote))}</td></tr>
+              <tr><th>${escapeHtml(labels.cascades)}</th><td colspan="3">${escapeHtml(printableValue(workflow.cascadeNote))}</td></tr>
             </tbody>
           </table>
         </div>
         <div class="card full">
-          <h3>Rendez-vous</h3>
+          <h3>${escapeHtml(labels.appointments)}</h3>
           ${appointments.length ? `
             <table>
-              <thead><tr><th>Date</th><th>Statut</th><th>Personnes</th><th>Note</th></tr></thead>
+              <thead><tr><th>${escapeHtml(labels.date)}</th><th>${escapeHtml(labels.status)}</th><th>${escapeHtml(labels.people)}</th><th>${escapeHtml(labels.note)}</th></tr></thead>
               <tbody>
                 ${appointments.map((appointment) => `
                   <tr>
                     <td>${escapeHtml(formatDateTime(appointment.datetime))}</td>
-                    <td>${escapeHtml(appointment.status || "-")}</td>
+                    <td>${escapeHtml(printableValue(appointment.status))}</td>
                     <td>${escapeHtml(peopleLabel(appointment.people))}</td>
-                    <td>${escapeHtml(appointment.note || "-")}</td>
+                    <td>${escapeHtml(printableValue(appointment.note))}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
-          ` : "<div class=\"muted\">Aucun rendez-vous.</div>"}
+          ` : `<div class="muted">${escapeHtml(labels.noAppointments)}</div>`}
         </div>
         <div class="card full">
-          <h3>SAV</h3>
+          <h3>${escapeHtml(labels.tickets)}</h3>
           ${tickets.length ? `
             <table>
-              <thead><tr><th>Reference</th><th>Service</th><th>Type</th><th>Sujet</th><th>Statut</th><th>Date</th></tr></thead>
+              <thead><tr><th>${escapeHtml(labels.reference)}</th><th>${escapeHtml(labels.service)}</th><th>${escapeHtml(labels.type)}</th><th>${escapeHtml(labels.subject)}</th><th>${escapeHtml(labels.status)}</th><th>${escapeHtml(labels.date)}</th></tr></thead>
               <tbody>
                 ${tickets.map((ticket) => `
                   <tr>
                     <td>${escapeHtml(ticket.id)}</td>
-                    <td>${escapeHtml(ticket.targetService || "-")}</td>
-                    <td>${escapeHtml(ticket.requestKind || "SAV")}</td>
-                    <td>${escapeHtml(ticket.concern || "-")}</td>
+                    <td>${escapeHtml(printableValue(ticket.targetService))}</td>
+                    <td>${escapeHtml(printableValue(ticket.requestKind || "SAV"))}</td>
+                    <td>${escapeHtml(printableValue(ticket.concern))}</td>
                     <td>${escapeHtml(ticketStatusLabel(ticket.status))}</td>
                     <td>${escapeHtml(formatDateTime(ticket.createdAt))}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
-          ` : "<div class=\"muted\">Aucun SAV.</div>"}
+          ` : `<div class="muted">${escapeHtml(labels.noTickets)}</div>`}
         </div>
       </div>
     </body>
