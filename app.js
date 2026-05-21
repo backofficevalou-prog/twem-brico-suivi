@@ -8405,7 +8405,8 @@ function buildPrintableStoreHtml(store) {
     const normalized = String(value ?? "").trim();
     return normalized ? normalized : emptyLabel;
   };
-  const printableBadge = (filled, okLabel = "Configure", emptyLabel = "A confirmer") => filled ? okLabel : emptyLabel;
+  const installDate = printableValue(workflow.destinyInstallDate, "A confirmer");
+  const hasInstallDate = Boolean(String(workflow.destinyInstallDate || "").trim());
 
   return `
     <!doctype html>
@@ -8415,21 +8416,48 @@ function buildPrintableStoreHtml(store) {
       <title>Fiche magasin - ${escapeHtml(store.name)}</title>
       <style>
         @page { margin: 12mm; }
-        body { font-family: Arial, sans-serif; color: #222; padding: 0; font-size: 12px; line-height: 1.35; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; color: #242114; padding: 0; font-size: 11.5px; line-height: 1.35; background: #fff; }
         h1, h2, h3 { margin: 0 0 8px; }
-        .meta { color: #666; margin-bottom: 16px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
-        .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; break-inside: avoid; }
+        .hero { background: #ffde3b; border: 1px solid #d9bd2f; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+        .eyebrow { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: #7a3a2f; margin-bottom: 4px; }
+        .hero h1 { font-size: 22px; line-height: 1.05; }
+        .meta { color: #5c553c; margin-top: 5px; }
+        .install-banner { border: 2px solid #c3372e; background: #fff3ae; border-radius: 12px; padding: 11px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; gap: 14px; align-items: center; break-inside: avoid; }
+        .install-banner .label { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #7a3a2f; }
+        .install-banner .date { font-size: 21px; font-weight: 800; color: #242114; }
+        .install-banner.is-missing { border-color: #e0dac7; background: #fffdf6; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        .card { border: 1px solid #e0dac7; border-radius: 10px; padding: 12px; break-inside: avoid; background: #fffefa; }
         .full { grid-column: 1 / -1; }
+        .card h3 { color: #c3372e; font-size: 13px; border-bottom: 2px solid #fff3ae; padding-bottom: 5px; margin-bottom: 9px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
-        th { background: #fff3ae; }
-        .muted { color: #666; }
+        th, td { border: 1px solid #e0dac7; padding: 5px 7px; text-align: left; vertical-align: top; }
+        th { background: #fff3ae; color: #3b3420; font-size: 10.5px; }
+        tbody tr:nth-child(even) td { background: #fffdf6; }
+        .muted { color: #6f684d; }
+        .write-cell { height: 22px; background: #fff !important; }
+        .write-cell::after { content: ""; display: block; border-bottom: 1px solid #b9b196; margin-top: 12px; }
+        .network-table th:nth-child(1), .network-table td:nth-child(1) { width: 24%; }
+        .network-table th:nth-child(2), .network-table td:nth-child(2) { width: 22%; }
+        .network-table th:nth-child(3), .network-table td:nth-child(3) { width: 32%; }
+        .network-table th:nth-child(4), .network-table td:nth-child(4) { width: 22%; }
+        .print-note { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff3ae; color: #5c553c; font-size: 10.5px; }
       </style>
     </head>
     <body>
-      <h1>${escapeHtml(store.name)}</h1>
-      <div class="meta">${escapeHtml(store.code)} - ${escapeHtml(store.city || "-")} - ${escapeHtml(store.address || "-")}</div>
+      <section class="hero">
+        <div class="eyebrow">TWEM x Brico - Fiche magasin responsable</div>
+        <h1>${escapeHtml(store.name)}</h1>
+        <div class="meta">${escapeHtml(store.code)} - ${escapeHtml(store.city || "-")} - ${escapeHtml(store.address || "-")}</div>
+      </section>
+      <section class="install-banner ${hasInstallDate ? "" : "is-missing"}">
+        <div>
+          <div class="label">Date installation Destiny</div>
+          <div class="date">${escapeHtml(installDate)}</div>
+        </div>
+        <div class="muted">A verifier avec le planning chantier avant impression finale.</div>
+      </section>
       <div class="grid">
         <div class="card">
           <h3>Identite</h3>
@@ -8479,7 +8507,7 @@ function buildPrintableStoreHtml(store) {
               <tr><th>Commentaire logistique</th><td>${escapeHtml(printableValue(workflow.orderNote))}</td><th>Mail configuration</th><td>${escapeHtml(printableValue(workflow.extensionRequestStatus, "A envoyer"))}</td></tr>
               <tr><th>N client contrat actuel</th><td>${escapeHtml(printableValue(workflow.currentContractClientNumber))}</td><th>Numero principal actuel</th><td>${escapeHtml(printableValue(workflow.currentContractMainNumber))}</td></tr>
               <tr><th>Autres numeros releves</th><td colspan="3">${escapeHtml(printableValue(workflow.currentContractOtherNumbers))}</td></tr>
-              <tr><th>Configuration extensions recue</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus, "En attente"))}</td><th>Date installation Destiny</th><td>${escapeHtml(printableValue(workflow.destinyInstallDate, "A confirmer"))}</td></tr>
+              <tr><th>Configuration extensions recue</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus, "En attente"))}</td><th>Date installation Destiny</th><td>${escapeHtml(installDate)}</td></tr>
               <tr><th>Ticket Destiny</th><td>${escapeHtml(printableValue(workflow.destinyTicketRef, "A confirmer"))}</td><th>Dossier Destiny</th><td>${escapeHtml(printableValue(workflow.destinyCaseRef, "A confirmer"))}</td></tr>
               <tr><th>PM Destiny</th><td>${escapeHtml(printableValue(workflow.destinyPmName, "A confirmer"))}</td><th>Diffusion</th><td>${escapeHtml(printableValue(workflow.destinyDistribution, "A confirmer"))}</td></tr>
               <tr><th>Pre-visite</th><td>${escapeHtml(printableValue(workflow.networkSurveyStatus, "A planifier"))}</td><th>Couverture mobile</th><td>${escapeHtml(printableValue(workflow.mobileCoverage, "A verifier"))}</td></tr>
@@ -8498,20 +8526,20 @@ function buildPrintableStoreHtml(store) {
         <div class="card full">
           <h3>Configuration du reseau</h3>
           ${networkRows.length ? `
-            <table>
-              <thead><tr><th>Type</th><th>Slot</th><th>Extension + lieu</th><th>Etat</th><th>Note</th></tr></thead>
+            <table class="network-table">
+              <thead><tr><th>Type</th><th>Slot</th><th>Extension attribuee</th><th>Note responsable</th></tr></thead>
               <tbody>
                 ${networkRows.map((row) => `
                   <tr>
                     <td>${escapeHtml(row.category)}</td>
                     <td>${escapeHtml(row.slotLabel || "-")}</td>
-                    <td>${escapeHtml(row.extensionLabel || "A choisir")}</td>
-                    <td>${escapeHtml(printableBadge(Boolean(row.extensionLabel)))}</td>
-                    <td>${escapeHtml(row.note || "A renseigner")}</td>
+                    <td class="write-cell"></td>
+                    <td>${escapeHtml(row.note || "")}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
+            <div class="print-note">La colonne Extension attribuee est volontairement vide pour annotation sur site.</div>
           ` : "<div class=\"muted\">Aucune configuration reseau renseignee.</div>"}
         </div>
         <div class="card full">
