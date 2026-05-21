@@ -880,6 +880,8 @@ const purgeSavCard = document.querySelector("#purgeSavCard");
 const tabExportStoresCheckXlsxButton = document.querySelector("#tabExportStoresCheckXlsxButton");
 const tabExportStoresXlsxButton = document.querySelector("#tabExportStoresXlsxButton");
 const tabExportStoresPdfButton = document.querySelector("#tabExportStoresPdfButton");
+const tabBulkStorePrintFilter = document.querySelector("#tabBulkStorePrintFilter");
+const tabBulkStorePrintZipButton = document.querySelector("#tabBulkStorePrintZipButton");
 const tabExportExtensionsXlsxButton = document.querySelector("#tabExportExtensionsXlsxButton");
 const tabExportExtensionsPdfButton = document.querySelector("#tabExportExtensionsPdfButton");
 const importExportHistoryMeta = document.querySelector("#importExportHistoryMeta");
@@ -6743,6 +6745,10 @@ function triggerImport(mode) {
 
 function downloadTextFile(content, fileName, mimeType) {
   const blob = new Blob([content], { type: mimeType });
+  downloadBlob(blob, fileName);
+}
+
+function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -6771,6 +6777,19 @@ function xlsxAvailable() {
 
 function pdfAvailable() {
   return Boolean(window.jspdf?.jsPDF);
+}
+
+function zipAvailable() {
+  return typeof window.JSZip !== "undefined";
+}
+
+function sanitizeFileNamePart(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80) || "fiche";
 }
 
 function exportRowsToXlsx(rows, fileName, sheetName) {
@@ -6939,6 +6958,63 @@ function exportStoresPdf() {
   recordImportExportHistory("export", "Export magasins PDF", `${bodyRows.length} magasin(s) exporte(s).`);
 }
 
+function storesForFicheZipExport() {
+  const selection = tabBulkStorePrintFilter?.value || "all";
+  const scopedStores = getRoleScopedStores();
+  const ticketsByStore = new Map();
+  getFilteredTickets().forEach((ticket) => {
+    if (ticket?.storeId) {
+      ticketsByStore.set(ticket.storeId, true);
+    }
+  });
+
+  switch (selection) {
+    case "dos":
+      return scopedStores.filter((store) => normalizeShopTypeValue(store.shopType || "") === "DOS");
+    case "fos":
+      return scopedStores.filter((store) => normalizeShopTypeValue(store.shopType || "") === "FOS");
+    case "fosdos":
+      return scopedStores.filter((store) => normalizeShopTypeValue(store.shopType || "") === "FOSDOS");
+    case "with_installation_date":
+      return scopedStores.filter((store) => {
+        const workflow = ensureStoreWorkflowData(store);
+        return Boolean(String(workflow.currentPhoneDate || "").trim());
+      });
+    case "blocked":
+      return scopedStores.filter((store) => store.status === "blocked");
+    case "with_sav":
+      return scopedStores.filter((store) => ticketsByStore.has(store.id));
+    case "all":
+    default:
+      return scopedStores;
+  }
+}
+
+async function exportStoreFichesZip() {
+  if (!zipAvailable()) {
+    throw new Error("Bibliotheque ZIP indisponible.");
+  }
+  const stores = storesForFicheZipExport();
+  if (!stores.length) {
+    throw new Error("Aucun magasin ne correspond a cette selection.");
+  }
+
+  const selection = tabBulkStorePrintFilter?.value || "all";
+  const zip = new window.JSZip();
+  stores.forEach((store) => {
+    const code = sanitizeFileNamePart(store.code || "store");
+    const name = sanitizeFileNamePart(store.name || "magasin");
+    zip.file(`${code}-${name}.html`, buildPrintableStoreHtml(store));
+  });
+
+  const blob = await zip.generateAsync({ type: "blob" });
+  downloadBlob(
+    blob,
+    `twem-brico-fiches-${selection}-${new Date().toISOString().slice(0, 10)}.zip`
+  );
+  recordImportExportHistory("export", "Export fiches magasin ZIP", `${stores.length} fiche(s) exportee(s) en ZIP.`);
+}
+
 function exportExtensionsXlsx() {
   const rows = [
     ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation", "Usage"]
@@ -6986,9 +7062,9 @@ function exportExtensionsPdf() {
   recordImportExportHistory("export", "Export extensions PDF", `${bodyRows.length} extension(s) exportee(s).`);
 }
 
-function safeRunExport(action) {
+async function safeRunExport(action) {
   try {
-    action();
+    await action();
     renderImportExportHistory();
   } catch (error) {
     console.error("Export error", error);
@@ -9181,6 +9257,7 @@ tabPurgeSavButton?.addEventListener("click", () => {
 tabExportStoresCheckXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresCheckXlsx));
 tabExportStoresXlsxButton?.addEventListener("click", () => safeRunExport(exportStoresXlsx));
 tabExportStoresPdfButton?.addEventListener("click", () => safeRunExport(exportStoresPdf));
+tabBulkStorePrintZipButton?.addEventListener("click", () => safeRunExport(exportStoreFichesZip));
 tabExportExtensionsXlsxButton?.addEventListener("click", () => safeRunExport(exportExtensionsXlsx));
 tabExportExtensionsPdfButton?.addEventListener("click", () => safeRunExport(exportExtensionsPdf));
 

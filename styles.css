@@ -2323,6 +2323,21 @@ button {
   gap: 10px;
 }
 
+.import-export-actions.stacked-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.inline-filter {
+  display: grid;
+  gap: 6px;
+}
+
+.inline-filter span {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .import-export-shell,
 .import-export-grid,
 .import-history-card {

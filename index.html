@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260519b">
+  <link rel="stylesheet" href="styles.css?v=20260521a">
 </head>
 <body>
   <div class="pin-gate" id="pinGate">
@@ -565,6 +565,25 @@
                     </div>
                   </article>
                   <article class="import-card">
+                    <h4>Exporter les fiches magasin</h4>
+                    <p>Generer un ZIP avec une fiche imprimable par magasin selon le filtre choisi.</p>
+                    <div class="import-export-actions stacked-actions">
+                      <label class="inline-filter">
+                        <span>Selection</span>
+                        <select id="tabBulkStorePrintFilter">
+                          <option value="all">Tous</option>
+                          <option value="dos">DOS</option>
+                          <option value="fos">FOS</option>
+                          <option value="fosdos">FOSDOS</option>
+                          <option value="with_installation_date">Avec date d intervention</option>
+                          <option value="blocked">Avec blocage</option>
+                          <option value="with_sav">Avec SAV</option>
+                        </select>
+                      </label>
+                      <button type="button" id="tabBulkStorePrintZipButton" class="secondary-button">Exporter fiches ZIP</button>
+                    </div>
+                  </article>
+                  <article class="import-card">
                     <h4>Exporter les extensions</h4>
                     <p>Sortir le catalogue complet des extensions en XLSX ou en PDF.</p>
                     <div class="import-export-actions">
@@ -622,8 +641,9 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260519b"></script>
+  <script src="app.js?v=20260521a"></script>
 </body>
 </html>
