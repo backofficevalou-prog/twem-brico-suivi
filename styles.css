@@ -674,6 +674,13 @@ button {
   background: #fffdf6;
 }
 
+.extensions-table th:first-child,
+.extensions-table td:first-child {
+  width: 82px;
+  min-width: 82px;
+  white-space: nowrap;
+}
+
 .project-table {
   width: 100%;
   border-collapse: collapse;
