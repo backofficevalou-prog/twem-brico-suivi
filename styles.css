@@ -1765,12 +1765,14 @@ button {
 .automation-list,
 .automation-cards,
 .automation-future-list,
+.automation-email-table,
 .automation-future-shell {
   display: grid;
   gap: 12px;
 }
 
-.automation-group {
+.automation-group,
+.automation-mail-shell {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px;
@@ -1833,6 +1835,76 @@ button {
 
 .automation-field-wide {
   grid-column: span 2;
+}
+
+.automation-email-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 1fr) minmax(130px, 0.8fr) minmax(110px, 0.7fr) auto;
+  gap: 10px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+}
+
+.automation-email-row > div,
+.automation-email-row label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.automation-email-row strong,
+.automation-email-row span {
+  overflow-wrap: anywhere;
+}
+
+.automation-email-row details {
+  grid-column: 1 / -1;
+}
+
+.automation-email-row pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdfa;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.automation-email-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.automation-email-status {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.status-ready {
+  background: #fff1a8;
+}
+
+.status-sent {
+  background: #dff5d8;
+}
+
+.status-blocked,
+.status-error {
+  background: #ffe0dc;
+}
+
+.status-draft {
+  background: #f6f1e4;
 }
 
 .automation-future-item {
@@ -2450,6 +2522,10 @@ button {
 
   .automation-field-wide {
     grid-column: 1 / -1;
+  }
+
+  .automation-email-row {
+    grid-template-columns: 1fr;
   }
 
   .workspace-shell,

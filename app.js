@@ -992,6 +992,7 @@ const state = {
   importBusyMessage: "",
   importExportHistory: [],
   tickets: [],
+  automationEmails: [],
   filters: {
     search: "",
     status: "all",
@@ -1097,6 +1098,7 @@ const logoutButton = document.querySelector("#logoutButton");
 const reportArchiveList = document.querySelector("#reportArchiveList");
 const automationOverview = document.querySelector("#automationOverview");
 const automationList = document.querySelector("#automationList");
+const automationEmailQueue = document.querySelector("#automationEmailQueue");
 const automationFutureList = document.querySelector("#automationFutureList");
 const twemWorkspace = document.querySelector("#twemWorkspace");
 const workspaceSidebar = document.querySelector("#workspaceSidebar");
@@ -1574,6 +1576,7 @@ function localUiState() {
     stores: state.stores,
     activities: state.activities,
     tickets: state.tickets,
+    automationEmails: state.automationEmails,
     people: state.people,
     activeUserName: state.activeUserName,
     language: state.language,
@@ -1600,6 +1603,7 @@ function loadState() {
       stores: clone(demoStores),
       activities: clone(demoActivities),
       tickets: clone(demoTickets),
+      automationEmails: [],
       people: demoPinPeople(),
       activeUserName: "",
       language: "fr",
@@ -1629,6 +1633,7 @@ function loadState() {
       stores: parsed.stores || clone(demoStores),
       activities: parsed.activities || clone(demoActivities),
       tickets: parsed.tickets || clone(demoTickets),
+      automationEmails: Array.isArray(parsed.automationEmails) ? parsed.automationEmails : [],
       people: mergePeopleWithPinFallback((parsed.people || []).map((person) => ({
         language: "fr",
         storeCode: "",
@@ -1654,6 +1659,7 @@ function loadState() {
       stores: clone(demoStores),
       activities: clone(demoActivities),
       tickets: clone(demoTickets),
+      automationEmails: [],
       people: demoPinPeople(),
       activeUserName: "",
       language: "fr",
@@ -5524,6 +5530,141 @@ function automationCategoryLabel(category) {
   return labels[category] || category;
 }
 
+const automationEmailStatusOptions = [
+  { value: "draft", label: "Brouillon" },
+  { value: "ready", label: "A valider" },
+  { value: "blocked", label: "Bloque" },
+  { value: "sent", label: "Envoye" },
+  { value: "error", label: "Erreur" }
+];
+
+function automationEmailStatusLabel(status) {
+  return automationEmailStatusOptions.find((option) => option.value === status)?.label || status || "Brouillon";
+}
+
+function automationEmailStatusClass(status) {
+  const normalized = status || "draft";
+  if (normalized === "ready") return "automation-email-status status-ready";
+  if (normalized === "sent") return "automation-email-status status-sent";
+  if (normalized === "blocked") return "automation-email-status status-blocked";
+  if (normalized === "error") return "automation-email-status status-error";
+  return "automation-email-status status-draft";
+}
+
+function nextMorningIso(hour = 9) {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString();
+}
+
+function automationEmailTemplate(automation) {
+  const subjectById = {
+    store_update_alert: "Nouvelle information magasin a consulter",
+    new_person_welcome: "Acces application TWEM Brico + code PIN",
+    install_reminder: "Rappel doux - installation planifiee",
+    daily_operations_digest: "Digest quotidien - installations, blocages et SAV",
+    no_response_escalation: "Relance action attendue"
+  };
+  const bodyById = {
+    store_update_alert: "Bonjour,\n\nUne nouvelle information importante a ete ajoutee dans une fiche magasin.\nMerci de consulter le lien direct quand tu as un moment.\n\nCe mail restera en preparation tant que l'envoi reel n'est pas branche.",
+    new_person_welcome: "Bonjour,\n\nVoici le lien vers l'application TWEM Brico et ton code PIN personnel.\n\nPour l'instant, cette automatisation reste bloquee tant que la diffusion n'est pas ouverte.",
+    install_reminder: "Bonjour,\n\nPetit rappel doux: une installation est planifiee prochainement pour ton magasin.\nMerci de verifier que tout est bien pret cote planning.\n\nCe rappel est uniquement destine au responsable du magasin.",
+    daily_operations_digest: "Bonjour Emir, bonjour Valou,\n\nVoici le controle quotidien a verifier:\n- installations prevues demain\n- magasins bloques\n- SAV ouverts\n- SAV en cours\n\nObjectif: verifier que les installations de demain sont bien dans le planning.",
+    no_response_escalation: "Bonjour,\n\nUne action attendue n'a pas encore ete consultee ou traitee.\nMerci de verifier le lien vers la fiche magasin.\n\nSi la situation reste bloquee, Valou / TWEM sera prevenu."
+  };
+  return {
+    subject: subjectById[automation.id] || automation.title || "Mail automatique TWEM Brico",
+    body: bodyById[automation.id] || automation.notes || automation.description || ""
+  };
+}
+
+function defaultAutomationEmailDraft(automation) {
+  const template = automationEmailTemplate(automation);
+  return {
+    id: `mail-${automation.id}`,
+    automationId: automation.id,
+    automationTitle: automation.title,
+    recipient: automation.recipients || "",
+    subject: automation.emailSubject || template.subject,
+    body: automation.emailBody || template.body,
+    status: automation.emailStatus || (automation.active ? "ready" : "draft"),
+    plannedAt: automation.emailPlannedAt || (automation.id === "daily_operations_digest" ? nextMorningIso(9) : ""),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function ensureAutomationEmailDrafts() {
+  const existing = new Map((state.automationEmails || []).map((email) => [email.automationId, email]));
+  const drafts = [];
+  (state.automations || []).forEach((automation) => {
+    const current = existing.get(automation.id);
+    const baseDraft = defaultAutomationEmailDraft(automation);
+    drafts.push(current
+      ? {
+          ...baseDraft,
+          ...current,
+          automationTitle: automation.title,
+          recipient: current.recipient || automation.recipients || "",
+          status: current.status || baseDraft.status
+        }
+      : baseDraft);
+  });
+  state.automationEmails = drafts;
+}
+
+function renderAutomationEmailQueue() {
+  if (!automationEmailQueue) {
+    return;
+  }
+  ensureAutomationEmailDrafts();
+  const emails = [...(state.automationEmails || [])].sort((a, b) => {
+    const statusScore = { ready: 0, draft: 1, error: 2, blocked: 3, sent: 4 };
+    return (statusScore[a.status] ?? 9) - (statusScore[b.status] ?? 9)
+      || String(a.automationTitle || "").localeCompare(String(b.automationTitle || ""));
+  });
+
+  if (!emails.length) {
+    automationEmailQueue.innerHTML = '<div class="empty-state">Aucun mail automatique prepare pour le moment.</div>';
+    return;
+  }
+
+  automationEmailQueue.innerHTML = `
+    <div class="automation-email-table">
+      ${emails.map((email) => `
+        <article class="automation-email-row">
+          <div>
+            <strong>${escapeHtml(email.automationTitle || email.automationId || "Automatisation")}</strong>
+            <span>${escapeHtml(email.subject || "-")}</span>
+          </div>
+          <div>
+            <span class="automation-email-label">Destinataires</span>
+            <span>${escapeHtml(email.recipient || "-")}</span>
+          </div>
+          <div>
+            <span class="automation-email-label">Prevu</span>
+            <span>${email.plannedAt ? escapeHtml(formatDateTime(email.plannedAt)) : "Selon declencheur"}</span>
+          </div>
+          <label>
+            <span class="automation-email-label">Statut</span>
+            <select data-automation-email-id="${escapeHtml(email.id)}" data-automation-email-field="status">
+              ${automationEmailStatusOptions.map((option) => `<option value="${escapeHtml(option.value)}" ${email.status === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+            </select>
+          </label>
+          <div>
+            <span class="${automationEmailStatusClass(email.status)}">${escapeHtml(automationEmailStatusLabel(email.status))}</span>
+          </div>
+          <details>
+            <summary>Apercu</summary>
+            <pre>${escapeHtml(email.body || "")}</pre>
+          </details>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderAutomations() {
   if (!automationOverview || !automationList || !automationFutureList) {
     return;
@@ -5630,6 +5771,8 @@ function renderAutomations() {
       </section>
     `;
   }).join("");
+
+  renderAutomationEmailQueue();
 
   automationFutureList.innerHTML = futureAutomationIdeas.map((item) => `
     <article class="automation-future-item">
@@ -5940,10 +6083,45 @@ function handleAutomationFieldChange(event) {
     item[field] = target.value;
   }
 
+  const emailDraft = state.automationEmails.find((entry) => entry.automationId === item.id);
+  if (emailDraft) {
+    if (field === "recipients") {
+      emailDraft.recipient = item.recipients || "";
+    }
+    if (field === "active" && ["draft", "ready"].includes(emailDraft.status)) {
+      emailDraft.status = item.active ? "ready" : "draft";
+      item.emailStatus = emailDraft.status;
+    }
+    emailDraft.updatedAt = new Date().toISOString();
+  }
+
   saveState();
   if (field === "active") {
     renderAutomations();
   }
+}
+
+function handleAutomationEmailFieldChange(event) {
+  const target = event.target;
+  const emailId = target?.getAttribute?.("data-automation-email-id");
+  const field = target?.getAttribute?.("data-automation-email-field");
+  if (!emailId || !field) {
+    return;
+  }
+
+  const email = state.automationEmails.find((entry) => entry.id === emailId);
+  if (!email) {
+    return;
+  }
+
+  email[field] = target.value;
+  email.updatedAt = new Date().toISOString();
+  const automation = state.automations.find((entry) => entry.id === email.automationId);
+  if (automation && field === "status") {
+    automation.emailStatus = email.status;
+  }
+  saveState();
+  renderAutomationEmailQueue();
 }
 
 function renderConnectionStatus() {
@@ -6468,6 +6646,7 @@ async function loadRemoteState() {
   }
 
   state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
+  ensureAutomationEmailDrafts();
   saveState();
   refreshRemoteSyncShadow();
   } finally {
@@ -9917,6 +10096,7 @@ roleForm.addEventListener("submit", handleRoleSubmit);
 toolForm.addEventListener("submit", handleToolSubmit);
 automationList?.addEventListener("change", handleAutomationFieldChange);
 automationList?.addEventListener("input", handleAutomationFieldChange);
+automationEmailQueue?.addEventListener("change", handleAutomationEmailFieldChange);
 visibilityOverrideForm?.addEventListener("submit", handleVisibilityOverrideSubmit);
 projectTableBody.addEventListener("click", handleNetworkConfirm);
 importButton.addEventListener("click", handleImportButtonClick);
@@ -9953,11 +10133,13 @@ async function init() {
   state.roleViewUnlocked = Boolean(stored.roleViewUnlocked);
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
+  state.automationEmails = Array.isArray(stored.automationEmails) ? stored.automationEmails : [];
   if (Array.isArray(stored.extensionCatalogRows) && stored.extensionCatalogRows.length) {
     extensionCatalogRows.splice(0, extensionCatalogRows.length, ...stored.extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index)));
   }
   state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
   state.tickets = stripKnownTestTickets(state.tickets);
+  ensureAutomationEmailDrafts();
   document.documentElement.lang = state.language;
 
   if (hasImportedStoreSet(state.stores)) {
