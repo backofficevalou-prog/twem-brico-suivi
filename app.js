@@ -1421,6 +1421,18 @@ function storeProvenance(store) {
   return provenanceOptions.includes(raw) ? raw : "Migration";
 }
 
+function storeLanguageForPrint(store) {
+  const storeLanguage = normalizeImportCell(store?.language);
+  if (storeLanguage) {
+    return normalizeLanguageCode(storeLanguage);
+  }
+  const linkedPerson = state.people.find((person) =>
+    (store?.code && person.storeCode === store.code)
+    || (store?.manager && person.name === store.manager)
+  );
+  return normalizeLanguageCode(linkedPerson?.language || "fr");
+}
+
 function normalizeShopTypeValue(value) {
   const raw = normalizeImportCell(value).toUpperCase().replace(/\s+/g, "");
   const lettersOnly = raw.replace(/[^A-Z]/g, "");
@@ -1865,6 +1877,11 @@ function stageForStore(store) {
 
 function t(key) {
   return translations[state.language]?.[key] || translations.fr[key] || key;
+}
+
+function textForLanguage(key, language = "fr") {
+  const normalizedLanguage = normalizeLanguageCode(language);
+  return translations[normalizedLanguage]?.[key] || translations.fr[key] || key;
 }
 
 function statusLabel(key) {
@@ -5071,12 +5088,19 @@ const ticketStatusOptions = [
   { value: "closed", label: "Cloture" }
 ];
 
-function ticketStatusLabel(status) {
-  const labels = {
-    open: "Ouvert",
-    in_progress: "En cours",
-    closed: "Cloture"
-  };
+function ticketStatusLabel(status, language = state.language) {
+  const isNl = normalizeLanguageCode(language) === "nl";
+  const labels = isNl
+    ? {
+        open: "Open",
+        in_progress: "Bezig",
+        closed: "Afgesloten"
+      }
+    : {
+        open: "Ouvert",
+        in_progress: "En cours",
+        closed: "Cloture"
+      };
   return labels[status] || status;
 }
 
@@ -8297,6 +8321,7 @@ function importStoresRows(rows) {
       poRentingHw: normalizeImportCell(readImportValue(row, ["po_renting_hw", "po_renting"], "")),
       owner,
       manager,
+      language: languageFromStoreSheet(readImportValue(row, ["lang"], "")),
       status,
       ipRange: "",
       health: "",
@@ -8334,7 +8359,7 @@ function importStoresRows(rows) {
         phone: managerPhone,
         email: managerEmail,
         storeCode: code,
-        language: languageFromStoreSheet(readImportValue(row, ["lang"], "")),
+        language: storeDraft.language,
         allowedStoreCodes: [code],
         pin: generateUniquePin(),
         pinStatus: "active",
@@ -8741,7 +8766,7 @@ function buildPrintableStoreHtml(store) {
   const gsmRows = getGsmRows(store);
   const intervenantRows = getIntervenantRows(store);
   const planName = workflow.planPdfName || "";
-  const storeLanguage = normalizeLanguageCode(store.language || state.language || "fr");
+  const storeLanguage = storeLanguageForPrint(store);
   const isNl = storeLanguage === "nl";
   const labels = isNl
     ? {
@@ -9014,7 +9039,7 @@ function buildPrintableStoreHtml(store) {
           <div><strong>${escapeHtml(labels.provenance)}</strong> ${escapeHtml(storeProvenance(store))}</div>
           <div><strong>${escapeHtml(labels.currentPhoneDate)}</strong> ${escapeHtml(printableValue(workflow.currentPhoneDate))}</div>
           <div><strong>${escapeHtml(labels.ipRange)}</strong> ${escapeHtml(printableValue(store.ipRange))}</div>
-          <div><strong>${escapeHtml(labels.globalStatus)}</strong> ${escapeHtml(statusLabel(store.status))}</div>
+          <div><strong>${escapeHtml(labels.globalStatus)}</strong> ${escapeHtml(textForLanguage(store.status, storeLanguage))}</div>
           <div><strong>${escapeHtml(labels.issueNotes)}</strong> ${escapeHtml(printableValue(store.health))}</div>
         </div>
         <div class="card">
@@ -9151,7 +9176,7 @@ function buildPrintableStoreHtml(store) {
                     <td>${escapeHtml(printableValue(ticket.targetService))}</td>
                     <td>${escapeHtml(printableValue(ticket.requestKind || "SAV"))}</td>
                     <td>${escapeHtml(printableValue(ticket.concern))}</td>
-                    <td>${escapeHtml(ticketStatusLabel(ticket.status))}</td>
+                    <td>${escapeHtml(ticketStatusLabel(ticket.status, storeLanguage))}</td>
                     <td>${escapeHtml(formatDateTime(ticket.createdAt))}</td>
                   </tr>
                 `).join("")}
