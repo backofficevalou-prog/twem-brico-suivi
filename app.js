@@ -373,32 +373,32 @@ const defaultAutomations = [
     trigger: "Nouvel élément ou mise à jour importante dans une fiche magasin",
     recipients: "Toutes les personnes liées au magasin",
     channels: "Mail avec lien direct",
-    responseDelayHours: 0,
-    escalationHours: 0,
-    repeatHours: 0,
+    responseDelayHours: 12,
+    escalationHours: 4,
+    repeatHours: 4,
     maxEscalations: 3,
     finalAlertRecipient: "Valou / TWEM",
     linkTarget: "Lien vers l'élément concerné",
     languageMode: "Langue du contact",
-    notes: "Option recommandée: ne pas renvoyer l'alerte à la personne qui vient de créer l'élément. Si le lien n'a toujours pas été consulté après 3 escalades, prévenir Valou."
+    notes: "Nouvel élément magasin: relance au bout de 12h si le lien n'est pas consulté, puis 3 escalades espacées de 4h. Si toujours rien, prévenir Valou."
   },
   {
     id: "new_person_welcome",
     category: "access",
     title: "Création personne → envoi lien app + PIN",
     description: "Lorsqu'un nouveau contact est créé, lui envoyer automatiquement l'accès à l'application avec son code PIN dans la bonne langue.",
-    active: true,
+    active: false,
     trigger: "Création d'une nouvelle personne active",
     recipients: "Le nouveau contact uniquement",
     channels: "Mail d'accueil FR/NL",
     responseDelayHours: 24,
-    escalationHours: 0,
+    escalationHours: 12,
     repeatHours: 0,
     maxEscalations: 1,
     finalAlertRecipient: "Valou / TWEM",
     linkTarget: "Lien vers l'application",
     languageMode: "FR / NL selon la fiche contact",
-    notes: "Inclure le texte d'introduction chantier, le lien vers l'application et le PIN personnel. Si la personne n'a pas consulté après une seule relance, prévenir Valou: l'accès ou le mail peut ne pas être arrivé."
+    notes: "Nouvel utilisateur: envoyer le lien app + PIN, faire une seule relance après 24h si aucune connexion, puis attendre 12h. Si toujours pas de connexion, prévenir Valou: l'accès ou le mail peut ne pas être arrivé."
   },
   {
     id: "no_response_escalation",
@@ -409,14 +409,14 @@ const defaultAutomations = [
     trigger: "Élément de fiche magasin en attente d'action ou de réponse",
     recipients: "Personne concernée puis Valou / TWEM",
     channels: "Mail + alerte TWEM",
-    responseDelayHours: 24,
-    escalationHours: 24,
-    repeatHours: 12,
+    responseDelayHours: 12,
+    escalationHours: 4,
+    repeatHours: 4,
     maxEscalations: 3,
     finalAlertRecipient: "Valou / TWEM",
     linkTarget: "Lien vers la fiche magasin",
     languageMode: "Langue de la personne relancée",
-    notes: "Après 24h: rappel. Si toujours rien: escalade. A la 3e escalade sans consultation, prévenir Valou pour reprise manuelle."
+    notes: "Autre action ou événement: relance au bout de 12h si le lien n'est pas consulté, puis 3 escalades espacées de 4h. Si toujours rien, prévenir Valou."
   }
 ];
 const futureAutomationIdeas = [
@@ -1383,6 +1383,7 @@ function buildAppwriteSettingsDocument() {
     role_options_json: JSON.stringify(state.roleOptions || []),
     tool_items_json: JSON.stringify(state.toolItems || []),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
+    automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
     extension_catalog_json: JSON.stringify(extensionCatalogRows || [])
   };
 }
@@ -6425,6 +6426,7 @@ async function loadRemoteState() {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
+    state.automations = normalizedAutomations(parseJsonField(settingsDocument.automations_json, state.automations || []));
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
       extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index)));
