@@ -4436,6 +4436,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
           <div class="store-info-title">
             <h3>${escapeHtml(store.name)}</h3>
           </div>
+          ${isExpanded ? `<button type="button" class="mini-button store-print-head-button" data-store-print="${store.id}">Imprimer la fiche complete</button>` : ""}
         </div>
         ${buildStoreIdentityMeta(store)}
       </article>
@@ -4533,7 +4534,6 @@ function buildStoreDetailForm(store, mode = "stores") {
         ${detailContent}
         <div class="editor-actions">
           <span class="validation-text" data-validation="${store.id}"></span>
-          <button type="button" class="mini-button" data-store-print="${store.id}">Imprimer la fiche complete</button>
           <button type="submit" data-store-submit>Enregistrer ce magasin</button>
         </div>
       </form>

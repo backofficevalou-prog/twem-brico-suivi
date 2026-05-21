@@ -849,10 +849,16 @@ button {
 
 .store-info-title {
   min-width: 0;
+  flex: 1;
 }
 
 .store-info-title h3 {
   margin: 0;
+}
+
+.store-print-head-button {
+  align-self: center;
+  white-space: nowrap;
 }
 
 .actor-board {
