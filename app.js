@@ -53,8 +53,8 @@ function extensionRowsForCategory(categoryFilter = "") {
     })
     .slice()
     .sort((left, right) => {
-      const leftLabel = normalizeImportCell(left.label).toLowerCase();
-      const rightLabel = normalizeImportCell(right.label).toLowerCase();
+      const leftLabel = getExtensionPreferredLabel(left, "fr").toLowerCase();
+      const rightLabel = getExtensionPreferredLabel(right, "fr").toLowerCase();
       const leftNumber = normalizeImportCell(left.number);
       const rightNumber = normalizeImportCell(right.number);
       if (targetKey === "fixed" || targetKey === "mobile") {
@@ -66,19 +66,141 @@ function extensionRowsForCategory(categoryFilter = "") {
     });
 }
 
-function availableExtensionReferenceOptions(categoryFilter = "") {
+function normalizeLanguageCode(value) {
+  const normalized = normalizeImportCell(value).toLowerCase();
+  if (normalized.startsWith("nl")) return "nl";
+  if (normalized.startsWith("en") || normalized.startsWith("ang")) return "en";
+  return "fr";
+}
+
+function getExtensionPreferredLabel(row, language = "fr") {
+  const normalizedLanguage = normalizeLanguageCode(language);
+  const labelFr = normalizeImportCell(row?.labelFr || row?.label_fr || row?.labelFR || row?.label);
+  const labelNl = normalizeImportCell(row?.labelNl || row?.label_nl || row?.labelNL || row?.label);
+  const labelEn = normalizeImportCell(row?.labelEn || row?.label_en || row?.labelEN || row?.label);
+  if (normalizedLanguage === "nl") {
+    return labelNl || labelFr || labelEn || "";
+  }
+  if (normalizedLanguage === "en") {
+    return labelEn || labelFr || labelNl || "";
+  }
+  return labelFr || labelNl || labelEn || "";
+}
+
+function extensionReferenceText(row, language = "fr") {
+  const number = normalizeImportCell(row?.number);
+  const label = getExtensionPreferredLabel(row, language);
+  if (!number && !label) {
+    return "";
+  }
+  return label ? `${number} - ${label}` : number;
+}
+
+function availableExtensionReferenceOptions(categoryFilter = "", language = "fr") {
+  const targetKey = extensionCategoryKey(categoryFilter);
   const importedOptions = extensionRowsForCategory(categoryFilter)
-    .map((row) => {
-      const number = normalizeImportCell(row?.number);
-      const label = normalizeImportCell(row?.label);
-      if (!number && !label) {
-        return "";
+    .slice()
+    .sort((left, right) => {
+      const leftLabel = getExtensionPreferredLabel(left, language).toLowerCase();
+      const rightLabel = getExtensionPreferredLabel(right, language).toLowerCase();
+      const leftNumber = normalizeImportCell(left.number);
+      const rightNumber = normalizeImportCell(right.number);
+      if (targetKey === "fixed" || targetKey === "mobile") {
+        return leftLabel.localeCompare(rightLabel, "fr", { sensitivity: "base" })
+          || leftNumber.localeCompare(rightNumber, "fr", { numeric: true, sensitivity: "base" });
       }
-      return label ? `${number} - ${label}` : number;
+      return leftNumber.localeCompare(rightNumber, "fr", { numeric: true, sensitivity: "base" })
+        || leftLabel.localeCompare(rightLabel, "fr", { sensitivity: "base" });
     })
+    .map((row) => extensionReferenceText(row, language))
     .filter(Boolean);
 
   return importedOptions.length ? importedOptions : extensionReferenceOptions;
+}
+
+function normalizeExtensionCatalogRow(row, index = 0) {
+  const fallbackLabel = normalizeImportCell(
+    row.label
+    || row.libelle
+    || row.lieu
+    || row["Last name*"]
+    || row.Departement
+    || ""
+  );
+  return {
+    category: normalizeImportCell(
+      row.category
+      || row.categorie
+      || row.type
+      || row.Type
+      || "Extension"
+    ),
+    model: normalizeImportCell(row.model || row.modele || row.Model || ""),
+    number: normalizeImportCell(
+      row.number
+      || row.numero
+      || row.extension
+      || row["NEW NUMBER"]
+      || row["Extension*OLD"]
+      || `EXT-${index + 1}`
+    ),
+    label: fallbackLabel,
+    labelFr: normalizeImportCell(
+      row.labelFr
+      || row.label_fr
+      || row["Libelle FR"]
+      || row["label fr"]
+      || row["Label FR"]
+      || row["libelle fr"]
+      || row["libelle fr_be"]
+      || row["FR"]
+      || fallbackLabel
+    ),
+    labelNl: normalizeImportCell(
+      row.labelNl
+      || row.label_nl
+      || row["Libelle NL"]
+      || row["label nl"]
+      || row["Label NL"]
+      || row["libelle nl"]
+      || row["NL"]
+      || fallbackLabel
+    ),
+    labelEn: normalizeImportCell(
+      row.labelEn
+      || row.label_en
+      || row["Libelle EN"]
+      || row["label en"]
+      || row["Label EN"]
+      || row["libelle en"]
+      || row["EN"]
+      || fallbackLabel
+    ),
+    oldNumber: normalizeImportCell(
+      row.oldNumber
+      || row.old_number
+      || row["ancien numero"]
+      || row.ancien_numero
+      || row["ancien numÃ©ro"]
+      || row["Extension*OLD"]
+      || ""
+    ),
+    language: normalizeImportCell(row.language || row.langue || row.Language || ""),
+    item: normalizeImportCell(row.item || row.Item || ""),
+    activation: normalizeImportCell(
+      row.activation
+      || row["Activation or Port-in type"]
+      || row["Activation / Port-in"]
+      || ""
+    ),
+    usage: normalizeImportCell(
+      row.usage
+      || row.Departement
+      || row["Fixed phone type"]
+      || row["External direct number"]
+      || ""
+    )
+  };
 }
 const storeRequestTypeOptions = [
   "SAV",
@@ -3130,7 +3252,7 @@ function buildStorePilotSkeleton(store) {
     const { showConfirmBar = true } = options;
     const workflow = ensureStoreWorkflowData(store);
     const rows = getNetworkConfigRows(store);
-  const extensionOptionsForCategory = (category) => availableExtensionReferenceOptions(category);
+  const extensionOptionsForCategory = (category) => availableExtensionReferenceOptions(category, store.language || "fr");
   const groupedRows = rows.reduce((accumulator, row) => {
     accumulator[row.category] ||= [];
     accumulator[row.category].push(row);
@@ -3719,7 +3841,7 @@ function buildStoreDocumentsCard(store) {
 function buildEquipmentCards(store) {
   const workflow = ensureStoreWorkflowData(store);
   const gsmRows = getGsmRows(store);
-  const extensionOptions = availableExtensionReferenceOptions();
+  const extensionOptions = availableExtensionReferenceOptions("", store.language || "fr");
   return `
     <div class="editor-grid section-anchor" id="section-equipment">
       <article class="editor-card full-span-card grouped-card" data-access-zone="store_posts">
@@ -4925,7 +5047,10 @@ async function handleAddExtensionSubmit(event) {
   const category = normalizeImportCell(form.querySelector('[name="category"]')?.value);
   const model = normalizeImportCell(form.querySelector('[name="model"]')?.value);
   const number = normalizeImportCell(form.querySelector('[name="number"]')?.value);
-  const label = normalizeImportCell(form.querySelector('[name="label"]')?.value);
+  const labelFr = normalizeImportCell(form.querySelector('[name="label_fr"]')?.value);
+  const labelNl = normalizeImportCell(form.querySelector('[name="label_nl"]')?.value);
+  const labelEn = normalizeImportCell(form.querySelector('[name="label_en"]')?.value);
+  const item = normalizeImportCell(form.querySelector('[name="item"]')?.value);
   if (!category || !number) {
     window.alert("La categorie et le numero sont obligatoires.");
     return;
@@ -4934,10 +5059,13 @@ async function handleAddExtensionSubmit(event) {
     category,
     model,
     number,
-    label,
+    label: labelFr || labelNl || labelEn,
+    labelFr,
+    labelNl,
+    labelEn,
     oldNumber: "",
     language: "",
-    item: "",
+    item,
     activation: "",
     usage: ""
   });
@@ -4950,18 +5078,18 @@ async function handleAddExtensionSubmit(event) {
 }
 
 function renderExtensionsRowsV2(stores) {
-  setMainTableHeaders(["Categorie", "Modele", "Numero", "Libelle", "Langue", "Item", "Activation", "Ancien", "Usage"]);
+  setMainTableHeaders(["Numero", "Libelle FR", "Libelle NL", "Libelle EN", "Item"]);
   const filteredExtensions = extensionCatalogRows.filter((row) => {
     const search = state.filters.search;
     if (!search) {
       return true;
     }
-    const haystack = `${row.category} ${row.model} ${row.number} ${row.label} ${row.language} ${row.item} ${row.activation} ${row.oldNumber || ""} ${row.usage || ""}`.toLowerCase();
+    const haystack = `${row.category} ${row.model} ${row.number} ${row.labelFr || row.label || ""} ${row.labelNl || ""} ${row.labelEn || ""} ${row.item || ""}`.toLowerCase();
     return haystack.includes(search);
   });
 
   if (!filteredExtensions.length) {
-    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucune extension ne correspond a la recherche.</td></tr>';
+    projectTableBody.innerHTML = '<tr><td colspan="5" class="empty-state">Aucune extension ne correspond a la recherche.</td></tr>';
     return;
   }
 
@@ -4969,14 +5097,14 @@ function renderExtensionsRowsV2(stores) {
     ["Boutons d appel", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "call")],
     ["Boutons panique", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "panic")],
     ["Flash light", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "flash")],
-    ["Fix", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "fixed").sort((a, b) => normalizeImportCell(a.label).localeCompare(normalizeImportCell(b.label), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
-    ["Mobile", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "mobile").sort((a, b) => normalizeImportCell(a.label).localeCompare(normalizeImportCell(b.label), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
+    ["Fix", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "fixed").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
+    ["Mobile", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "mobile").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
     ["Autres", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "other")]
   ].filter(([, rows]) => rows.length);
 
   projectTableBody.innerHTML = `
     <tr>
-      <td colspan="9">
+      <td colspan="5">
         <article class="extensions-store">
           <div class="extensions-store-head">
             <div>
@@ -4994,7 +5122,10 @@ function renderExtensionsRowsV2(stores) {
                 </select>
                 <input type="text" name="model" placeholder="Modele">
                 <input type="text" name="number" placeholder="Numero">
-                <input type="text" name="label" placeholder="Lieu / libelle">
+                <input type="text" name="label_fr" placeholder="Libelle FR">
+                <input type="text" name="label_nl" placeholder="Libelle NL">
+                <input type="text" name="label_en" placeholder="Libelle EN">
+                <input type="text" name="item" placeholder="Item">
                 <button type="submit" class="mini-button">Ajouter extension</button>
               </form>
             ` : ""}
@@ -5006,32 +5137,27 @@ function renderExtensionsRowsV2(stores) {
                   <h4>${escapeHtml(title)}</h4>
                   <span class="cell-note">${rows.length} ligne(s)</span>
                 </div>
+                <p class="cell-note extensions-model-note">Modeles possibles: ${escapeHtml([...new Set(rows.map((row) => normalizeImportCell(row.model)).filter(Boolean))].join(" / ") || "-")}</p>
                 <table class="extensions-table">
                   <thead>
                     <tr>
-                      <th>Categorie</th>
-                      <th>Modele</th>
                       <th>Numero</th>
-                      <th>Libelle / lieu</th>
-                      <th>Langue</th>
+                      <th>Libelle FR</th>
+                      <th>Libelle NL</th>
+                      <th>Libelle EN</th>
                       <th>Item</th>
-                      <th>Activation</th>
                       <th>Ancien n°</th>
-                      <th>Usage</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${rows.map((row) => `
                       <tr>
-                        <td>${escapeHtml(row.category || "-")}</td>
-                        <td>${escapeHtml(row.model || "-")}</td>
                         <td><strong>${escapeHtml(row.number || "-")}</strong></td>
-                        <td>${escapeHtml(row.label || "-")}</td>
-                        <td>${escapeHtml(row.language || "-")}</td>
+                        <td>${escapeHtml(row.labelFr || row.label || "-")}</td>
+                        <td>${escapeHtml(row.labelNl || row.label || "-")}</td>
+                        <td>${escapeHtml(row.labelEn || row.label || "-")}</td>
                         <td>${escapeHtml(row.item || "-")}</td>
-                        <td>${escapeHtml(row.activation || "-")}</td>
                         <td>${escapeHtml(row.oldNumber || "-")}</td>
-                        <td>${escapeHtml(row.usage || "-")}</td>
                       </tr>
                     `).join("")}
                   </tbody>
@@ -5074,7 +5200,7 @@ function getFilteredTickets() {
 function buildSavCard(store) {
   const storeTickets = ticketsForStore(store.id);
   const requesterName = currentUser()?.name || state.activeUserName || store.manager || "-";
-  const extensionOptions = availableExtensionReferenceOptions();
+  const extensionOptions = availableExtensionReferenceOptions("", store.language || "fr");
   return `
     <article class="editor-card full-span-card sav-ticket-card" data-access-zone="sav_ticket">
       <h3>Demande SAV / ticket</h3>
@@ -6273,17 +6399,7 @@ async function loadRemoteState() {
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
-      extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row) => ({
-        category: normalizeImportCell(row.category || row.categorie || row.type || "Extension"),
-        model: normalizeImportCell(row.model || row.modele || ""),
-        number: normalizeImportCell(row.number || row.numero || ""),
-        label: normalizeImportCell(row.label || row.libelle || row.lieu || ""),
-        oldNumber: normalizeImportCell(row.oldNumber || row.old_number || row.ancien_numero || ""),
-        language: normalizeImportCell(row.language || row.langue || ""),
-        item: normalizeImportCell(row.item || ""),
-        activation: normalizeImportCell(row.activation || ""),
-        usage: normalizeImportCell(row.usage || "")
-      })));
+      extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index)));
     }
   } else {
     state.roleOptions = state.roleOptions?.length ? normalizedRoleOptions(state.roleOptions) : [...defaultRoleOptions];
@@ -6897,17 +7013,7 @@ async function importJsonData(payload) {
     state.automations = normalizedAutomations(payload.automations);
   }
   if (Array.isArray(payload.extensionCatalogRows) && payload.extensionCatalogRows.length) {
-    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...payload.extensionCatalogRows.map((row) => ({
-      category: normalizeImportCell(row.category || row.categorie || row.type || "Extension"),
-      model: normalizeImportCell(row.model || row.modele || ""),
-      number: normalizeImportCell(row.number || row.numero || ""),
-      label: normalizeImportCell(row.label || row.libelle || row.lieu || ""),
-      oldNumber: normalizeImportCell(row.oldNumber || row.old_number || row.ancien_numero || ""),
-      language: normalizeImportCell(row.language || row.langue || ""),
-      item: normalizeImportCell(row.item || ""),
-      activation: normalizeImportCell(row.activation || ""),
-      usage: normalizeImportCell(row.usage || "")
-    })));
+    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...payload.extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index)));
   }
   if (payload.roleVisibilityConfig && typeof payload.roleVisibilityConfig === "object") {
     state.roleVisibilityConfig = payload.roleVisibilityConfig;
@@ -7212,16 +7318,17 @@ async function exportStoreFichesZip() {
 
 function exportExtensionsXlsx() {
   const rows = [
-    ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation", "Usage"]
+    ["Categorie", "Modele", "Numero", "Libelle FR", "Libelle NL", "Libelle EN", "Ancien numero", "Item", "Activation", "Usage"]
   ];
   extensionCatalogRows.forEach((row) => {
     rows.push([
       row.category,
       row.model,
       row.number,
-      row.label,
+      row.labelFr || row.label,
+      row.labelNl || row.label,
+      row.labelEn || row.label,
       row.oldNumber,
-      row.language,
       row.item,
       row.activation,
       row.usage || ""
@@ -7236,14 +7343,15 @@ function exportExtensionsXlsx() {
 }
 
 function exportExtensionsPdf() {
-  const headers = ["Categorie", "Modele", "Numero", "Libelle", "Ancien numero", "Langue", "Item", "Activation", "Usage"];
+  const headers = ["Categorie", "Modele", "Numero", "Libelle FR", "Libelle NL", "Libelle EN", "Ancien numero", "Item", "Activation", "Usage"];
   const bodyRows = extensionCatalogRows.map((row) => ([
     row.category,
     row.model,
     row.number,
-    row.label,
+    row.labelFr || row.label,
+    row.labelNl || row.label,
+    row.labelEn || row.label,
     row.oldNumber,
-    row.language,
     row.item,
     row.activation,
     row.usage || ""
@@ -7292,6 +7400,9 @@ function importExtensionRows(rows) {
   if (!Array.isArray(rows) || !rows.length) {
     throw new Error("Aucune ligne extension exploitable.");
   }
+
+  extensionCatalogRows.splice(0, extensionCatalogRows.length, ...rows.map((row, index) => normalizeExtensionCatalogRow(row, index)));
+  return;
 
   extensionCatalogRows.splice(0, extensionCatalogRows.length, ...rows.map((row, index) => ({
     category: normalizeImportCell(
@@ -9472,17 +9583,7 @@ async function init() {
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
   if (Array.isArray(stored.extensionCatalogRows) && stored.extensionCatalogRows.length) {
-    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...stored.extensionCatalogRows.map((row) => ({
-      category: normalizeImportCell(row.category || row.categorie || row.type || "Extension"),
-      model: normalizeImportCell(row.model || row.modele || ""),
-      number: normalizeImportCell(row.number || row.numero || ""),
-      label: normalizeImportCell(row.label || row.libelle || row.lieu || ""),
-      oldNumber: normalizeImportCell(row.oldNumber || row.old_number || row.ancien_numero || ""),
-      language: normalizeImportCell(row.language || row.langue || ""),
-      item: normalizeImportCell(row.item || ""),
-      activation: normalizeImportCell(row.activation || ""),
-      usage: normalizeImportCell(row.usage || "")
-    })));
+    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...stored.extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index)));
   }
   state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
   state.tickets = stripKnownTestTickets(state.tickets);
