@@ -158,7 +158,7 @@ function normalizeExtensionCatalogRow(row, index = 0) {
       || row["libelle fr"]
       || row["libelle fr_be"]
       || row["FR"]
-      || fallbackLabel
+      || ""
     ),
     labelNl: normalizeImportCell(
       row.labelNl
@@ -168,7 +168,7 @@ function normalizeExtensionCatalogRow(row, index = 0) {
       || row["Label NL"]
       || row["libelle nl"]
       || row["NL"]
-      || fallbackLabel
+      || ""
     ),
     labelEn: normalizeImportCell(
       row.labelEn
@@ -178,7 +178,7 @@ function normalizeExtensionCatalogRow(row, index = 0) {
       || row["Label EN"]
       || row["libelle en"]
       || row["EN"]
-      || fallbackLabel
+      || ""
     ),
     oldNumber: normalizeImportCell(
       row.oldNumber
@@ -7406,11 +7406,12 @@ function exportExtensionsPdf() {
     currentY += 5;
     doc.setTextColor(36, 33, 20);
     doc.autoTable({
-      head: [["Numero", "Libelle FR", "Libelle NL", "Item"]],
+      head: [["Numero", "Libelle FR", "Libelle NL", "Libelle EN", "Item"]],
       body: rows.map((row) => ([
         normalizeImportCell(row.number) || "-",
-        normalizeImportCell(row.labelFr || row.label) || "-",
-        normalizeImportCell(row.labelNl || row.label) || "-",
+        normalizeImportCell(row.labelFr) || "-",
+        normalizeImportCell(row.labelNl) || "-",
+        normalizeImportCell(row.labelEn) || "-",
         normalizeImportCell(row.item) || "-"
       ])),
       startY: currentY,
@@ -7432,9 +7433,10 @@ function exportExtensionsPdf() {
       alternateRowStyles: { fillColor: [255, 253, 246] },
       columnStyles: {
         0: { cellWidth: 22, fontStyle: "bold", halign: "left" },
-        1: { cellWidth: 66 },
-        2: { cellWidth: 66 },
-        3: { cellWidth: 24 }
+        1: { cellWidth: 49 },
+        2: { cellWidth: 49 },
+        3: { cellWidth: 49 },
+        4: { cellWidth: 20 }
       },
       didDrawPage: (data) => {
         const pageCount = doc.internal.getNumberOfPages();
