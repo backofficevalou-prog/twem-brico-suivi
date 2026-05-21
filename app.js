@@ -402,7 +402,7 @@ const defaultAutomations = [
   },
   {
     id: "install_reminder",
-    category: "followup",
+    category: "notifications",
     title: "Rappel avant installation",
     description: "Envoyer un rappel doux uniquement au responsable du magasin avant une installation planifiée.",
     active: false,
