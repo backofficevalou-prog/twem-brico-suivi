@@ -391,12 +391,14 @@ const defaultAutomations = [
     trigger: "Création d'une nouvelle personne active",
     recipients: "Le nouveau contact uniquement",
     channels: "Mail d'accueil FR/NL",
-    responseDelayHours: 0,
+    responseDelayHours: 24,
     escalationHours: 0,
     repeatHours: 0,
+    maxEscalations: 1,
+    finalAlertRecipient: "Valou / TWEM",
     linkTarget: "Lien vers l'application",
     languageMode: "FR / NL selon la fiche contact",
-    notes: "Inclure le texte d'introduction chantier, le lien vers l'application et le PIN personnel."
+    notes: "Inclure le texte d'introduction chantier, le lien vers l'application et le PIN personnel. Si la personne n'a pas consulté après une seule relance, prévenir Valou: l'accès ou le mail peut ne pas être arrivé."
   },
   {
     id: "no_response_escalation",
