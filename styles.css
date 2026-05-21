@@ -1864,15 +1864,17 @@ button {
   grid-column: 1 / -1;
 }
 
-.automation-email-row pre {
+.automation-email-row textarea {
   margin: 8px 0 0;
-  white-space: pre-wrap;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fffdfa;
   padding: 10px;
   font-family: inherit;
   font-size: 0.88rem;
+  resize: vertical;
+  width: 100%;
+  min-height: 132px;
 }
 
 .automation-email-label {

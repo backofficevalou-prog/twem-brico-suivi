@@ -5657,7 +5657,7 @@ function renderAutomationEmailQueue() {
           </div>
           <details>
             <summary>Apercu</summary>
-            <pre>${escapeHtml(email.body || "")}</pre>
+            <textarea rows="6" data-automation-email-id="${escapeHtml(email.id)}" data-automation-email-field="body">${escapeHtml(email.body || "")}</textarea>
           </details>
         </article>
       `).join("")}
@@ -6119,6 +6119,9 @@ function handleAutomationEmailFieldChange(event) {
   const automation = state.automations.find((entry) => entry.id === email.automationId);
   if (automation && field === "status") {
     automation.emailStatus = email.status;
+  }
+  if (automation && field === "body") {
+    automation.emailBody = email.body;
   }
   saveState();
   renderAutomationEmailQueue();
@@ -10097,6 +10100,7 @@ toolForm.addEventListener("submit", handleToolSubmit);
 automationList?.addEventListener("change", handleAutomationFieldChange);
 automationList?.addEventListener("input", handleAutomationFieldChange);
 automationEmailQueue?.addEventListener("change", handleAutomationEmailFieldChange);
+automationEmailQueue?.addEventListener("input", handleAutomationEmailFieldChange);
 visibilityOverrideForm?.addEventListener("submit", handleVisibilityOverrideSubmit);
 projectTableBody.addEventListener("click", handleNetworkConfirm);
 importButton.addEventListener("click", handleImportButtonClick);
