@@ -7144,13 +7144,29 @@ function readExtensionWorkbookRows(arrayBuffer) {
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   const matrix = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-  if (!Array.isArray(matrix) || matrix.length < 3) {
+  if (!Array.isArray(matrix) || matrix.length < 2) {
     return [];
   }
 
-  const headerRow = matrix[1].map((value) => normalizeImportCell(value));
+  const normalizeHeaderKey = (value) => normalizeImportCell(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const looksLikeExtensionHeader = (row) => {
+    const keys = (row || []).map(normalizeHeaderKey);
+    return keys.includes("categorie")
+      && keys.includes("modele")
+      && keys.includes("numero")
+      && (keys.includes("libelle fr") || keys.includes("libelle") || keys.includes("last name*"));
+  };
+
+  const headerIndex = looksLikeExtensionHeader(matrix[0])
+    ? 0
+    : (looksLikeExtensionHeader(matrix[1]) ? 1 : 0);
+  const headerRow = (matrix[headerIndex] || []).map((value) => normalizeImportCell(value));
+
   return matrix
-    .slice(2)
+    .slice(headerIndex + 1)
     .filter((row) => Array.isArray(row) && row.some((cell) => normalizeImportCell(cell) !== ""))
     .map((row) => {
       const entry = {};
