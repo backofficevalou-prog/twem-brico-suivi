@@ -5559,18 +5559,23 @@ function nextMorningIso(hour = 9) {
 }
 
 function automationEmailTemplate(automation) {
+  if (automation.id === "daily_operations_digest") {
+    return {
+      subject: "Digest quotidien - installations, blocages et SAV",
+      body: buildDailyOperationsDigestBody()
+    };
+  }
+
   const subjectById = {
     store_update_alert: "Nouvelle information magasin a consulter",
     new_person_welcome: "Acces application TWEM Brico + code PIN",
     install_reminder: "Rappel doux - installation planifiee",
-    daily_operations_digest: "Digest quotidien - installations, blocages et SAV",
     no_response_escalation: "Relance action attendue"
   };
   const bodyById = {
     store_update_alert: "Bonjour,\n\nUne nouvelle information importante a ete ajoutee dans une fiche magasin.\nMerci de consulter le lien direct quand tu as un moment.\n\nCe mail restera en preparation tant que l'envoi reel n'est pas branche.",
     new_person_welcome: "Bonjour,\n\nVoici le lien vers l'application TWEM Brico et ton code PIN personnel.\n\nPour l'instant, cette automatisation reste bloquee tant que la diffusion n'est pas ouverte.",
     install_reminder: "Bonjour,\n\nPetit rappel doux: une installation est planifiee prochainement pour ton magasin.\nMerci de verifier que tout est bien pret cote planning.\n\nCe rappel est uniquement destine au responsable du magasin.",
-    daily_operations_digest: "Bonjour Emir, bonjour Valou,\n\nVoici le controle quotidien a verifier:\n- installations prevues demain\n- magasins bloques\n- SAV ouverts\n- SAV en cours\n\nObjectif: verifier que les installations de demain sont bien dans le planning.",
     no_response_escalation: "Bonjour,\n\nUne action attendue n'a pas encore ete consultee ou traitee.\nMerci de verifier le lien vers la fiche magasin.\n\nSi la situation reste bloquee, Valou / TWEM sera prevenu."
   };
   return {
@@ -5579,15 +5584,97 @@ function automationEmailTemplate(automation) {
   };
 }
 
+function digestDateLabel(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return new Intl.DateTimeFormat("fr-BE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(date);
+}
+
+function lineList(items, emptyText) {
+  return items.length ? items.map((item) => `- ${item}`).join("\n") : `- ${emptyText}`;
+}
+
+function storeDigestLabel(store) {
+  return [store.code, store.name, store.city].filter(Boolean).join(" - ");
+}
+
+function getTomorrowInstallationsForDigest(targetDate) {
+  const target = normalizeDateOnly(targetDate);
+  return (state.stores || []).flatMap((store) => {
+    const workflow = ensureStoreWorkflowData(store);
+    const rows = [];
+    const destinyDate = normalizeDateOnly(workflow.destinyInstallDate);
+    if (destinyDate && target && isSameLocalDay(destinyDate, target)) {
+      rows.push(`${storeDigestLabel(store)} | Destiny: ${workflow.destinyInstallDate}${workflow.destinyPmName ? ` | PM ${workflow.destinyPmName}` : ""}`);
+    }
+    (store.appointments || []).forEach((appointment) => {
+      const appointmentDate = normalizeDateOnly(appointment.datetime);
+      if (appointmentDate && target && isSameLocalDay(appointmentDate, target)) {
+        rows.push(`${storeDigestLabel(store)} | RDV ${formatDateTime(appointment.datetime)} | ${appointment.status || "-"} | ${appointment.note || "-"}`);
+      }
+    });
+    return [...new Set(rows)];
+  });
+}
+
+function getBlockedStoresForDigest() {
+  return (state.stores || [])
+    .filter((store) => store.status === "blocked" || normalizeImportCell(store.health))
+    .map((store) => `${storeDigestLabel(store)} | ${statusLabel(store.status) || store.status || "-"} | ${store.health || "Point a verifier"}`);
+}
+
+function getTicketsForDigest(status) {
+  return (state.tickets || [])
+    .filter((ticket) => ticket.status === status)
+    .map((ticket) => `${ticket.id || "-"} | ${ticket.storeCode || ""} ${ticket.storeName || ""} | ${ticket.concern || "-"} | ${ticket.targetService || "-"}`.trim());
+}
+
+function buildDailyOperationsDigestBody() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const installations = getTomorrowInstallationsForDigest(tomorrow);
+  const blockedStores = getBlockedStoresForDigest();
+  const openTickets = getTicketsForDigest("open");
+  const inProgressTickets = getTicketsForDigest("in_progress");
+
+  return [
+    "Bonjour Emir, bonjour Valou,",
+    "",
+    `Voici le digest automatique du matin pour preparer ${digestDateLabel(tomorrow)}.`,
+    "",
+    "Installations prevues demain",
+    lineList(installations, "Aucune installation trouvee pour demain dans l'application."),
+    "",
+    "Blocages magasin",
+    lineList(blockedStores, "Aucun magasin bloque ou avec point de sante renseigne."),
+    "",
+    "SAV ouverts",
+    lineList(openTickets, "Aucun SAV ouvert."),
+    "",
+    "SAV en cours",
+    lineList(inProgressTickets, "Aucun SAV en cours."),
+    "",
+    "Objectif: verifier que les installations de demain sont bien dans le planning et que les points bloquants sont suivis."
+  ].join("\n");
+}
+
 function defaultAutomationEmailDraft(automation) {
   const template = automationEmailTemplate(automation);
+  const isManualBody = Boolean(automation.emailBodyManual);
   return {
     id: `mail-${automation.id}`,
     automationId: automation.id,
     automationTitle: automation.title,
     recipient: automation.recipients || "",
     subject: automation.emailSubject || template.subject,
-    body: automation.emailBody || template.body,
+    body: isManualBody ? (automation.emailBody || "") : template.body,
     status: automation.emailStatus || (automation.active ? "ready" : "draft"),
     plannedAt: automation.emailPlannedAt || (automation.id === "daily_operations_digest" ? nextMorningIso(9) : ""),
     createdAt: new Date().toISOString(),
@@ -5607,6 +5694,8 @@ function ensureAutomationEmailDrafts() {
           ...current,
           automationTitle: automation.title,
           recipient: current.recipient || automation.recipients || "",
+          subject: automation.emailSubject || baseDraft.subject,
+          body: automation.emailBodyManual ? (current.body || baseDraft.body) : baseDraft.body,
           status: current.status || baseDraft.status
         }
       : baseDraft);
@@ -6122,6 +6211,7 @@ function handleAutomationEmailFieldChange(event) {
   }
   if (automation && field === "body") {
     automation.emailBody = email.body;
+    automation.emailBodyManual = true;
   }
   if (field === "body" && event.type === "input") {
     window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
