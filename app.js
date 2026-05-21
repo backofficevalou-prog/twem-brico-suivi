@@ -3541,7 +3541,7 @@ function buildStoreHeaderCards() {
   `;
 }
 
-function buildStoreSectionNav(mode = "stores") {
+function buildStoreSectionNav(mode = "stores", store = null) {
   const links = mode === "configuration"
     ? [
         ["overview", "Vue d ensemble"],
@@ -3563,6 +3563,7 @@ function buildStoreSectionNav(mode = "stores") {
   return `
     <nav class="store-editor-nav">
       ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
+      ${store ? `<button type="button" class="mini-button store-editor-nav-action" data-store-print="${store.id}">Imprimer la fiche complete</button>` : ""}
     </nav>
   `;
 }
@@ -4436,7 +4437,6 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
           <div class="store-info-title">
             <h3>${escapeHtml(store.name)}</h3>
           </div>
-          ${isExpanded ? `<button type="button" class="mini-button store-print-head-button" data-store-print="${store.id}">Imprimer la fiche complete</button>` : ""}
         </div>
         ${buildStoreIdentityMeta(store)}
       </article>
@@ -4455,7 +4455,7 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
 function buildStoreDetailForm(store, mode = "stores") {
   const detailContent = mode === "configuration"
     ? `
-        ${buildStoreSectionNav("configuration")}
+        ${buildStoreSectionNav("configuration", store)}
 
         ${buildPreparationHubCard(store)}
 
@@ -4468,7 +4468,7 @@ function buildStoreDetailForm(store, mode = "stores") {
         </div>
       `
     : `
-        ${buildStoreSectionNav("stores")}
+        ${buildStoreSectionNav("stores", store)}
 
         <div class="editor-grid section-anchor" id="section-quantities">
           ${buildStorePilotSkeleton(store)}
@@ -4699,7 +4699,12 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td>&nbsp;</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
         <td>${escapeHtml(nextActionForStore(store))}</td>
-        <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button></td>
+        <td>
+          <div class="store-row-actions">
+            <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>
+            <button type="button" class="mini-button" data-store-print="${store.id}">Imprimer</button>
+          </div>
+        </td>
       `;
     } else {
       row.innerHTML = `
@@ -4711,7 +4716,12 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
         <td>${escapeHtml(nextActionForStore(store))}</td>
-        <td><button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button></td>
+        <td>
+          <div class="store-row-actions">
+            <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>
+            <button type="button" class="mini-button" data-store-print="${store.id}">Imprimer</button>
+          </div>
+        </td>
       `;
     }
     projectTableBody.append(row);
