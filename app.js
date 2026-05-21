@@ -7390,11 +7390,15 @@ function exportExtensionsPdf() {
   doc.text(`TWEM x Brico - Genere le ${formatDateTime(new Date().toISOString())}`, 12, 18);
   doc.setTextColor(36, 33, 20);
 
+  let currentY = 30;
   groupedRows.forEach(([title, rows], sectionIndex) => {
-    if (sectionIndex > 0) {
+    const estimatedSectionHeight = 12 + Math.min(rows.length, 14) * 5;
+    if (sectionIndex > 0 && currentY + estimatedSectionHeight > 274) {
       doc.addPage();
+      currentY = 18;
+    } else if (sectionIndex > 0) {
+      currentY += 4;
     }
-    let currentY = sectionIndex === 0 ? 30 : 18;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(195, 55, 46);
@@ -7440,6 +7444,7 @@ function exportExtensionsPdf() {
         doc.text(`Page ${pageCount}`, 184, 288);
       }
     });
+    currentY = (doc.lastAutoTable?.finalY || currentY) + 8;
   });
 
   doc.save(`twem-brico-liste-extensions-responsable-${new Date().toISOString().slice(0, 10)}.pdf`);
