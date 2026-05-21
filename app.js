@@ -73,6 +73,11 @@ function normalizeLanguageCode(value) {
   return "fr";
 }
 
+function normalizeExtensionNumber(value) {
+  const normalized = normalizeImportCell(value);
+  return /^\d+\.0$/.test(normalized) ? normalized.slice(0, -2) : normalized;
+}
+
 function getExtensionPreferredLabel(row, language = "fr") {
   const normalizedLanguage = normalizeLanguageCode(language);
   const labelFr = normalizeImportCell(row?.labelFr || row?.label_fr || row?.labelFR || row?.label);
@@ -138,7 +143,7 @@ function normalizeExtensionCatalogRow(row, index = 0) {
       || "Extension"
     ),
     model: normalizeImportCell(row.model || row.modele || row.Model || row.Modele || ""),
-    number: normalizeImportCell(
+    number: normalizeExtensionNumber(
       row.number
       || row.Number
       || row.Numero
