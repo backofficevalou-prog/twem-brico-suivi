@@ -1433,6 +1433,13 @@ function storeLanguageForPrint(store) {
   return normalizeLanguageCode(linkedPerson?.language || "fr");
 }
 
+function managerPersonForStore(store) {
+  return state.people.find((person) =>
+    (store?.code && person.storeCode === store.code && ["manager", "magasin"].includes(String(person.role || "").toLowerCase()))
+    || (store?.manager && person.name === store.manager)
+  ) || null;
+}
+
 function normalizeShopTypeValue(value) {
   const raw = normalizeImportCell(value).toUpperCase().replace(/\s+/g, "");
   const lettersOnly = raw.replace(/[^A-Z]/g, "");
@@ -5691,12 +5698,75 @@ function nextMorningIso(hour = 9) {
   return date.toISOString();
 }
 
-function automationEmailTemplate(automation) {
+function emailDateLabel(value, language = "fr") {
+  const date = normalizeDateOnly(value);
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat(normalizeLanguageCode(language) === "nl" ? "nl-BE" : "fr-BE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function buildInstallReminderEmail(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const managerPerson = managerPersonForStore(store);
+  const language = storeLanguageForPrint(store);
+  const managerName = managerPerson?.name || store.manager || (language === "nl" ? "verantwoordelijke" : "responsable");
+  const installDate = emailDateLabel(workflow.destinyInstallDate, language) || workflow.destinyInstallDate || "";
+  const subject = language === "nl"
+    ? `Herinnering installatie - ${store.name || store.code || "winkel"}`
+    : `Rappel installation - ${store.name || store.code || "magasin"}`;
+  const body = language === "nl"
+    ? [
+        `Hallo ${managerName},`,
+        "",
+        `Wij bevestigen de komst van ons team voor de installatie van uw nieuwe telefooncentrale op ${installDate}.`,
+        "",
+        "Alles is gepland zodat de interventie in de best mogelijke omstandigheden kan verlopen.",
+        "U ontvangt ook toegang tot de opvolgingsapplicatie, waarmee u de voortgang van de verschillende stappen in realtime kunt volgen.",
+        "",
+        "Ons team blijft uiteraard tijdens de volledige interventie beschikbaar indien nodig.",
+        "",
+        "Alvast bedankt voor uw ontvangst en samenwerking.",
+        "",
+        "Met vriendelijke groeten,"
+      ].join("\n")
+    : [
+        `Bonjour ${managerName},`,
+        "",
+        `Nous vous confirmons le passage de notre equipe pour l'installation de votre nouvelle centrale telephonique a la date du ${installDate}.`,
+        "",
+        "Tout est planifie afin que l'intervention se deroule dans les meilleures conditions possibles.",
+        "Vous recevrez egalement l'acces a l'application de suivi, qui vous permettra de suivre l'avancement des differentes etapes en temps reel.",
+        "",
+        "Notre equipe reste bien entendu a votre disposition durant toute l'intervention si necessaire.",
+        "",
+        "Nous vous remercions d'avance pour votre accueil et votre collaboration.",
+        "",
+        "Bien a vous,"
+      ].join("\n");
+
+  return {
+    subject,
+    body,
+    recipient: managerPerson?.email || "",
+    language
+  };
+}
+
+function automationEmailTemplate(automation, context = {}) {
   if (automation.id === "daily_operations_digest") {
     return {
       subject: "Digest quotidien - installations, blocages et SAV",
       body: buildDailyOperationsDigestBody()
     };
+  }
+  if (automation.id === "install_reminder" && context.store) {
+    return buildInstallReminderEmail(context.store);
   }
 
   const subjectById = {
@@ -5708,7 +5778,7 @@ function automationEmailTemplate(automation) {
   const bodyById = {
     store_update_alert: "Bonjour,\n\nUne nouvelle information importante a ete ajoutee dans une fiche magasin.\nMerci de consulter le lien direct quand tu as un moment.\n\nCe mail restera en preparation tant que l'envoi reel n'est pas branche.",
     new_person_welcome: "Bonjour,\n\nVoici le lien vers l'application TWEM Brico et ton code PIN personnel.\n\nPour l'instant, cette automatisation reste bloquee tant que la diffusion n'est pas ouverte.",
-    install_reminder: "Bonjour,\n\nPetit rappel doux: une installation est planifiee prochainement pour ton magasin.\nMerci de verifier que tout est bien pret cote planning.\n\nCe rappel est uniquement destine au responsable du magasin.",
+    install_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe pour l'installation de votre nouvelle centrale telephonique a la date du [date intervention].\n\nTout est planifie afin que l'intervention se deroule dans les meilleures conditions possibles.\nVous recevrez egalement l'acces a l'application de suivi, qui vous permettra de suivre l'avancement des differentes etapes en temps reel.\n\nNotre equipe reste bien entendu a votre disposition durant toute l'intervention si necessaire.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
     no_response_escalation: "Bonjour,\n\nUne action attendue n'a pas encore ete consultee ou traitee.\nMerci de verifier le lien vers la fiche magasin.\n\nSi la situation reste bloquee, Valou / TWEM sera prevenu."
   };
   return {
@@ -5798,16 +5868,35 @@ function buildDailyOperationsDigestBody() {
   ].join("\n");
 }
 
-function defaultAutomationEmailDraft(automation) {
-  const template = automationEmailTemplate(automation);
+function installReminderStores() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return (state.stores || [])
+    .filter((store) => {
+      const installDate = normalizeDateOnly(ensureStoreWorkflowData(store).destinyInstallDate);
+      return Boolean(installDate) && installDate >= today;
+    })
+    .sort((left, right) => {
+      const leftDate = normalizeDateOnly(ensureStoreWorkflowData(left).destinyInstallDate);
+      const rightDate = normalizeDateOnly(ensureStoreWorkflowData(right).destinyInstallDate);
+      return (leftDate?.getTime?.() || 0) - (rightDate?.getTime?.() || 0)
+        || String(left.name || left.code || "").localeCompare(String(right.name || right.code || ""));
+    });
+}
+
+function defaultAutomationEmailDraft(automation, context = {}) {
+  const template = automationEmailTemplate(automation, context);
   const isManualBody = Boolean(automation.emailBodyManual);
+  const suffix = context.store ? `-${context.store.id || context.store.code}` : "";
   return {
-    id: `mail-${automation.id}`,
+    id: `mail-${automation.id}${suffix}`,
     automationId: automation.id,
-    automationTitle: automation.title,
-    recipient: automation.recipients || "",
+    automationTitle: context.store
+      ? `${automation.title} - ${context.store.name || context.store.code || "magasin"}`
+      : automation.title,
+    recipient: template.recipient || automation.recipients || "",
     subject: automation.emailSubject || template.subject,
-    body: isManualBody ? (automation.emailBody || "") : template.body,
+    body: isManualBody && !context.store ? (automation.emailBody || "") : template.body,
     status: automation.emailStatus || (automation.active ? "ready" : "draft"),
     plannedAt: automation.emailPlannedAt || (automation.id === "daily_operations_digest" ? nextMorningIso(9) : ""),
     createdAt: new Date().toISOString(),
@@ -5816,10 +5905,46 @@ function defaultAutomationEmailDraft(automation) {
 }
 
 function ensureAutomationEmailDrafts() {
-  const existing = new Map((state.automationEmails || []).map((email) => [email.automationId, email]));
+  const existingById = new Map((state.automationEmails || []).map((email) => [email.id, email]));
+  const existingByAutomation = new Map((state.automationEmails || []).map((email) => [email.automationId, email]));
   const drafts = [];
   (state.automations || []).forEach((automation) => {
-    const current = existing.get(automation.id);
+    if (automation.id === "install_reminder") {
+      const stores = installReminderStores();
+      if (!stores.length) {
+        const current = existingByAutomation.get(automation.id);
+        const baseDraft = defaultAutomationEmailDraft(automation);
+        drafts.push(current
+          ? {
+              ...baseDraft,
+              ...current,
+              automationTitle: automation.title,
+              recipient: current.recipient || automation.recipients || "",
+              subject: automation.emailSubject || baseDraft.subject,
+              body: automation.emailBodyManual ? (current.body || baseDraft.body) : baseDraft.body,
+              status: current.status || baseDraft.status
+            }
+          : baseDraft);
+        return;
+      }
+      stores.forEach((store) => {
+        const baseDraft = defaultAutomationEmailDraft(automation, { store });
+        const current = existingById.get(baseDraft.id);
+        drafts.push(current
+          ? {
+              ...baseDraft,
+              ...current,
+              automationTitle: baseDraft.automationTitle,
+              recipient: current.recipient || baseDraft.recipient,
+              subject: automation.emailSubject || baseDraft.subject,
+              body: current.body && current.updatedAt !== current.createdAt ? current.body : baseDraft.body,
+              status: current.status || baseDraft.status
+            }
+          : baseDraft);
+      });
+      return;
+    }
+    const current = existingByAutomation.get(automation.id);
     const baseDraft = defaultAutomationEmailDraft(automation);
     drafts.push(current
       ? {
