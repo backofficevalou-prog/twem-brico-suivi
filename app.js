@@ -637,7 +637,7 @@ const translations = {
     addRole: "Ajouter le role",
     addPerson: "Ajouter une personne",
     people: "Personnes",
-    storeName: "Nom magasin",
+    storeName: "Nom magasin affiche dans les listes",
     city: "Ville",
     code: "Code",
     storeContact: "Contact magasin",
@@ -717,7 +717,7 @@ const translations = {
     addRole: "Rol toevoegen",
     addPerson: "Persoon toevoegen",
     people: "Personen",
-    storeName: "Winkelnaam",
+    storeName: "Winkelnaam in lijsten",
     city: "Stad",
     code: "Code",
     storeContact: "Winkelcontact",
@@ -11106,6 +11106,7 @@ async function handleStoreSubmit(event) {
   resetStoreContactForm();
   saveState();
   render();
+  window.alert(targetStore ? "Magasin modifie et enregistre." : "Magasin cree et enregistre.");
 }
 
 function resetStoreContactForm() {
