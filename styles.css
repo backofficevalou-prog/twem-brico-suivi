@@ -385,23 +385,46 @@ button {
   min-width: 104px;
 }
 
+.store-list-table {
+  min-width: 1040px;
+  table-layout: fixed;
+}
+
+.store-list-table tbody td {
+  font-size: 0.88rem;
+}
+
 .store-list-table th:nth-child(1),
 .store-list-table td:nth-child(1) {
-  width: 112px;
-  min-width: 112px;
+  width: 96px;
+  min-width: 96px;
   white-space: nowrap;
   word-break: normal;
 }
 
 .store-list-table th:nth-child(2),
 .store-list-table td:nth-child(2) {
-  width: 180px;
-  max-width: 180px;
+  width: 150px;
+  max-width: 150px;
 }
 
 .store-list-table td:nth-child(2) .cell-note {
   display: block;
-  max-width: 150px;
+  max-width: 125px;
+}
+
+.store-list-table th:nth-child(5),
+.store-list-table td:nth-child(5) {
+  width: 145px;
+}
+
+.store-list-table th:last-child,
+.store-list-table td:last-child {
+  width: 122px;
+}
+
+.store-list-table .details-row > td {
+  word-break: normal;
 }
 
 .stores-summary-row td {
