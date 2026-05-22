@@ -8965,6 +8965,15 @@ function buildPrintableStoreHtml(store) {
         noteRole: "Nota / rol",
         noIntervenants: "Geen intervenanten ingevuld.",
         configPrep: "Configuratie en voorbereiding",
+        externalPrep: "Externe voorbereiding",
+        installation: "Installatie",
+        remarks: "Opmerkingen",
+        noRemarks: "Geen opmerking.",
+        vlan22: "VLAN22",
+        switch: "Switch",
+        cable: "Kabel",
+        antenna: "Antenne",
+        central: "Centrale",
         configRequest: "Configuratieaanvraag",
         orderArticles: "Artikelenbestelling",
         logisticComment: "Logistieke opmerking",
@@ -9054,6 +9063,15 @@ function buildPrintableStoreHtml(store) {
         noteRole: "Note / role",
         noIntervenants: "Aucun intervenant renseigne.",
         configPrep: "Configuration et preparation",
+        externalPrep: "Preparation externe",
+        installation: "Installation",
+        remarks: "Remarques",
+        noRemarks: "Aucune remarque.",
+        vlan22: "VLAN22",
+        switch: "Switch",
+        cable: "Cable",
+        antenna: "Antenne",
+        central: "Centrale",
         configRequest: "Demande configuration",
         orderArticles: "Commande articles",
         logisticComment: "Commentaire logistique",
@@ -9147,6 +9165,15 @@ function buildPrintableStoreHtml(store) {
     }
     return normalized ? normalized : emptyLabel;
   };
+  const printableRemarkList = (remarks = []) => Array.isArray(remarks) && remarks.length
+    ? `
+      <ul class="remark-list">
+        ${remarks.slice().reverse().map((remark) => `
+          <li><strong>${escapeHtml(formatDateTime(remark.createdAt))} - ${escapeHtml(remark.author || "-")}</strong><br>${escapeHtml(remark.text || "-")}</li>
+        `).join("")}
+      </ul>
+    `
+    : `<div class="muted">${escapeHtml(labels.noRemarks)}</div>`;
   const installDate = printableValue(workflow.destinyInstallDate, labels.noInstallDate);
   const hasInstallDate = Boolean(String(workflow.destinyInstallDate || "").trim());
 
@@ -9185,6 +9212,11 @@ function buildPrintableStoreHtml(store) {
         .network-table th:nth-child(3), .network-table td:nth-child(3) { width: 32%; }
         .network-table th:nth-child(4), .network-table td:nth-child(4) { width: 22%; }
         .print-note { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff3ae; color: #5c553c; font-size: 10.5px; }
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .status-box-print { border: 1px solid #e0dac7; border-radius: 8px; padding: 8px; background: #fff; }
+        .status-box-print strong { display: block; color: #7a3a2f; margin-bottom: 4px; }
+        .remark-list { margin: 6px 0 0; padding-left: 16px; }
+        .remark-list li { margin-bottom: 6px; }
       </style>
     </head>
     <body>
@@ -9242,6 +9274,29 @@ function buildPrintableStoreHtml(store) {
           ` : `<div class="muted">${escapeHtml(labels.noIntervenants)}</div>`}
         </div>
         <div class="card full">
+          <h3>${escapeHtml(labels.externalPrep)}</h3>
+          <div class="status-grid">
+            <div class="status-box-print"><strong>${escapeHtml(labels.mobileCoverage)}</strong>${escapeHtml(printableValue(workflow.mobileCoverage))}</div>
+            <div class="status-box-print"><strong>${escapeHtml(labels.vlan22)}</strong>${escapeHtml(printableValue(workflow.vlan22Activated))}<br>${escapeHtml(printableValue(workflow.vlan22Date))}</div>
+            <div class="status-box-print"><strong>${escapeHtml(labels.cabling)}</strong>${escapeHtml(printableValue(workflow.cablingStatus))}<br>${escapeHtml(printableValue(workflow.cablingDate))}</div>
+            <div class="status-box-print"><strong>${escapeHtml(labels.switch)}</strong>${escapeHtml(printableValue(workflow.ltSwitchStatus))}<br>${escapeHtml(printableValue(workflow.ltSwitchDate || workflow.transferDate))}</div>
+          </div>
+          <h3 style="margin-top: 12px;">${escapeHtml(labels.remarks)}</h3>
+          ${printableRemarkList(workflow.externalPrepRemarks)}
+        </div>
+        <div class="card full">
+          <h3>${escapeHtml(labels.installation)}</h3>
+          <table>
+            <tbody>
+              <tr><th>${escapeHtml(labels.installDate)}</th><td>${escapeHtml(hasInstallDate ? installDate : "")}</td><th>${escapeHtml(labels.destinyTicket)}</th><td>${escapeHtml(printableValue(workflow.destinyTicketRef))}</td></tr>
+              <tr><th>${escapeHtml(labels.switch)}</th><td>${escapeHtml(printableValue(workflow.installSwitchDate))}</td><th>${escapeHtml(labels.cable)}</th><td>${escapeHtml(printableValue(workflow.installCableDate))}</td></tr>
+              <tr><th>${escapeHtml(labels.antenna)}</th><td>${escapeHtml(printableValue(workflow.installAntennaDate))}</td><th>${escapeHtml(labels.central)}</th><td>${escapeHtml(printableValue(workflow.installCentralDate))}</td></tr>
+            </tbody>
+          </table>
+          <h3 style="margin-top: 12px;">${escapeHtml(labels.remarks)}</h3>
+          ${printableRemarkList(workflow.installationRemarks)}
+        </div>
+        <div class="card full">
           <h3>${escapeHtml(labels.configPrep)}</h3>
           <table>
             <tbody>
@@ -9249,19 +9304,7 @@ function buildPrintableStoreHtml(store) {
               <tr><th>${escapeHtml(labels.logisticComment)}</th><td>${escapeHtml(printableValue(workflow.orderNote))}</td><th>${escapeHtml(labels.configMail)}</th><td>${escapeHtml(printableValue(workflow.extensionRequestStatus))}</td></tr>
               <tr><th>${escapeHtml(labels.clientNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractClientNumber))}</td><th>${escapeHtml(labels.mainNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractMainNumber))}</td></tr>
               <tr><th>${escapeHtml(labels.otherNumbers)}</th><td colspan="3">${escapeHtml(printableValue(workflow.currentContractOtherNumbers))}</td></tr>
-              <tr><th>${escapeHtml(labels.configReceived)}</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus))}</td><th>${escapeHtml(labels.installDate)}</th><td>${escapeHtml(hasInstallDate ? installDate : "")}</td></tr>
-              <tr><th>${escapeHtml(labels.destinyTicket)}</th><td>${escapeHtml(printableValue(workflow.destinyTicketRef))}</td><th>${escapeHtml(labels.destinyCase)}</th><td>${escapeHtml(printableValue(workflow.destinyCaseRef))}</td></tr>
-              <tr><th>${escapeHtml(labels.pmDestiny)}</th><td>${escapeHtml(printableValue(workflow.destinyPmName))}</td><th>${escapeHtml(labels.distribution)}</th><td>${escapeHtml(printableValue(workflow.destinyDistribution))}</td></tr>
-              <tr><th>${escapeHtml(labels.preVisit)}</th><td>${escapeHtml(printableValue(workflow.networkSurveyStatus))}</td><th>${escapeHtml(labels.mobileCoverage)}</th><td>${escapeHtml(printableValue(workflow.mobileCoverage))}</td></tr>
-              <tr><th>${escapeHtml(labels.vlanConfig)}</th><td>${escapeHtml(printableValue(workflow.vlan22Date || workflow.vlan22Status))}</td><th>${escapeHtml(labels.vlanActive)}</th><td>${escapeHtml(printableValue(workflow.vlan22Date ? (isNl ? "Ja" : "Oui") : workflow.vlan22Activated))}</td></tr>
-              <tr><th>${escapeHtml(labels.alarmByIt)}</th><td>${escapeHtml(printableValue(workflow.alarmHandledByIt))}</td><th>Charles Roux</th><td>${escapeHtml(printableValue(workflow.charlesRouxStatus))}</td></tr>
-              <tr><th>${escapeHtml(labels.cabling)}</th><td>${escapeHtml(printableValue(workflow.cablingStatus))}</td><th>${escapeHtml(labels.chargersSent)}</th><td>${escapeHtml(printableValue(workflow.mobileChargersSent))}</td></tr>
-              <tr><th>${escapeHtml(labels.chargerCount)}</th><td>${escapeHtml(printableValue(workflow.mobileChargerCount))}</td><th>${escapeHtml(labels.alarmType)}</th><td>${escapeHtml(printableValue(workflow.alarmType))}</td></tr>
-              <tr><th>${escapeHtml(labels.mobileNetwork)}</th><td>${escapeHtml(printableValue(workflow.mobileOperator))}</td><th>${escapeHtml(labels.callFlow)}</th><td>${escapeHtml(printableValue(workflow.callFlowNote))}</td></tr>
-              <tr><th>${escapeHtml(labels.welcomeMessage)}</th><td>${escapeHtml(printableValue(workflow.ivrNotes))}</td><th>${escapeHtml(labels.otherInstructions)}</th><td>${escapeHtml(printableValue(workflow.greetingNotes))}</td></tr>
-              <tr><th>${escapeHtml(labels.finalValidation)}</th><td>${escapeHtml(printableValue(workflow.destinyInstallDone))}</td><th>${escapeHtml(labels.finalMail)}</th><td>${escapeHtml(printableValue(workflow.bricoFinalMailStatus))}</td></tr>
-              <tr><th>${escapeHtml(labels.installRemark)}</th><td>${escapeHtml(printableValue(workflow.destinyInstallRemark))}</td><th>${escapeHtml(labels.finalRemark)}</th><td>${escapeHtml(printableValue(workflow.bricoFinalRemark))}</td></tr>
-              <tr><th>${escapeHtml(labels.platformSwitch)}</th><td>${escapeHtml(printableValue(workflow.ltSwitchStatus))}</td><th>${escapeHtml(labels.storePlan)}</th><td>${escapeHtml(printableValue(planName))}</td></tr>
+              <tr><th>${escapeHtml(labels.configReceived)}</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus))}</td><th>${escapeHtml(labels.storePlan)}</th><td>${escapeHtml(printableValue(planName))}</td></tr>
             </tbody>
           </table>
         </div>
