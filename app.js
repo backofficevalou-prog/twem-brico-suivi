@@ -3801,7 +3801,7 @@ function buildPreparationHubCard(store) {
               <div class="prep-pair-card">
                 <label>
                   <span>Switch</span>
-                  <select name="lt_switch_status">
+                  <select name="lt_switch_preparation_status">
                     ${renderOptions(["A prevoir", "OK", "Bloque", "En attente", "Basculee"], workflow.ltSwitchStatus === "Basculee" ? "OK" : workflow.ltSwitchStatus)}
                   </select>
                 </label>
@@ -4641,7 +4641,7 @@ function buildStoreDetailForm(store, mode = "stores") {
 
   return `
     <div class="details-panel">
-      <form class="store-editor" data-store-editor="${store.id}">
+      <form class="store-editor" data-store-editor="${store.id}" data-store-mode="${mode}">
         ${detailContent}
         <div class="editor-actions">
           <span class="validation-text" data-validation="${store.id}"></span>
@@ -9614,7 +9614,11 @@ async function handleStoreEditorSubmit(event) {
   workflow.destinyInstallRemark = form.querySelector('[name="destiny_install_remark"]')?.value.trim() || "";
   workflow.bricoFinalMailStatus = form.querySelector('[name="brico_final_mail_status"]')?.value || workflow.bricoFinalMailStatus;
   workflow.bricoFinalRemark = form.querySelector('[name="brico_final_remark"]')?.value.trim() || "";
-  const switchValue = form.querySelector('[name="lt_switch_status"]')?.value || workflow.ltSwitchStatus;
+  const preparationSwitchField = form.querySelector('[name="lt_switch_preparation_status"]');
+  const closureSwitchField = form.querySelector('[name="lt_switch_status"]');
+  const switchValue = form.dataset.storeMode === "configuration"
+    ? (preparationSwitchField?.value || closureSwitchField?.value || workflow.ltSwitchStatus)
+    : (closureSwitchField?.value || preparationSwitchField?.value || workflow.ltSwitchStatus);
   workflow.ltSwitchStatus = switchValue === "OK" ? "Basculee" : switchValue;
   workflow.ltSwitchDate = form.querySelector('[name="lt_switch_date"]')?.value || workflow.ltSwitchDate || "";
   workflow.installSwitchDate = form.querySelector('[name="install_switch_date"]')?.value || "";
