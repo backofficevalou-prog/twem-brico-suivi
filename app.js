@@ -5008,7 +5008,20 @@ function renderCompactStoreRows(stores, mapper) {
 
 function renderTimelineRows(stores) {
   setMainTableHeaders(["Code magasin", "Magasin", "Ville", "Type", "Plateforme actuelle", "Date telephonie", "Etape actuelle", "Date etape", "Statut"]);
-  const rows = stores.map((store) => {
+  const sortedStores = [...stores].sort((left, right) => {
+    const leftWorkflow = ensureStoreWorkflowData(left);
+    const rightWorkflow = ensureStoreWorkflowData(right);
+    const leftDate = normalizeDateOnly(leftWorkflow.destinyInstallDate);
+    const rightDate = normalizeDateOnly(rightWorkflow.destinyInstallDate);
+    if (!leftDate && !rightDate) {
+      return String(left.code || "").localeCompare(String(right.code || ""), "fr", { numeric: true });
+    }
+    if (!leftDate) return 1;
+    if (!rightDate) return -1;
+    return new Date(leftDate) - new Date(rightDate)
+      || String(left.code || "").localeCompare(String(right.code || ""), "fr", { numeric: true });
+  });
+  const rows = sortedStores.map((store) => {
     const workflow = ensureStoreWorkflowData(store);
     const timelineSteps = [
       {
