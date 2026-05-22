@@ -1011,6 +1011,7 @@ const state = {
   tickets: [],
   automationEmails: [],
   activeAutomationSubtab: "rules",
+  focusedUpdate: null,
   filters: {
     search: "",
     status: "all",
@@ -1973,6 +1974,52 @@ function preferredUserFromQuery() {
   }
 
   return state.people.find((person) => person.name.toLowerCase() === rawUser)?.name || null;
+}
+
+function updateFocusFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const rawStore = normalizeImportCell(params.get("store"));
+  const rawFocus = normalizeImportCell(params.get("focus"));
+  if (!rawStore && !rawFocus) {
+    return false;
+  }
+
+  const store = state.stores.find((entry) =>
+    String(entry.code || "").toLowerCase() === rawStore.toLowerCase()
+    || String(entry.id || "") === rawStore
+  ) || state.stores.find((entry) =>
+    (state.activities || []).some((activity) =>
+      activity.id === rawFocus
+      && activity.storeName === entry.name
+    )
+  );
+  if (!store) {
+    return false;
+  }
+
+  const activity = rawFocus
+    ? (state.activities || []).find((entry) => entry.id === rawFocus)
+    : null;
+  state.focusedUpdate = {
+    storeId: store.id,
+    storeCode: store.code,
+    activityId: rawFocus,
+    message: activity?.comment || normalizeImportCell(params.get("message")) || "Nouvelle information a consulter",
+    createdAt: activity?.createdAt || ""
+  };
+  state.activeAdminTab = canAccessTab("stores") ? "stores" : "dashboard";
+  state.filters = { search: "", status: "all", owner: "all", stage: "all", type: "all", city: "all", date: "all" };
+  state.expandedStoreIds = new Set([store.id]);
+  return true;
+}
+
+function scrollToFocusedUpdate() {
+  if (!state.focusedUpdate) {
+    return;
+  }
+  window.setTimeout(() => {
+    document.querySelector("[data-update-focus-banner]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 120);
 }
 
 function normalizeCoreRole(person) {
@@ -4612,6 +4659,21 @@ function buildStoreHero(store, manager, installer, electrician, isExpanded, mode
 }
 
 function buildStoreDetailForm(store, mode = "stores") {
+  const focused = state.focusedUpdate && (
+    state.focusedUpdate.storeId === store.id
+    || state.focusedUpdate.storeCode === store.code
+  );
+  const focusBanner = focused
+    ? `
+        <div class="store-update-focus" data-update-focus-banner>
+          <div>
+            <span class="mini-label">Nouveaute a consulter</span>
+            <strong>${escapeHtml(state.focusedUpdate.message || "Nouvelle information a consulter")}</strong>
+            ${state.focusedUpdate.createdAt ? `<p>${escapeHtml(formatDateTime(state.focusedUpdate.createdAt))}</p>` : ""}
+          </div>
+        </div>
+      `
+    : "";
   const detailContent = mode === "configuration"
     ? `
         ${buildStoreSectionNav("configuration", store)}
@@ -4689,6 +4751,7 @@ function buildStoreDetailForm(store, mode = "stores") {
 
   return `
     <div class="details-panel">
+      ${focusBanner}
       <form class="store-editor" data-store-editor="${store.id}" data-store-mode="${mode}">
         ${detailContent}
         <div class="editor-actions">
@@ -5753,22 +5816,23 @@ function emailDateLabel(value, language = "fr") {
 }
 
 function fillMailTemplate(template, values = {}) {
-  return String(template || "").replace(/\[(responsable|contact|date intervention|date pre-visite|date prévisite|magasin|code magasin|lien app|pin)\]/gi, (match, key) => {
+  return String(template || "").replace(/\[(responsable|contact|date intervention|date pre-visite|date prévisite|magasin|nom du magasin|code magasin|lien app|lien vers l'application|lien vers l’application|pin|modification|nouveaute|nouveauté)\]/gi, (match, key) => {
     const normalized = normalizeImportCell(key).toLowerCase();
     if (normalized === "responsable") return values.managerName || "";
     if (normalized === "contact") return values.contactName || "";
     if (normalized === "date intervention") return values.installDate || "";
     if (normalized === "date pre-visite" || normalized === "date prévisite") return values.previsitDate || "";
-    if (normalized === "magasin") return values.storeName || "";
+    if (normalized === "magasin" || normalized === "nom du magasin") return values.storeName || "";
     if (normalized === "code magasin") return values.storeCode || "";
-    if (normalized === "lien app") return values.appLink || "";
+    if (normalized === "lien app" || normalized === "lien vers l'application" || normalized === "lien vers l’application") return values.appLink || "";
     if (normalized === "pin") return values.pin || "";
+    if (normalized === "modification" || normalized === "nouveaute" || normalized === "nouveauté") return values.updateText || "";
     return match;
   });
 }
 
 function hasMailTemplateVariables(template) {
-  return /\[(responsable|contact|date intervention|date pre-visite|date prévisite|magasin|code magasin|lien app|pin)\]/i.test(String(template || ""));
+  return /\[(responsable|contact|date intervention|date pre-visite|date prévisite|magasin|nom du magasin|code magasin|lien app|lien vers l'application|lien vers l’application|pin|modification|nouveaute|nouveauté)\]/i.test(String(template || ""));
 }
 
 function buildInstallReminderEmail(store, automation = {}) {
@@ -5913,6 +5977,78 @@ function appAccessLink() {
   return window.location.href.split("?")[0];
 }
 
+function appStoreUpdateLink(store, activity) {
+  const params = new URLSearchParams();
+  params.set("store", store?.code || store?.id || "");
+  if (activity?.id) {
+    params.set("focus", activity.id);
+  }
+  return `${appAccessLink()}?${params.toString()}`;
+}
+
+function storeForActivity(activity) {
+  return (state.stores || []).find((store) =>
+    (activity?.storeCode && store.code === activity.storeCode)
+    || (activity?.storeId && store.id === activity.storeId)
+    || (activity?.storeName && store.name === activity.storeName)
+  ) || null;
+}
+
+function buildStoreUpdateAlertEmail(activity, automation = {}) {
+  const store = storeForActivity(activity);
+  const language = store ? storeLanguageForPrint(store) : "fr";
+  const appLink = store ? appStoreUpdateLink(store, activity) : appAccessLink();
+  const storeName = store?.name || activity?.storeName || "magasin";
+  const updateText = activity?.comment || "Nouvelle information a consulter";
+  const subject = language === "nl"
+    ? `Nieuwe update - ${storeName}`
+    : `Nouvelle mise a jour - ${storeName}`;
+  const body = language === "nl"
+    ? [
+        "Hallo,",
+        "",
+        `Er is een nieuwe update / informatie toegevoegd in de applicatie voor winkel ${storeName}.`,
+        "",
+        `Waarover gaat het: ${updateText}`,
+        "",
+        "Klik op onderstaande link om rechtstreeks naar de wijziging te gaan en de nieuwe elementen van het dossier te bekijken:",
+        "",
+        appLink,
+        "",
+        "Wij blijven uiteraard beschikbaar voor elke vraag of bijkomende informatie.",
+        "",
+        "Met vriendelijke groeten,"
+      ].join("\n")
+    : [
+        "Bonjour,",
+        "",
+        `Une nouvelle mise a jour / information a ete ajoutee dans l'application pour le magasin ${storeName}.`,
+        "",
+        `Ce qui est nouveau: ${updateText}`,
+        "",
+        "Veuillez cliquer sur le lien ci-dessous afin d'acceder directement a la modification et consulter les nouveaux elements du dossier :",
+        "",
+        appLink,
+        "",
+        "Nous restons bien entendu a votre disposition pour toute question ou information complementaire.",
+        "",
+        "Bien a vous,"
+      ].join("\n");
+  const values = {
+    storeName,
+    appLink,
+    updateText
+  };
+  return {
+    subject: fillMailTemplate(automation.emailSubject || subject, values),
+    body: automation.emailBodyManual && automation.emailBody && hasMailTemplateVariables(automation.emailBody)
+      ? fillMailTemplate(automation.emailBody, values)
+      : body,
+    recipient: automation.recipients || "Personnes liees au magasin",
+    language
+  };
+}
+
 function buildNewPersonWelcomeEmail(person, automation = {}) {
   const language = normalizeLanguageCode(person?.language || "fr");
   const contactName = person?.name || (language === "nl" ? "gebruiker" : "utilisateur");
@@ -5969,6 +6105,9 @@ function automationEmailTemplate(automation, context = {}) {
       body: buildDailyOperationsDigestBody()
     };
   }
+  if (automation.id === "store_update_alert" && context.activity) {
+    return buildStoreUpdateAlertEmail(context.activity, automation);
+  }
   if (automation.id === "install_reminder" && context.store) {
     return buildInstallReminderEmail(context.store, automation);
   }
@@ -5987,7 +6126,7 @@ function automationEmailTemplate(automation, context = {}) {
     no_response_escalation: "Relance action attendue"
   };
   const bodyById = {
-    store_update_alert: "Bonjour,\n\nUne nouvelle information importante a ete ajoutee dans une fiche magasin.\nMerci de consulter le lien direct quand tu as un moment.\n\nCe mail restera en preparation tant que l'envoi reel n'est pas branche.",
+    store_update_alert: "Bonjour,\n\nUne nouvelle mise a jour / information a ete ajoutee dans l'application pour le magasin [Nom du magasin].\n\nCe qui est nouveau: [modification]\n\nVeuillez cliquer sur le lien ci-dessous afin d'acceder directement a la modification et consulter les nouveaux elements du dossier :\n\n[Lien app]\n\nNous restons bien entendu a votre disposition pour toute question ou information complementaire.\n\nBien a vous,",
     new_person_welcome: "Bonjour [contact],\n\nVotre acces a l'application de suivi TWEM Brico a ete cree.\n\nLien vers l'application: [lien app]\nVotre code PIN personnel: [pin]\n\nCet acces vous permet de consulter les informations disponibles pour votre magasin.\n\nBien a vous,",
     install_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe pour l'installation de votre nouvelle centrale telephonique a la date du [date intervention].\n\nTout est planifie afin que l'intervention se deroule dans les meilleures conditions possibles.\nVous recevrez egalement l'acces a l'application de suivi, qui vous permettra de suivre l'avancement des differentes etapes en temps reel.\n\nNotre equipe reste bien entendu a votre disposition durant toute l'intervention si necessaire.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
     previsit_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe le [date pre-visite] pour effectuer la pre-visite en vue de l'installation de votre nouvelle centrale telephonique.\n\nLors de ce passage, nous verifierons les points de preparation necessaires: VLAN, reseau, cablage, switch et les elements utiles au bon deroulement de l'installation.\n\nCette verification nous permettra de preparer l'intervention finale dans les meilleures conditions possibles.\n\nNotre equipe reste bien entendu a votre disposition si vous avez des questions d'ici la.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
@@ -6110,6 +6249,16 @@ function previsitReminderStores() {
     });
 }
 
+function storeUpdateAlertActivities() {
+  return (state.activities || [])
+    .filter((activity) =>
+      activity.alertQueuedAt
+      && storeForActivity(activity)
+    )
+    .sort((left, right) => new Date(right.createdAt || 0) - new Date(left.createdAt || 0))
+    .slice(0, 30);
+}
+
 function defaultAutomationEmailDraft(automation, context = {}) {
   const template = automationEmailTemplate(automation, context);
   const isManualBody = Boolean(automation.emailBodyManual);
@@ -6117,6 +6266,8 @@ function defaultAutomationEmailDraft(automation, context = {}) {
     ? `-${context.store.id || context.store.code}`
     : context.person
       ? `-${context.person.id || safeDocumentId("person", context.person.email || context.person.name)}`
+      : context.activity
+        ? `-${context.activity.id || safeDocumentId("activity", `${context.activity.storeName || "store"}-${context.activity.createdAt || Date.now()}`)}`
       : "";
   return {
     id: `mail-${automation.id}${suffix}`,
@@ -6125,10 +6276,12 @@ function defaultAutomationEmailDraft(automation, context = {}) {
       ? `${automation.title} - ${context.store.name || context.store.code || "magasin"}`
       : context.person
         ? `${automation.title} - ${context.person.name || context.person.email || "contact"}`
+        : context.activity
+          ? `${automation.title} - ${context.activity.storeName || "magasin"}`
       : automation.title,
     recipient: template.recipient || automation.recipients || "",
     subject: automation.emailSubject || template.subject,
-    body: isManualBody && !context.store ? (automation.emailBody || "") : template.body,
+    body: isManualBody && !context.store && !context.activity ? (automation.emailBody || "") : template.body,
     status: automation.emailStatus || (automation.active ? "ready" : "draft"),
     plannedAt: automation.emailPlannedAt || (automation.id === "daily_operations_digest" ? nextMorningIso(9) : ""),
     createdAt: new Date().toISOString(),
@@ -6145,6 +6298,26 @@ function ensureAutomationEmailDrafts() {
     previsit_reminder: previsitReminderStores
   };
   (state.automations || []).forEach((automation) => {
+    if (automation.id === "store_update_alert") {
+      const activities = storeUpdateAlertActivities();
+      activities.forEach((activity) => {
+        const baseDraft = defaultAutomationEmailDraft(automation, { activity });
+        const current = existingById.get(baseDraft.id);
+        drafts.push(current
+          ? {
+              ...baseDraft,
+              ...current,
+              automationTitle: baseDraft.automationTitle,
+              recipient: current.recipient || baseDraft.recipient,
+              subject: baseDraft.subject,
+              body: baseDraft.body,
+              bodyManual: false,
+              status: current.status || baseDraft.status
+            }
+          : baseDraft);
+      });
+      return;
+    }
     if (storeScopedAutomations[automation.id]) {
       const stores = storeScopedAutomations[automation.id]();
       if (!stores.length) {
@@ -6735,7 +6908,7 @@ function handleAutomationFieldChange(event) {
   state.automationEmails
     .filter((entry) => entry.automationId === item.id)
     .forEach((emailDraft) => {
-      if (field === "recipients" && !["install_reminder", "previsit_reminder"].includes(item.id)) {
+      if (field === "recipients" && !["store_update_alert", "install_reminder", "previsit_reminder"].includes(item.id)) {
         emailDraft.recipient = item.recipients || "";
       }
       if (field === "active" && ["draft", "ready"].includes(emailDraft.status)) {
@@ -7223,6 +7396,7 @@ async function handleNetworkConfirm(event) {
   }
   saveState();
   render();
+  scrollToFocusedUpdate();
 }
 
 async function loadRemoteState() {
@@ -7447,11 +7621,14 @@ async function syncStoreToRemote(store, activityComment) {
   if (activityComment) {
     const activity = {
       id: `activity-${Date.now()}`,
+      storeId: store.id,
+      storeCode: store.code,
       storeName: store.name,
       result: store.status === "blocked" ? "issue" : "ok",
       comment: activityComment,
       confirmedBy: state.activeUserName,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      alertQueuedAt: new Date().toISOString()
     };
     await upsertAppwriteDocument(
       appwriteActivitiesCollectionId,
@@ -10111,14 +10288,18 @@ async function handleStoreEditorSubmit(event) {
   workflow.callGroupsNote = form.querySelector('[name="call_groups_note"]')?.value.trim() || "";
   workflow.cascadeNote = form.querySelector('[name="cascade_note"]')?.value.trim() || "";
 
-  state.activities.unshift({
+  const updateActivity = {
     id: `edit-${Date.now()}`,
+    storeId: store.id,
+    storeCode: store.code,
     storeName: store.name,
     result: store.status === "blocked" ? "issue" : "ok",
     comment: `Mise a jour magasin - statut ${statusLabel(store.status)}`,
     confirmedBy: state.activeUserName,
-    createdAt: new Date().toISOString()
-  });
+    createdAt: new Date().toISOString(),
+    alertQueuedAt: new Date().toISOString()
+  };
+  state.activities.unshift(updateActivity);
 
   if (hasRemoteData()) {
     await syncStoreToRemote(store, `Mise a jour magasin - statut ${statusLabel(store.status)}`);
@@ -10185,11 +10366,14 @@ async function handleSavCreate(event) {
   state.tickets.unshift(ticket);
   state.activities.unshift({
     id: `sav-create-${Date.now()}`,
+    storeId: store.id,
+    storeCode: store.code,
     storeName: store.name,
     result: "issue",
     comment: `Creation ${requestKind} ${resolvedConcern}`,
     confirmedBy: ticket.requesterName,
-    createdAt: now
+    createdAt: now,
+    alertQueuedAt: now
   });
 
   form.querySelector('[name="new_ticket_concern"]').value = "";
@@ -10244,11 +10428,14 @@ async function handleSavUpdate(event) {
 
   state.activities.unshift({
     id: `sav-update-${Date.now()}`,
+    storeId: state.stores.find((store) => store.code === ticket.storeCode || store.name === ticket.storeName)?.id || "",
+    storeCode: ticket.storeCode || "",
     storeName: ticket.storeName,
     result: ticket.status === "closed" ? "ok" : "issue",
     comment: `Suivi SAV ${ticket.concern} - ${ticketStatusLabel(ticket.status)}`,
     confirmedBy: currentUser()?.name || state.activeUserName || "-",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    alertQueuedAt: new Date().toISOString()
   });
 
   if (hasRemoteData()) {
@@ -10277,11 +10464,14 @@ async function handleSavToggleClose(event) {
 
   state.activities.unshift({
     id: `sav-status-${Date.now()}`,
+    storeId: state.stores.find((store) => store.code === ticket.storeCode || store.name === ticket.storeName)?.id || "",
+    storeCode: ticket.storeCode || "",
     storeName: ticket.storeName,
     result: nextStatus === "closed" ? "ok" : "issue",
     comment: `Ticket SAV ${nextStatus === "closed" ? "cloture" : "reouvert"} - ${ticket.concern}`,
     confirmedBy: currentUser()?.name || state.activeUserName || "-",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    alertQueuedAt: new Date().toISOString()
   });
 
   if (hasRemoteData()) {
@@ -10487,6 +10677,7 @@ async function handlePinSubmit(event) {
   state.activeUserName = matchedPerson.name;
   state.pinValidated = true;
   state.activeAdminTab = firstAccessibleTabForUser(matchedPerson);
+  updateFocusFromQuery();
   pinInput.value = "";
   if (pinFeedback) {
     pinFeedback.textContent = "";
@@ -10781,6 +10972,7 @@ async function handleIntervenantSubmit(event) {
   }
   saveState();
   render();
+  scrollToFocusedUpdate();
 }
 
 async function handleIntervenantRemove(event) {
@@ -11058,7 +11250,11 @@ async function init() {
   }
 
   ensureValidActiveTab();
+  if (state.pinValidated) {
+    updateFocusFromQuery();
+  }
   render();
+  scrollToFocusedUpdate();
 }
 
 init();

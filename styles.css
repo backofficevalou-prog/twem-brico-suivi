@@ -829,6 +829,36 @@ button {
   padding: 16px;
 }
 
+.store-update-focus {
+  border: 2px solid #c3372e;
+  background: #fff3ae;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 0 0 0 rgba(195, 55, 46, 0.38);
+  animation: updatePulse 1.35s ease-in-out infinite;
+}
+
+.store-update-focus strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.05rem;
+}
+
+.store-update-focus p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+@keyframes updatePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(195, 55, 46, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(195, 55, 46, 0.06);
+  }
+}
+
 .hero-panel {
   padding-bottom: 0;
 }
