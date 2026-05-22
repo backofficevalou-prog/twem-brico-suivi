@@ -992,6 +992,7 @@ const state = {
   importExportHistory: [],
   tickets: [],
   automationEmails: [],
+  activeAutomationSubtab: "rules",
   filters: {
     search: "",
     status: "all",
@@ -1098,6 +1099,8 @@ const logoutButton = document.querySelector("#logoutButton");
 const reportArchiveList = document.querySelector("#reportArchiveList");
 const automationOverview = document.querySelector("#automationOverview");
 const automationList = document.querySelector("#automationList");
+const automationSubtabs = document.querySelector("#automationSubtabs");
+const automationTemplateList = document.querySelector("#automationTemplateList");
 const automationEmailQueue = document.querySelector("#automationEmailQueue");
 const automationFutureList = document.querySelector("#automationFutureList");
 const twemWorkspace = document.querySelector("#twemWorkspace");
@@ -1600,6 +1603,7 @@ function localUiState() {
     activeUserName: state.activeUserName,
     language: state.language,
     activeAdminTab: state.activeAdminTab,
+    activeAutomationSubtab: state.activeAutomationSubtab,
     toolItems: state.toolItems,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
@@ -1661,6 +1665,7 @@ function loadState() {
       activeUserName: shouldResetRememberedNonBypassUser ? "" : (parsed.activeUserName || ""),
       language: parsed.language || "fr",
       activeAdminTab: parsed.activeAdminTab || "dashboard",
+      activeAutomationSubtab: parsed.activeAutomationSubtab || "rules",
         toolItems: parsed.toolItems || [],
         accessOverrides: parsed.accessOverrides || [],
         roleOptions: normalizedRoleOptions(parsed.roleOptions),
@@ -5711,7 +5716,18 @@ function emailDateLabel(value, language = "fr") {
   }).format(date);
 }
 
-function buildInstallReminderEmail(store) {
+function fillMailTemplate(template, values = {}) {
+  return String(template || "").replace(/\[(responsable|date intervention|magasin|code magasin)\]/gi, (match, key) => {
+    const normalized = normalizeImportCell(key).toLowerCase();
+    if (normalized === "responsable") return values.managerName || "";
+    if (normalized === "date intervention") return values.installDate || "";
+    if (normalized === "magasin") return values.storeName || "";
+    if (normalized === "code magasin") return values.storeCode || "";
+    return match;
+  });
+}
+
+function buildInstallReminderEmail(store, automation = {}) {
   const workflow = ensureStoreWorkflowData(store);
   const managerPerson = managerPersonForStore(store);
   const language = storeLanguageForPrint(store);
@@ -5749,10 +5765,16 @@ function buildInstallReminderEmail(store) {
         "",
         "Bien a vous,"
       ].join("\n");
+  const values = {
+    managerName,
+    installDate,
+    storeName: store.name || "",
+    storeCode: store.code || ""
+  };
 
   return {
-    subject,
-    body,
+    subject: fillMailTemplate(automation.emailSubject || subject, values),
+    body: automation.emailBodyManual && automation.emailBody ? fillMailTemplate(automation.emailBody, values) : body,
     recipient: managerPerson?.email || "",
     language
   };
@@ -5766,7 +5788,7 @@ function automationEmailTemplate(automation, context = {}) {
     };
   }
   if (automation.id === "install_reminder" && context.store) {
-    return buildInstallReminderEmail(context.store);
+    return buildInstallReminderEmail(context.store, automation);
   }
 
   const subjectById = {
@@ -5937,7 +5959,7 @@ function ensureAutomationEmailDrafts() {
               automationTitle: baseDraft.automationTitle,
               recipient: current.recipient || baseDraft.recipient,
               subject: automation.emailSubject || baseDraft.subject,
-              body: current.body && current.updatedAt !== current.createdAt ? current.body : baseDraft.body,
+              body: current.bodyManual ? current.body : baseDraft.body,
               status: current.status || baseDraft.status
             }
           : baseDraft);
@@ -6010,6 +6032,44 @@ function renderAutomationEmailQueue() {
       `).join("")}
     </div>
   `;
+}
+
+function renderAutomationTemplateList() {
+  if (!automationTemplateList) {
+    return;
+  }
+  automationTemplateList.innerHTML = (state.automations || []).map((automation) => {
+    const template = automationEmailTemplate(automation);
+    return `
+      <article class="automation-template-card">
+        <div class="automation-card-head">
+          <div>
+            <h5>${escapeHtml(automation.title || automation.id)}</h5>
+            <p>${escapeHtml(automation.languageMode || "")}</p>
+          </div>
+          <span class="automation-email-status ${automation.emailBodyManual ? "status-ready" : "status-draft"}">${automation.emailBodyManual ? "Personnalise" : "Modele auto"}</span>
+        </div>
+        <label class="automation-field">
+          <span>Objet du mail</span>
+          <input type="text" data-automation-template-id="${escapeHtml(automation.id)}" data-automation-template-field="emailSubject" value="${escapeHtml(automation.emailSubject || template.subject || "")}">
+        </label>
+        <label class="automation-field">
+          <span>Corps du mail</span>
+          <textarea rows="7" data-automation-template-id="${escapeHtml(automation.id)}" data-automation-template-field="emailBody">${escapeHtml(automation.emailBodyManual ? (automation.emailBody || "") : (template.body || ""))}</textarea>
+        </label>
+      </article>
+    `;
+  }).join("");
+}
+
+function updateAutomationSubtabs() {
+  const active = state.activeAutomationSubtab || "rules";
+  automationSubtabs?.querySelectorAll("[data-automation-subtab]").forEach((button) => {
+    button.classList.toggle("is-active", button.getAttribute("data-automation-subtab") === active);
+  });
+  document.querySelectorAll("[data-automation-subpanel]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.getAttribute("data-automation-subpanel") === active);
+  });
 }
 
 function renderAutomations() {
@@ -6120,6 +6180,8 @@ function renderAutomations() {
   }).join("");
 
   renderAutomationEmailQueue();
+  renderAutomationTemplateList();
+  updateAutomationSubtabs();
 
   automationFutureList.innerHTML = futureAutomationIdeas.map((item) => `
     <article class="automation-future-item">
@@ -6448,6 +6510,44 @@ function handleAutomationFieldChange(event) {
   }
 }
 
+function handleAutomationTemplateFieldChange(event) {
+  const target = event.target;
+  const automationId = target?.getAttribute?.("data-automation-template-id");
+  const field = target?.getAttribute?.("data-automation-template-field");
+  if (!automationId || !field) {
+    return;
+  }
+
+  const automation = state.automations.find((entry) => entry.id === automationId);
+  if (!automation) {
+    return;
+  }
+
+  automation[field] = target.value;
+  if (field === "emailBody") {
+    automation.emailBodyManual = true;
+  }
+
+  ensureAutomationEmailDrafts();
+  if (event.type === "input") {
+    window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
+    return;
+  }
+
+  saveState();
+  renderAutomations();
+}
+
+function handleAutomationSubtabClick(event) {
+  const button = event.target.closest("[data-automation-subtab]");
+  if (!button) {
+    return;
+  }
+  state.activeAutomationSubtab = button.getAttribute("data-automation-subtab") || "rules";
+  updateAutomationSubtabs();
+  window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
+}
+
 function handleAutomationEmailFieldChange(event) {
   const target = event.target;
   const emailId = target?.getAttribute?.("data-automation-email-id");
@@ -6470,6 +6570,7 @@ function handleAutomationEmailFieldChange(event) {
   if (automation && field === "body") {
     automation.emailBody = email.body;
     automation.emailBodyManual = true;
+    email.bodyManual = true;
   }
   if (field === "body" && event.type === "input") {
     window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
@@ -10604,6 +10705,9 @@ roleForm.addEventListener("submit", handleRoleSubmit);
 toolForm.addEventListener("submit", handleToolSubmit);
 automationList?.addEventListener("change", handleAutomationFieldChange);
 automationList?.addEventListener("input", handleAutomationFieldChange);
+automationSubtabs?.addEventListener("click", handleAutomationSubtabClick);
+automationTemplateList?.addEventListener("change", handleAutomationTemplateFieldChange);
+automationTemplateList?.addEventListener("input", handleAutomationTemplateFieldChange);
 automationEmailQueue?.addEventListener("change", handleAutomationEmailFieldChange);
 automationEmailQueue?.addEventListener("input", handleAutomationEmailFieldChange);
 visibilityOverrideForm?.addEventListener("submit", handleVisibilityOverrideSubmit);
@@ -10633,6 +10737,7 @@ async function init() {
   state.activeUserName = stored.activeUserName;
   state.language = stored.language || "fr";
   state.activeAdminTab = stored.activeAdminTab || "dashboard";
+  state.activeAutomationSubtab = stored.activeAutomationSubtab || "rules";
   state.pinValidated = false;
   state.toolItems = stored.toolItems || [];
   state.accessOverrides = stored.accessOverrides || [];

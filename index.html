@@ -428,17 +428,31 @@
                   </div>
                   <div id="automationOverview" class="automation-overview"></div>
                 </div>
-                <div id="automationList" class="automation-list"></div>
-                <div class="automation-mail-shell">
+                <div class="automation-subtabs" id="automationSubtabs">
+                  <button type="button" class="automation-subtab is-active" data-automation-subtab="rules">Automatisations</button>
+                  <button type="button" class="automation-subtab" data-automation-subtab="templates">Templates mail</button>
+                  <button type="button" class="automation-subtab" data-automation-subtab="queue">Mails programmes / envoyes</button>
+                </div>
+                <div id="automationList" class="automation-list" data-automation-subpanel="rules"></div>
+                <div class="automation-mail-shell automation-template-shell" data-automation-subpanel="templates">
                   <div class="automation-group-head">
                     <div>
-                      <h4>Mails automatiques</h4>
-                      <p>File de preparation et journal des mails generes par les automatisations. Rien ne part automatiquement tant que l'envoi reel n'est pas branche.</p>
+                      <h4>Templates mail</h4>
+                      <p>Modeles de base utilises pour generer les brouillons. Les variables comme le responsable et la date sont remplies par l'application quand un magasin est concerne.</p>
+                    </div>
+                  </div>
+                  <div id="automationTemplateList" class="automation-template-list"></div>
+                </div>
+                <div class="automation-mail-shell" data-automation-subpanel="queue">
+                  <div class="automation-group-head">
+                    <div>
+                      <h4>Mails programmes / envoyes</h4>
+                      <p>File de preparation, programmation et journal des mails generes par les automatisations. Rien ne part automatiquement tant que Microsoft Graph n'est pas branche.</p>
                     </div>
                   </div>
                   <div id="automationEmailQueue" class="automation-email-queue"></div>
                 </div>
-                <div class="automation-future-shell">
+                <div class="automation-future-shell" data-automation-subpanel="rules">
                   <h4>A prévoir ensuite</h4>
                   <div id="automationFutureList" class="automation-future-list"></div>
                 </div>

@@ -1887,10 +1887,43 @@ button {
   font-size: 0.82rem;
 }
 
+.automation-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+
+.automation-subtab {
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.automation-subtab.is-active {
+  background: var(--yellow);
+  border-color: #d5b60d;
+}
+
+[data-automation-subpanel] {
+  display: none;
+}
+
+[data-automation-subpanel].is-active {
+  display: grid;
+  gap: 12px;
+}
+
 .automation-list,
 .automation-cards,
 .automation-future-list,
 .automation-email-table,
+.automation-template-list,
 .automation-future-shell {
   display: grid;
   gap: 12px;
@@ -1907,6 +1940,15 @@ button {
 }
 
 .automation-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.automation-template-card {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
@@ -1956,6 +1998,11 @@ button {
 .automation-field span {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.automation-template-card textarea {
+  min-height: 160px;
+  resize: vertical;
 }
 
 .automation-field-wide {
