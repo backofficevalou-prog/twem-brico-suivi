@@ -1140,6 +1140,45 @@ button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.preparation-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.prep-wide-panel {
+  width: 100%;
+}
+
+.prep-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(145px, 1fr));
+  gap: 12px;
+}
+
+.remark-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.remark-history {
+  display: grid;
+  gap: 8px;
+}
+
+.remark-entry {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fffdf6;
+}
+
+.remark-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
 .compact-table-wrap {
   overflow-x: auto;
 }

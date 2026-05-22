@@ -2820,11 +2820,11 @@ function configControlStatus(store) {
   const networkConfigOk = Boolean(workflow.networkConfigConfirmed)
     || (networkRows.length > 0 && networkRows.every((row) => normalizeImportCell(row.extensionLabel)));
   return {
-    vlanOk: workflow.vlan22Activated === "Oui" || Boolean(workflow.vlan22Date),
+    vlanOk: workflow.vlan22Activated === "Oui" || workflow.vlan22Activated === "OK" || Boolean(workflow.vlan22Date),
     networkConfigOk,
     previsitOk: workflow.networkSurveyStatus === "OK" || workflow.networkSurveyStatus === "Termine",
     cablingOk: workflow.cablingStatus === "OK",
-    switchOk: workflow.ltSwitchStatus === "Basculee"
+    switchOk: workflow.ltSwitchStatus === "Basculee" || workflow.ltSwitchStatus === "OK"
   };
 }
 
@@ -3746,6 +3746,21 @@ function buildStoreSectionNav(mode = "stores", store = null) {
   `;
 }
 
+function renderWorkflowRemarks(remarks = []) {
+  return Array.isArray(remarks) && remarks.length
+    ? `
+      <div class="remark-history">
+        ${remarks.slice().reverse().map((remark) => `
+          <div class="remark-entry">
+            <div class="remark-meta">${escapeHtml(formatDateTime(remark.createdAt))} - ${escapeHtml(remark.author || "-")}</div>
+            <div>${escapeHtml(remark.text || "-")}</div>
+          </div>
+        `).join("")}
+      </div>
+    `
+    : '<div class="cell-note">Aucune remarque enregistree.</div>';
+}
+
 function buildPreparationHubCard(store) {
   const workflow = ensureStoreWorkflowData(store);
   return `
@@ -3753,12 +3768,60 @@ function buildPreparationHubCard(store) {
       <article class="editor-card full-span-card grouped-card" data-access-zone="external_prep">
         <div class="grouped-card-head">
           <h3>Preparation chantier</h3>
-          <p>Pre-visite, coordination Destiny et preparation externe regroupes dans un seul cadre.</p>
+          <p>Preparation externe et installation suivies en deux cadres lisibles.</p>
         </div>
-        <div class="grouped-card-grid three-col-grid">
-          <section class="subpanel">
-            <h4>Coordination Destiny</h4>
-            <div class="contacts-form-grid">
+        <div class="preparation-stack">
+          <section class="subpanel prep-wide-panel">
+            <h4>1. Preparation externe</h4>
+            <div class="prep-status-grid">
+              <label>
+                <span>Couverture mobile</span>
+                <select name="mobile_coverage">
+                  ${renderOptions(["A verifier", "Telenet", "Proximus", "Tous", "Bloque"], workflow.mobileCoverage)}
+                </select>
+              </label>
+              <label>
+                <span>VLAN22</span>
+                <select name="vlan22_activated">
+                  ${renderOptions(["A prevoir", "OK", "Bloque", "Non"], workflow.vlan22Activated === "Oui" ? "OK" : workflow.vlan22Activated)}
+                </select>
+              </label>
+              <label>
+                <span>Date VLAN22</span>
+                <input type="date" name="vlan22_date" value="${escapeHtml(workflow.vlan22Date || "")}">
+              </label>
+              <label>
+                <span>Cablage</span>
+                <select name="cabling_status">
+                  ${renderOptions(["A prevoir", "OK", "Bloque", "Probleme"], workflow.cablingStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Date cablage</span>
+                <input type="date" name="cabling_date" value="${escapeHtml(workflow.cablingDate || "")}">
+              </label>
+              <label>
+                <span>Switch</span>
+                <select name="lt_switch_status">
+                  ${renderOptions(["A prevoir", "OK", "Bloque", "En attente", "Basculee"], workflow.ltSwitchStatus === "Basculee" ? "OK" : workflow.ltSwitchStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Date switch</span>
+                <input type="date" name="lt_switch_date" value="${escapeHtml(workflow.ltSwitchDate || workflow.transferDate || "")}">
+              </label>
+            </div>
+            <div class="remark-box">
+              <label>
+                <span>Nouvelle remarque preparation externe</span>
+                <textarea name="external_prep_new_note" rows="3" placeholder="La remarque sera horodatee avec ton nom lors de la sauvegarde."></textarea>
+              </label>
+              ${renderWorkflowRemarks(workflow.externalPrepRemarks)}
+            </div>
+          </section>
+          <section class="subpanel prep-wide-panel">
+            <h4>2. Installation</h4>
+            <div class="prep-status-grid">
               <label>
                 <span>Date installation Destiny</span>
                 <input type="date" name="destiny_install_date" value="${escapeHtml(workflow.destinyInstallDate)}">
@@ -3783,76 +3846,29 @@ function buildPreparationHubCard(store) {
                 <span>Diffusion</span>
                 <input type="text" name="destiny_distribution" value="${escapeHtml(workflow.destinyDistribution)}">
               </label>
+              <label>
+                <span>Switch</span>
+                <input type="date" name="install_switch_date" value="${escapeHtml(workflow.installSwitchDate || "")}">
+              </label>
+              <label>
+                <span>Cable</span>
+                <input type="date" name="install_cable_date" value="${escapeHtml(workflow.installCableDate || "")}">
+              </label>
+              <label>
+                <span>Antenne</span>
+                <input type="date" name="install_antenna_date" value="${escapeHtml(workflow.installAntennaDate || "")}">
+              </label>
+              <label>
+                <span>Centrale</span>
+                <input type="date" name="install_central_date" value="${escapeHtml(workflow.installCentralDate || "")}">
+              </label>
             </div>
-          </section>
-          <section class="subpanel">
-            <h4>Pre-visite Destiny</h4>
-            <div class="two-col">
+            <div class="remark-box">
               <label>
-                <span>Verification reseau</span>
-                <select name="network_survey_status">
-                  ${renderOptions(["A planifier", "En cours", "Termine", "Probleme"], workflow.networkSurveyStatus)}
-                </select>
+                <span>Nouvelle remarque installation</span>
+                <textarea name="installation_new_note" rows="3" placeholder="La remarque sera horodatee avec ton nom lors de la sauvegarde."></textarea>
               </label>
-              <label>
-                <span>Couverture mobile</span>
-                <select name="mobile_coverage">
-                  ${renderOptions(["A verifier", "Tous reseaux OK", "Certains reseaux manquants", "Aucun reseau mobile"], workflow.mobileCoverage)}
-                </select>
-              </label>
-            </div>
-            <label>
-              <span>Remarque premiere visite</span>
-              <textarea name="first_visit_remark" rows="5">${escapeHtml(workflow.firstVisitRemark)}</textarea>
-            </label>
-          </section>
-          <section class="subpanel">
-            <h4>Preparation externe</h4>
-            <div class="external-prep-grid compact-prep-grid">
-              <label>
-                <span>Alarme geree par IT</span>
-                <select name="alarm_handled_by_it">
-                  ${renderOptions(["A confirmer", "Oui", "Non"], workflow.alarmHandledByIt)}
-                </select>
-              </label>
-              <label>
-                <span>VLAN22 demande</span>
-                <select name="vlan22_status">
-                  ${renderOptions(["Pas demande", "Demandee", "Recue", "Bloquee"], workflow.vlan22Status)}
-                </select>
-              </label>
-              <label>
-                <span>Date demande VLAN22</span>
-                <input type="date" name="vlan22_date" value="${escapeHtml(workflow.vlan22Date || "")}">
-              </label>
-              <label>
-                <span>VLAN22 active</span>
-                <select name="vlan22_activated">
-                  ${renderOptions(["Non", "Oui", "Bloque"], workflow.vlan22Activated)}
-                </select>
-              </label>
-              <label>
-                <span>Charles Roux</span>
-                <select name="charles_roux_status">
-                  ${renderOptions(["A verifier", "OK", "Probleme"], workflow.charlesRouxStatus)}
-                </select>
-              </label>
-              <label>
-                <span>Cablage</span>
-                <select name="cabling_status">
-                  ${renderOptions(["A verifier", "OK", "Probleme"], workflow.cablingStatus)}
-                </select>
-              </label>
-              <label>
-                <span>Chargeurs mobiles envoyes</span>
-                <select name="mobile_chargers_sent">
-                  ${renderOptions(["Non", "Partiel", "Oui"], workflow.mobileChargersSent)}
-                </select>
-              </label>
-              <label>
-                <span>Nombre chargeurs</span>
-                <input type="number" min="0" name="mobile_charger_count" value="${escapeHtml(workflow.mobileChargerCount)}">
-              </label>
+              ${renderWorkflowRemarks(workflow.installationRemarks)}
             </div>
             <div class="posts-skeleton-actions">
               <button type="submit" class="mini-button">Sauvegarder la preparation</button>
@@ -4212,6 +4228,7 @@ function ensureStoreWorkflowData(store) {
     vlan22Activated: "Non",
     charlesRouxStatus: "A verifier",
     cablingStatus: "A verifier",
+    cablingDate: "",
     mobileChargersSent: "Non",
     mobileChargerCount: String(Math.max(1, Math.ceil(mobileCount / 10))),
     planPdfName: "",
@@ -4222,6 +4239,13 @@ function ensureStoreWorkflowData(store) {
     bricoFinalMailStatus: "A envoyer",
     bricoFinalRemark: "",
     ltSwitchStatus: "En attente",
+    ltSwitchDate: "",
+    installSwitchDate: "",
+    installCableDate: "",
+    installAntennaDate: "",
+    installCentralDate: "",
+    externalPrepRemarks: [],
+    installationRemarks: [],
     networkConfigConfirmed: false,
     networkRows: defaultNetworkRowsForStore(store),
     gsmRows: defaultGsmRowsForStore(store),
@@ -9468,6 +9492,22 @@ function readIntervenantRows(form, store) {
   }));
 }
 
+function appendWorkflowRemark(workflow, key, text) {
+  const cleanText = normalizeImportCell(text);
+  if (!cleanText) {
+    return;
+  }
+  if (!Array.isArray(workflow[key])) {
+    workflow[key] = [];
+  }
+  workflow[key].push({
+    id: `remark-${Date.now()}-${workflow[key].length}`,
+    text: cleanText,
+    author: currentUser()?.name || state.activeUserName || "TWEM",
+    createdAt: new Date().toISOString()
+  });
+}
+
 async function handleStoreEditorSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -9526,31 +9566,41 @@ async function handleStoreEditorSubmit(event) {
   workflow.currentContractClientNumber = form.querySelector('[name="current_contract_client_number"]')?.value.trim() || "";
   workflow.currentContractMainNumber = form.querySelector('[name="current_contract_main_number"]')?.value.trim() || "";
   workflow.currentContractOtherNumbers = form.querySelector('[name="current_contract_other_numbers"]')?.value.trim() || "";
-  workflow.destinyPmName = form.querySelector('[name="destiny_pm_name"]').value.trim();
-  workflow.destinyPmEmail = form.querySelector('[name="destiny_pm_email"]').value.trim();
-  workflow.destinyTicketRef = form.querySelector('[name="destiny_ticket_ref"]').value.trim();
-  workflow.destinyCaseRef = form.querySelector('[name="destiny_case_ref"]').value.trim();
-  workflow.destinyDistribution = form.querySelector('[name="destiny_distribution"]').value.trim();
-  workflow.networkSurveyStatus = form.querySelector('[name="network_survey_status"]').value;
-  workflow.mobileCoverage = form.querySelector('[name="mobile_coverage"]').value;
-  workflow.firstVisitRemark = form.querySelector('[name="first_visit_remark"]').value.trim();
-  workflow.extensionRequestStatus = form.querySelector('[name="extension_request_status"]').value;
-  workflow.extensionConfigStatus = form.querySelector('[name="extension_config_status"]').value;
-  workflow.ivrNotes = form.querySelector('[name="ivr_notes"]').value.trim();
-  workflow.greetingNotes = form.querySelector('[name="greeting_notes"]').value.trim();
-  workflow.alarmHandledByIt = form.querySelector('[name="alarm_handled_by_it"]').value;
-  workflow.vlan22Status = form.querySelector('[name="vlan22_status"]').value;
+  workflow.destinyPmName = form.querySelector('[name="destiny_pm_name"]')?.value.trim() || "";
+  workflow.destinyPmEmail = form.querySelector('[name="destiny_pm_email"]')?.value.trim() || "";
+  workflow.destinyTicketRef = form.querySelector('[name="destiny_ticket_ref"]')?.value.trim() || "";
+  workflow.destinyCaseRef = form.querySelector('[name="destiny_case_ref"]')?.value.trim() || "";
+  workflow.destinyDistribution = form.querySelector('[name="destiny_distribution"]')?.value.trim() || "";
+  workflow.networkSurveyStatus = form.querySelector('[name="network_survey_status"]')?.value || workflow.networkSurveyStatus;
+  workflow.mobileCoverage = form.querySelector('[name="mobile_coverage"]')?.value || workflow.mobileCoverage;
+  workflow.firstVisitRemark = form.querySelector('[name="first_visit_remark"]')?.value.trim() || workflow.firstVisitRemark || "";
+  workflow.extensionRequestStatus = form.querySelector('[name="extension_request_status"]')?.value || workflow.extensionRequestStatus;
+  workflow.extensionConfigStatus = form.querySelector('[name="extension_config_status"]')?.value || workflow.extensionConfigStatus;
+  workflow.ivrNotes = form.querySelector('[name="ivr_notes"]')?.value.trim() || "";
+  workflow.greetingNotes = form.querySelector('[name="greeting_notes"]')?.value.trim() || "";
+  workflow.alarmHandledByIt = form.querySelector('[name="alarm_handled_by_it"]')?.value || workflow.alarmHandledByIt;
+  workflow.vlan22Status = form.querySelector('[name="vlan22_status"]')?.value || workflow.vlan22Status;
   workflow.vlan22Date = form.querySelector('[name="vlan22_date"]')?.value || "";
-  workflow.vlan22Activated = form.querySelector('[name="vlan22_activated"]').value;
-  workflow.charlesRouxStatus = form.querySelector('[name="charles_roux_status"]').value;
-  workflow.cablingStatus = form.querySelector('[name="cabling_status"]').value;
-  workflow.mobileChargersSent = form.querySelector('[name="mobile_chargers_sent"]').value;
-  workflow.mobileChargerCount = form.querySelector('[name="mobile_charger_count"]').value;
-  workflow.destinyInstallDone = form.querySelector('[name="destiny_install_done"]').value;
-  workflow.destinyInstallRemark = form.querySelector('[name="destiny_install_remark"]').value.trim();
-  workflow.bricoFinalMailStatus = form.querySelector('[name="brico_final_mail_status"]').value;
-  workflow.bricoFinalRemark = form.querySelector('[name="brico_final_remark"]').value.trim();
-  workflow.ltSwitchStatus = form.querySelector('[name="lt_switch_status"]').value;
+  const vlanValue = form.querySelector('[name="vlan22_activated"]')?.value || workflow.vlan22Activated;
+  workflow.vlan22Activated = vlanValue === "OK" ? "Oui" : vlanValue;
+  workflow.charlesRouxStatus = form.querySelector('[name="charles_roux_status"]')?.value || workflow.charlesRouxStatus;
+  workflow.cablingStatus = form.querySelector('[name="cabling_status"]')?.value || workflow.cablingStatus;
+  workflow.cablingDate = form.querySelector('[name="cabling_date"]')?.value || "";
+  workflow.mobileChargersSent = form.querySelector('[name="mobile_chargers_sent"]')?.value || workflow.mobileChargersSent;
+  workflow.mobileChargerCount = form.querySelector('[name="mobile_charger_count"]')?.value || workflow.mobileChargerCount;
+  workflow.destinyInstallDone = form.querySelector('[name="destiny_install_done"]')?.value || workflow.destinyInstallDone;
+  workflow.destinyInstallRemark = form.querySelector('[name="destiny_install_remark"]')?.value.trim() || "";
+  workflow.bricoFinalMailStatus = form.querySelector('[name="brico_final_mail_status"]')?.value || workflow.bricoFinalMailStatus;
+  workflow.bricoFinalRemark = form.querySelector('[name="brico_final_remark"]')?.value.trim() || "";
+  const switchValue = form.querySelector('[name="lt_switch_status"]')?.value || workflow.ltSwitchStatus;
+  workflow.ltSwitchStatus = switchValue === "OK" ? "Basculee" : switchValue;
+  workflow.ltSwitchDate = form.querySelector('[name="lt_switch_date"]')?.value || workflow.ltSwitchDate || "";
+  workflow.installSwitchDate = form.querySelector('[name="install_switch_date"]')?.value || "";
+  workflow.installCableDate = form.querySelector('[name="install_cable_date"]')?.value || "";
+  workflow.installAntennaDate = form.querySelector('[name="install_antenna_date"]')?.value || "";
+  workflow.installCentralDate = form.querySelector('[name="install_central_date"]')?.value || "";
+  appendWorkflowRemark(workflow, "externalPrepRemarks", form.querySelector('[name="external_prep_new_note"]')?.value || "");
+  appendWorkflowRemark(workflow, "installationRemarks", form.querySelector('[name="installation_new_note"]')?.value || "");
   workflow.networkConfigConfirmed = form.querySelector('[name="network_config_confirmed"]')?.value === "1";
   workflow.networkRows = readNetworkRows(form, store);
   workflow.gsmRows = readGsmRows(form, store);
