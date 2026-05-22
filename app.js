@@ -2765,6 +2765,19 @@ function matchesDateScope(store) {
   return true;
 }
 
+function hasPlannedIntervention(store) {
+  if (store.status === "done") {
+    return false;
+  }
+  const workflow = ensureStoreWorkflowData(store);
+  return sortedAppointments(store).some((appointment) => Boolean(normalizeDateOnly(appointment.datetime)))
+    || Boolean(normalizeDateOnly(workflow.destinyInstallDate));
+}
+
+function hasActiveSav(store) {
+  return ticketsForStore(store.id).some((ticket) => ticket.status !== "closed");
+}
+
 function getFilteredStores() {
   return getRoleScopedStores().filter((store) => {
     const appointments = sortedAppointments(store);
@@ -2780,7 +2793,13 @@ function getFilteredStores() {
     const plannedInstallKeywords = appointments.length || workflow.destinyInstallDate
       ? "installation prevue installation planifiee rendez-vous planifie"
       : "";
-    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords}`.toLowerCase();
+    const interventionKeywords = hasPlannedIntervention(store)
+      ? "intervention prevue intervention planifiee"
+      : "";
+    const savKeywords = hasActiveSav(store)
+      ? "sav actif sav ouvert sav en cours"
+      : "";
+    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords} ${interventionKeywords} ${savKeywords}`.toLowerCase();
     const matchesSearch = haystack.includes(state.filters.search);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || storeProvenance(store) === state.filters.owner;
@@ -2798,8 +2817,8 @@ function renderSummary() {
   const doneCount = visibleStores.filter((store) => store.status === "done").length;
   const blockedCount = visibleStores.filter((store) => store.status === "blocked").length;
   const noRdvCount = visibleStores.filter((store) => store.appointments.length === 0).length;
-  const inProgressCount = visibleStores.filter((store) => store.status === "in_progress").length;
-  const runCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).ltSwitchStatus === "Basculee").length;
+  const deploymentCount = visibleStores.filter(hasPlannedIntervention).length;
+  const runCount = visibleStores.filter(hasActiveSav).length;
   const dosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "DOS").length;
   const fosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOS").length;
   const fosdosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOSDOS").length;
@@ -2813,8 +2832,8 @@ function renderSummary() {
       { label: "DOS", value: dosCount, note: "Type magasin DOS", portion: Math.round((dosCount / total) * 100), filter: { key: "type", value: "DOS", tab: "stores" } },
       { label: "FOS", value: fosCount, note: "Type magasin FOS", portion: Math.round((fosCount / total) * 100), filter: { key: "type", value: "FOS", tab: "stores" } },
       { label: "FOSDOS", value: fosdosCount, note: "Type magasin FOSDOS", portion: Math.round((fosdosCount / total) * 100), filter: { key: "type", value: "FOSDOS", tab: "stores" } },
-      { label: "En deploiement", value: inProgressCount, note: "Projets actifs", portion: Math.round((inProgressCount / total) * 100), filter: { key: "status", value: "in_progress", tab: "stores" } },
-      { label: "En RUN", value: runCount, note: "Exploitation et SAV", portion: Math.round((runCount / total) * 100), filter: { key: "stage", value: "RUN", tab: "stores" } },
+      { label: "En deploiement", value: deploymentCount, note: "Interventions prevues", portion: Math.round((deploymentCount / total) * 100), filter: { reset: true, key: "search", value: "intervention prevue", tab: "stores" } },
+      { label: "En RUN", value: runCount, note: "Magasins avec SAV", portion: Math.round((runCount / total) * 100), filter: { reset: true, key: "search", value: "sav actif", tab: "stores" } },
       { label: "Clotures", value: doneCount, note: "Projets finalises", portion: Math.round((doneCount / total) * 100), filter: { key: "status", value: "done", tab: "stores" } },
       { label: "Bloques", value: blockedCount, note: "Dossiers a debloquer", portion: Math.round((blockedCount / total) * 100), filter: { key: "status", value: "blocked", tab: "stores" } }
     ],
@@ -2873,6 +2892,17 @@ function renderSummary() {
       if (filter?.tab) {
         state.activeAdminTab = filter.tab;
       }
+      if (filter?.reset) {
+        state.filters = {
+          search: "",
+          status: "all",
+          owner: "all",
+          stage: "all",
+          type: "all",
+          city: "all",
+          date: "all"
+        };
+      }
       if (filter?.key) {
         state.filters[filter.key] = filter.value;
       }
@@ -2901,8 +2931,8 @@ function renderDashboardExtra(mainTab, visibleStores) {
               { label: "En attente infos", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Config magasin attendue", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
               { label: "Validation IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Reseau / VLAN", filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
               { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "Cablage / alarme", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
-              { label: "En cours", value: visibleStores.filter((store) => store.status === "in_progress").length, note: "Installations actives", filter: { key: "status", value: "in_progress", tab: "stores" } },
-              { label: "RUN", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).ltSwitchStatus === "Basculee").length, note: "Magasins en exploitation", filter: { key: "stage", value: "RUN", tab: "stores" } },
+              { label: "En cours", value: visibleStores.filter(hasPlannedIntervention).length, note: "Interventions prevues", filter: { reset: true, key: "search", value: "intervention prevue", tab: "stores" } },
+              { label: "RUN", value: visibleStores.filter(hasActiveSav).length, note: "Magasins avec SAV", filter: { reset: true, key: "search", value: "sav actif", tab: "stores" } },
               { label: "PO attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "Commandes a relancer", filter: { key: "status", value: "blocked", tab: "stores" } },
               { label: "Tickets urgents", value: visibleStores.filter((store) => store.status === "blocked").length, note: "SAV prioritaire", filter: { key: "status", value: "blocked", tab: "sav" } }
             ].map((chip) => `
@@ -2938,6 +2968,17 @@ function renderDashboardExtra(mainTab, visibleStores) {
         const filter = JSON.parse(button.getAttribute("data-kpi-filter"));
         if (filter?.tab) {
           state.activeAdminTab = filter.tab;
+        }
+        if (filter?.reset) {
+          state.filters = {
+            search: "",
+            status: "all",
+            owner: "all",
+            stage: "all",
+            type: "all",
+            city: "all",
+            date: "all"
+          };
         }
         if (filter?.key) {
           state.filters[filter.key] = filter.value;
