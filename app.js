@@ -6492,20 +6492,25 @@ function handleAutomationFieldChange(event) {
     item[field] = target.value;
   }
 
-  const emailDraft = state.automationEmails.find((entry) => entry.automationId === item.id);
-  if (emailDraft) {
-    if (field === "recipients") {
-      emailDraft.recipient = item.recipients || "";
-    }
-    if (field === "active" && ["draft", "ready"].includes(emailDraft.status)) {
-      emailDraft.status = item.active ? "ready" : "draft";
-      item.emailStatus = emailDraft.status;
-    }
-    emailDraft.updatedAt = new Date().toISOString();
+  ensureAutomationEmailDrafts();
+  state.automationEmails
+    .filter((entry) => entry.automationId === item.id)
+    .forEach((emailDraft) => {
+      if (field === "recipients" && item.id !== "install_reminder") {
+        emailDraft.recipient = item.recipients || "";
+      }
+      if (field === "active" && ["draft", "ready"].includes(emailDraft.status)) {
+        emailDraft.status = item.active ? "ready" : "draft";
+        item.emailStatus = emailDraft.status;
+      }
+      emailDraft.updatedAt = new Date().toISOString();
+    });
+  if (field === "active") {
+    item.emailStatus = item.active ? "ready" : "draft";
   }
 
   saveState();
-  if (field === "active") {
+  if (field === "active" || field === "recipients") {
     renderAutomations();
   }
 }

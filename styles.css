@@ -1910,12 +1910,12 @@ button {
   border-color: #d5b60d;
 }
 
-[data-automation-subpanel] {
-  display: none;
+.automation-shell [data-automation-subpanel] {
+  display: none !important;
 }
 
-[data-automation-subpanel].is-active {
-  display: grid;
+.automation-shell [data-automation-subpanel].is-active {
+  display: grid !important;
   gap: 12px;
 }
 
