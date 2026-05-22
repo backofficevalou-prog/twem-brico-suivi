@@ -2973,23 +2973,6 @@ function renderDashboardExtra(mainTab, visibleStores) {
             `).join("")}
           </div>
         </article>
-        <article class="dashboard-card">
-          <h3>Actions en attente</h3>
-          <div class="dashboard-chip-grid">
-            ${[
-              { label: "Validation manager", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Attente retour magasin", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
-              { label: "Validation IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "A traiter par IT", filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
-              { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "A traiter par Infra", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
-              { label: "Actions TWEM", value: visibleStores.filter((store) => store.owner).length, note: "Pilotage central", filter: { key: "owner", value: state.filters.owner === "all" ? twemOptions[0] : state.filters.owner, tab: "stores" } }
-            ].map((chip) => `
-              <button type="button" class="dashboard-chip" data-kpi-filter='${escapeHtml(JSON.stringify(chip.filter))}'>
-                <span class="mini-label">${chip.label}</span>
-                <strong>${chip.value}</strong>
-                <small>${chip.note}</small>
-              </button>
-            `).join("")}
-          </div>
-        </article>
       </div>
     `;
     dashboardExtra.querySelectorAll("[data-kpi-filter]").forEach((button) => {
