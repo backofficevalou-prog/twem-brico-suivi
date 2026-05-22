@@ -636,7 +636,7 @@ const translations = {
     rolesIntro: "Ajouter un role si besoin pour les listes deroulantes.",
     addRole: "Ajouter le role",
     addPerson: "Ajouter une personne",
-    people: "Personnes",
+    people: "Nouveau contact",
     storeName: "Nom magasin affiche dans les listes",
     city: "Ville",
     code: "Code",
@@ -716,7 +716,7 @@ const translations = {
     rolesIntro: "Voeg indien nodig een rol toe voor de keuzelijsten.",
     addRole: "Rol toevoegen",
     addPerson: "Persoon toevoegen",
-    people: "Personen",
+    people: "Nieuw contact",
     storeName: "Winkelnaam in lijsten",
     city: "Stad",
     code: "Code",
@@ -5140,27 +5140,8 @@ function renderTimelineRows(stores) {
 }
 
 function renderDashboardRows(stores) {
-  setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
-  renderCompactStoreRows(stores, (store) => [
-    escapeHtml(store.code),
-    `<strong>${escapeHtml(store.name)}</strong>`,
-    escapeHtml(store.city),
-    escapeHtml(store.shopType || "-"),
-    escapeHtml(store.manager || "-"),
-    escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || "-"),
-    `<span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span>`,
-    escapeHtml(nextActionForStore(store)),
-    `<button type="button" class="mini-button" data-dashboard-open="${store.id}">Voir la fiche</button>`
-  ]);
-
-  projectTableBody.querySelectorAll("[data-dashboard-open]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const storeId = Number(button.getAttribute("data-dashboard-open"));
-      state.activeAdminTab = "stores";
-      state.expandedStoreIds = new Set([storeId]);
-      render();
-    });
-  });
+  setMainTableHeaders([]);
+  projectTableBody.innerHTML = "";
 }
 
 function renderActivitiesRows(stores) {
@@ -5695,6 +5676,7 @@ function renderStores() {
   projectTableBody.innerHTML = "";
   const projectTable = document.querySelector(".project-table");
   projectTable?.classList.remove("store-list-table");
+  projectTable?.classList.remove("dashboard-summary-only");
 
   if (!stores.length) {
     projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
@@ -5715,7 +5697,7 @@ function renderStores() {
       renderExtensionsRowsV2(stores);
       return;
     case "dashboard":
-      projectTable?.classList.add("compact-rows-table");
+      projectTable?.classList.add("dashboard-summary-only");
       renderDashboardRows(stores);
       return;
     case "configuration":
@@ -5735,38 +5717,31 @@ function renderStores() {
   }
 
 function renderActivities() {
-  activityList.innerHTML = "";
-  reportArchiveList.innerHTML = "";
-  const now = new Date();
-  const items = [...state.activities]
-    .filter((activity) => isSameLocalDay(new Date(activity.createdAt), now))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 6);
-
-  if (!items.length) {
-    activityList.innerHTML = '<div class="empty-state">Aucune remontee aujourd hui.</div>';
-  } else {
-    items.forEach((activity) => {
-      const card = document.createElement("article");
-      card.className = "activity-card";
-      card.innerHTML = `
-        <h3>${escapeHtml(activity.storeName)}</h3>
-        <p>${escapeHtml(activity.comment)}</p>
-        <div class="activity-meta">
-          <span class="${badgeClass(activity.result)}">${activity.result === "issue" ? "Probleme" : "OK"}</span>
-          <span>${escapeHtml(activity.confirmedBy)} - ${formatDateTime(activity.createdAt)}</span>
-        </div>
-      `;
-      activityList.append(card);
-    });
+  if (activityList) {
+    activityList.innerHTML = "";
   }
-
-  const groupedByStore = state.stores.map((store) => ({
-    storeName: store.name,
-    entries: state.activities
-      .filter((activity) => activity.storeName === store.name)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  })).filter((group) => group.entries.length);
+  reportArchiveList.innerHTML = "";
+  const storesByName = new Map(state.stores.map((store) => [normalizeImportCell(store.name).toLowerCase(), store]));
+  const groupsByStore = new Map();
+  state.activities.forEach((activity) => {
+    const store = storesByName.get(normalizeImportCell(activity.storeName).toLowerCase());
+    const key = store?.code || normalizeImportCell(activity.storeName).toLowerCase();
+    if (!groupsByStore.has(key)) {
+      groupsByStore.set(key, {
+        key,
+        store,
+        storeName: store?.name || activity.storeName || "Magasin",
+        entries: []
+      });
+    }
+    groupsByStore.get(key).entries.push(activity);
+  });
+  const groupedByStore = [...groupsByStore.values()]
+    .map((group) => ({
+      ...group,
+      entries: group.entries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    }))
+    .sort((a, b) => new Date(b.entries[0]?.createdAt || 0) - new Date(a.entries[0]?.createdAt || 0));
 
   if (!groupedByStore.length) {
     reportArchiveList.innerHTML = '<div class="empty-state">Aucun rapport magasin disponible pour le moment.</div>';
@@ -5775,12 +5750,14 @@ function renderActivities() {
 
   groupedByStore.forEach((group) => {
     const details = document.createElement("details");
-    details.className = "report-store";
+    const latestEntry = group.entries[0];
+    details.className = `report-store ${latestEntry?.alertQueuedAt || isSameLocalDay(new Date(latestEntry?.createdAt || 0), new Date()) ? "has-new-update" : ""}`;
     details.innerHTML = `
       <summary>
-        <span class="report-store-title">${escapeHtml(group.storeName)}</span>
+        <span class="report-store-title">${escapeHtml(group.store?.code ? `${group.store.code} - ${group.storeName}` : group.storeName)}</span>
         <span class="report-store-meta">${group.entries.length} remontee(s)</span>
-        <button type="button" class="mini-button report-export-button" data-report-export="${escapeHtml(group.storeName)}">Exporter PDF</button>
+        <span class="report-store-latest">${escapeHtml(formatDateTime(latestEntry?.createdAt || ""))}</span>
+        <button type="button" class="mini-button report-export-button" data-report-export="${escapeHtml(group.key)}">Exporter PDF</button>
       </summary>
       <div class="report-store-body">
         ${group.entries.map((entry) => `
@@ -5802,8 +5779,8 @@ function renderActivities() {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const storeName = button.getAttribute("data-report-export");
-      const group = groupedByStore.find((entry) => entry.storeName === storeName);
+      const storeKey = button.getAttribute("data-report-export");
+      const group = groupedByStore.find((entry) => entry.key === storeKey);
       if (group) {
         exportStoreReportPdf(group);
       }

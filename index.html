@@ -185,7 +185,7 @@
             <section class="admin-panel is-active" data-admin-panel="contacts">
               <div class="admin-grid contacts-grid">
                 <article class="admin-card person-admin-card">
-                  <h3 id="peopleTitle">Personnes</h3>
+                  <h3 id="peopleTitle">Nouveau contact</h3>
                   <form id="personForm" class="auth-form">
                     <div class="contacts-form-grid">
                       <label>
@@ -224,7 +224,8 @@
                     <button type="submit" id="addPersonButton">Ajouter une personne</button>
                   </form>
 
-                  <div class="role-manager role-manager-inline">
+                  <details class="role-manager role-manager-inline contact-tool-section">
+                    <summary>Intervenants chantier</summary>
                     <div class="role-manager-head">
                       <h4 id="intervenantTitle">Intervenant</h4>
                       <p id="intervenantIntro">Attribuer un statut d intervenant a une personne existante.</p>
@@ -240,9 +241,10 @@
                       <button type="submit" id="assignIntervenantButton">Attribuer</button>
                     </form>
                     <div class="simple-list compact-role-list" id="intervenantList"></div>
-                  </div>
+                  </details>
 
-                  <div class="role-manager role-manager-inline">
+                  <details class="role-manager role-manager-inline contact-tool-section">
+                    <summary>Roles avances</summary>
                     <div class="role-manager-head">
                       <h4 id="rolesTitle">Roles</h4>
                       <p id="rolesIntro">Ajouter un role si besoin pour les listes deroulantes.</p>
@@ -255,7 +257,7 @@
                       <summary id="roleStackSummary">Voir les roles</summary>
                       <div id="roleList" class="simple-list compact-role-list"></div>
                     </details>
-                  </div>
+                  </details>
                 </article>
 
                 <article class="admin-card store-admin-card">
@@ -500,10 +502,10 @@
 
             <section class="admin-panel workspace-view" data-admin-panel="reports">
               <div class="admin-grid">
-                <article class="admin-card full-span-report-card">
-                  <h3 id="recentUpdatesTitle">Remontees du jour</h3>
-                  <p id="recentUpdatesIntro">Affichage du jour uniquement. Le tableau repart a zero chaque nuit, mais les rapports magasin gardent l historique complet.</p>
-                  <div id="activityList" class="activity-list"></div>
+              <article class="admin-card full-span-report-card hidden-panel">
+                <h3 id="recentUpdatesTitle">Remontees du jour</h3>
+                <p id="recentUpdatesIntro">Affichage du jour uniquement. Le tableau repart a zero chaque nuit, mais les rapports magasin gardent l historique complet.</p>
+                <div id="activityList" class="activity-list"></div>
                 </article>
               </div>
 
