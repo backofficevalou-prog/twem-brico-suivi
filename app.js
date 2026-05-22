@@ -3774,42 +3774,50 @@ function buildPreparationHubCard(store) {
           <section class="subpanel prep-wide-panel">
             <h4>1. Preparation externe</h4>
             <div class="prep-status-grid">
-              <label>
-                <span>Couverture mobile</span>
-                <select name="mobile_coverage">
-                  ${renderOptions(["A verifier", "Telenet", "Proximus", "Tous", "Bloque"], workflow.mobileCoverage)}
-                </select>
-              </label>
-              <label>
-                <span>VLAN22</span>
-                <select name="vlan22_activated">
-                  ${renderOptions(["A prevoir", "OK", "Bloque", "Non"], workflow.vlan22Activated === "Oui" ? "OK" : workflow.vlan22Activated)}
-                </select>
-              </label>
-              <label>
-                <span>Date VLAN22</span>
-                <input type="date" name="vlan22_date" value="${escapeHtml(workflow.vlan22Date || "")}">
-              </label>
-              <label>
-                <span>Cablage</span>
-                <select name="cabling_status">
-                  ${renderOptions(["A prevoir", "OK", "Bloque", "Probleme"], workflow.cablingStatus)}
-                </select>
-              </label>
-              <label>
-                <span>Date cablage</span>
-                <input type="date" name="cabling_date" value="${escapeHtml(workflow.cablingDate || "")}">
-              </label>
-              <label>
-                <span>Switch</span>
-                <select name="lt_switch_status">
-                  ${renderOptions(["A prevoir", "OK", "Bloque", "En attente", "Basculee"], workflow.ltSwitchStatus === "Basculee" ? "OK" : workflow.ltSwitchStatus)}
-                </select>
-              </label>
-              <label>
-                <span>Date switch</span>
-                <input type="date" name="lt_switch_date" value="${escapeHtml(workflow.ltSwitchDate || workflow.transferDate || "")}">
-              </label>
+              <div class="prep-pair-card">
+                <label>
+                  <span>VLAN22</span>
+                  <select name="vlan22_activated">
+                    ${renderOptions(["A prevoir", "OK", "Bloque", "Non"], workflow.vlan22Activated === "Oui" ? "OK" : workflow.vlan22Activated)}
+                  </select>
+                </label>
+                <label>
+                  <span>Date VLAN22</span>
+                  <input type="date" name="vlan22_date" value="${escapeHtml(workflow.vlan22Date || "")}">
+                </label>
+              </div>
+              <div class="prep-pair-card">
+                <label>
+                  <span>Cablage</span>
+                  <select name="cabling_status">
+                    ${renderOptions(["A prevoir", "OK", "Bloque", "Probleme"], workflow.cablingStatus)}
+                  </select>
+                </label>
+                <label>
+                  <span>Date cablage</span>
+                  <input type="date" name="cabling_date" value="${escapeHtml(workflow.cablingDate || "")}">
+                </label>
+              </div>
+              <div class="prep-pair-card">
+                <label>
+                  <span>Switch</span>
+                  <select name="lt_switch_status">
+                    ${renderOptions(["A prevoir", "OK", "Bloque", "En attente", "Basculee"], workflow.ltSwitchStatus === "Basculee" ? "OK" : workflow.ltSwitchStatus)}
+                  </select>
+                </label>
+                <label>
+                  <span>Date switch</span>
+                  <input type="date" name="lt_switch_date" value="${escapeHtml(workflow.ltSwitchDate || workflow.transferDate || "")}">
+                </label>
+              </div>
+              <div class="prep-pair-card">
+                <label>
+                  <span>Couverture mobile</span>
+                  <select name="mobile_coverage">
+                    ${renderOptions(["A verifier", "Telenet", "Proximus", "Tous", "Bloque"], workflow.mobileCoverage)}
+                  </select>
+                </label>
+              </div>
             </div>
             <div class="remark-box">
               <label>
@@ -3829,22 +3837,6 @@ function buildPreparationHubCard(store) {
               <label>
                 <span>Reference ticket</span>
                 <input type="text" name="destiny_ticket_ref" value="${escapeHtml(workflow.destinyTicketRef)}" placeholder="Ex: DST-2026-0412">
-              </label>
-              <label>
-                <span>Numero dossier</span>
-                <input type="text" name="destiny_case_ref" value="${escapeHtml(workflow.destinyCaseRef)}">
-              </label>
-              <label>
-                <span>PM installateur</span>
-                <input type="text" name="destiny_pm_name" value="${escapeHtml(workflow.destinyPmName)}">
-              </label>
-              <label>
-                <span>Mail PM</span>
-                <input type="email" name="destiny_pm_email" value="${escapeHtml(workflow.destinyPmEmail)}">
-              </label>
-              <label>
-                <span>Diffusion</span>
-                <input type="text" name="destiny_distribution" value="${escapeHtml(workflow.destinyDistribution)}">
               </label>
               <label>
                 <span>Switch</span>
