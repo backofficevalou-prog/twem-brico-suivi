@@ -8935,7 +8935,6 @@ function buildPrintableStoreHtml(store) {
   const tickets = getFilteredTickets().filter((ticket) => ticket.storeId === store.id);
   const networkRows = getNetworkConfigRows(store);
   const gsmRows = getGsmRows(store);
-  const intervenantRows = getIntervenantRows(store);
   const planName = workflow.planPdfName || "";
   const storeLanguage = storeLanguageForPrint(store);
   const isNl = storeLanguage === "nl";
@@ -9211,6 +9210,8 @@ function buildPrintableStoreHtml(store) {
         .network-table th:nth-child(2), .network-table td:nth-child(2) { width: 22%; }
         .network-table th:nth-child(3), .network-table td:nth-child(3) { width: 32%; }
         .network-table th:nth-child(4), .network-table td:nth-child(4) { width: 22%; }
+        .install-table { table-layout: fixed; }
+        .install-table th, .install-table td { width: 25%; }
         .print-note { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff3ae; color: #5c553c; font-size: 10.5px; }
         .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .status-box-print { border: 1px solid #e0dac7; border-radius: 8px; padding: 8px; background: #fff; }
@@ -9257,23 +9258,6 @@ function buildPrintableStoreHtml(store) {
           <div><strong>Panic buttons</strong> ${quantityPlan.panicCount}</div>
         </div>
         <div class="card full">
-          <h3>${escapeHtml(labels.intervenants)}</h3>
-          ${intervenantRows.length ? `
-            <table>
-              <thead><tr><th>${escapeHtml(labels.block)}</th><th>${escapeHtml(labels.person)}</th><th>${escapeHtml(labels.noteRole)}</th></tr></thead>
-              <tbody>
-                ${intervenantRows.map((row) => `
-                  <tr>
-                    <td>${escapeHtml(printableValue(row.slotName || row.id))}</td>
-                    <td>${escapeHtml(printableValue(row.personName || row.person))}</td>
-                    <td>${escapeHtml(printableValue(row.note))}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          ` : `<div class="muted">${escapeHtml(labels.noIntervenants)}</div>`}
-        </div>
-        <div class="card full">
           <h3>${escapeHtml(labels.externalPrep)}</h3>
           <div class="status-grid">
             <div class="status-box-print"><strong>${escapeHtml(labels.mobileCoverage)}</strong>${escapeHtml(printableValue(workflow.mobileCoverage))}</div>
@@ -9286,7 +9270,7 @@ function buildPrintableStoreHtml(store) {
         </div>
         <div class="card full">
           <h3>${escapeHtml(labels.installation)}</h3>
-          <table>
+          <table class="install-table">
             <tbody>
               <tr><th>${escapeHtml(labels.installDate)}</th><td>${escapeHtml(hasInstallDate ? installDate : "")}</td><th>${escapeHtml(labels.destinyTicket)}</th><td>${escapeHtml(printableValue(workflow.destinyTicketRef))}</td></tr>
               <tr><th>${escapeHtml(labels.switch)}</th><td>${escapeHtml(printableValue(workflow.installSwitchDate))}</td><th>${escapeHtml(labels.cable)}</th><td>${escapeHtml(printableValue(workflow.installCableDate))}</td></tr>
@@ -9318,13 +9302,12 @@ function buildPrintableStoreHtml(store) {
                   <tr>
                     <td>${escapeHtml(row.category)}</td>
                     <td>${escapeHtml(printableValue(row.slotLabel))}</td>
-                    <td class="write-cell"></td>
+                    <td>${escapeHtml(printableValue(row.extensionLabel))}</td>
                     <td>${escapeHtml(row.note || "")}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
-            <div class="print-note">${escapeHtml(labels.writeNote)}</div>
           ` : `<div class="muted">${escapeHtml(labels.noNetwork)}</div>`}
         </div>
         <div class="card full">
