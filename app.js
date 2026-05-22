@@ -1071,6 +1071,7 @@ const userViewField = document.querySelector("#userViewField");
 const importButton = document.querySelector("#importButton");
 const importInput = document.querySelector("#importInput");
 const reportButton = document.querySelector("#reportButton");
+const printCurrentListButton = document.querySelector("#printCurrentListButton");
 const tabImportButton = document.querySelector("#tabImportButton");
 const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
 const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButton");
@@ -2788,6 +2789,30 @@ function hasPlannedIntervention(store) {
 
 function hasActiveSav(store) {
   return ticketsForStore(store.id).some((ticket) => ticket.status !== "closed");
+}
+
+function isPlannedInterventionListView() {
+  return state.filters.search === "intervention prevue";
+}
+
+function interventionDateLabel(store) {
+  const appointments = sortedAppointments(store).filter((appointment) => normalizeDateOnly(appointment.datetime));
+  if (appointments[0]?.datetime) {
+    return formatDateTime(appointments[0].datetime);
+  }
+  const workflow = ensureStoreWorkflowData(store);
+  return workflow.destinyInstallDate || "";
+}
+
+function missingValidationLabels(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const missing = [];
+  if (!workflow.networkConfigConfirmed) missing.push("Config magasin");
+  if (workflow.vlan22Activated !== "Oui") missing.push("IT / VLAN22");
+  if (workflow.charlesRouxStatus !== "OK") missing.push("Infra");
+  if (workflow.networkSurveyStatus !== "OK") missing.push("Pre-visite");
+  if (workflow.destinyInstallDone !== "Oui") missing.push("Installation Destiny");
+  return missing;
 }
 
 function getFilteredStores() {
@@ -4718,6 +4743,7 @@ function renderStoreCards(stores, mode = "stores") {
 
 function renderStoreOverviewRows(stores, mode = "stores") {
   projectTableBody.innerHTML = "";
+  const plannedInterventionView = isPlannedInterventionListView();
   stores.forEach((store) => {
     const isExpanded = state.expandedStoreIds.has(store.id);
     const row = document.createElement("tr");
@@ -4750,9 +4776,9 @@ function renderStoreOverviewRows(stores, mode = "stores") {
           <strong>${escapeHtml(store.manager || "-")}</strong>
           <div class="cell-note">${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</div>
         </td>
-        <td>&nbsp;</td>
+        <td>${plannedInterventionView ? escapeHtml(interventionDateLabel(store) || "-") : "&nbsp;"}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
-        <td>${escapeHtml(nextActionForStore(store))}</td>
+        <td>${plannedInterventionView ? escapeHtml(missingValidationLabels(store).join(", ") || "OK") : escapeHtml(nextActionForStore(store))}</td>
         <td>
           <div class="store-row-actions">
             <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>
@@ -5509,7 +5535,9 @@ function renderStores() {
       case "stores":
       default:
         projectTable?.classList.add("compact-rows-table");
-        setMainTableHeaders(["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
+        setMainTableHeaders(isPlannedInterventionListView()
+          ? ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "Intervention", "Statut", "Validations manquantes", "Actions"]
+          : ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
         renderStoreOverviewRows(stores, "stores");
     }
   }
@@ -8655,6 +8683,78 @@ function buildReportHtml() {
   `;
 }
 
+function buildPrintableCurrentListHtml() {
+  const stores = getFilteredStores()
+    .slice()
+    .sort((left, right) => {
+      const leftDate = normalizeDateOnly(interventionDateLabel(left)) || new Date(8640000000000000);
+      const rightDate = normalizeDateOnly(interventionDateLabel(right)) || new Date(8640000000000000);
+      return leftDate - rightDate || normalizeImportCell(left.code).localeCompare(normalizeImportCell(right.code), "fr", { numeric: true });
+    });
+  const generatedAt = new Intl.DateTimeFormat("fr-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date());
+  const title = isPlannedInterventionListView() ? "Liste interventions prevues" : "Liste magasins affichee";
+
+  return `
+    <!doctype html>
+    <html lang="fr">
+    <head>
+      <meta charset="UTF-8">
+      <title>${escapeHtml(title)}</title>
+      <style>
+        @page { size: A4 portrait; margin: 12mm; }
+        body { font-family: Arial, sans-serif; color: #242114; font-size: 10.5px; line-height: 1.3; }
+        h1 { margin: 0; font-size: 22px; }
+        .meta { margin: 4px 0 14px; color: #6f684d; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ded7c4; padding: 6px 7px; text-align: left; vertical-align: top; }
+        th { background: #fff3ae; color: #3b3420; font-size: 10px; text-transform: uppercase; }
+        tbody tr:nth-child(even) td { background: #fffdf6; }
+        .code { font-weight: 800; white-space: nowrap; }
+        .missing { color: #8d2f28; font-weight: 700; }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(title)}</h1>
+      <div class="meta">${escapeHtml(generatedAt)} - ${stores.length} magasin(s)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date intervention</th>
+            <th>N magasin</th>
+            <th>Nom du magasin</th>
+            <th>Responsable</th>
+            <th>Telephone</th>
+            <th>Validations manquantes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stores.map((store) => {
+            const phone = state.people.find((person) => person.name === store.manager)?.phone || store.phone || "";
+            const missing = missingValidationLabels(store);
+            return `
+              <tr>
+                <td>${escapeHtml(interventionDateLabel(store) || "-")}</td>
+                <td class="code">${escapeHtml(store.code)}</td>
+                <td>${escapeHtml(store.name)}</td>
+                <td>${escapeHtml(store.manager || "-")}</td>
+                <td>${escapeHtml(phone || "-")}</td>
+                <td class="missing">${escapeHtml(missing.join(", ") || "OK")}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
 function buildStoreReportHtml(group) {
   const generatedAt = new Intl.DateTimeFormat("fr-BE", {
     dateStyle: "short",
@@ -9257,6 +9357,20 @@ function handleReportButtonClick() {
   reportWindow.document.close();
   reportWindow.focus();
   reportWindow.print();
+}
+
+function handlePrintCurrentListClick() {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    window.alert(t("reportWindowError"));
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(buildPrintableCurrentListHtml());
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
 }
 
 async function handleRemoveAppointment(event) {
@@ -10278,6 +10392,7 @@ projectTableBody.addEventListener("click", handleNetworkConfirm);
 importButton.addEventListener("click", handleImportButtonClick);
 importInput.addEventListener("change", handleImportInputChange);
 reportButton.addEventListener("click", handleReportButtonClick);
+printCurrentListButton?.addEventListener("click", handlePrintCurrentListClick);
 tabImportButton?.addEventListener("click", handleImportButtonClick);
 tabImportStoresButton?.addEventListener("click", () => triggerImport("stores"));
 tabImportTelephonyButton?.addEventListener("click", () => triggerImport("telephony"));

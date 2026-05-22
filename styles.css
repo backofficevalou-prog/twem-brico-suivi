@@ -338,6 +338,12 @@ button {
   color: var(--muted);
 }
 
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .small-gap {
   margin-top: 22px;
 }
