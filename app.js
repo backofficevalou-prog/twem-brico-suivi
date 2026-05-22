@@ -9216,6 +9216,10 @@ function buildPrintableStoreHtml(store) {
         .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .status-box-print { border: 1px solid #e0dac7; border-radius: 8px; padding: 8px; background: #fff; }
         .status-box-print strong { display: block; color: #7a3a2f; margin-bottom: 4px; }
+        .print-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+        .print-info-item { border: 1px solid #e0dac7; border-radius: 8px; padding: 8px; background: #fff; }
+        .print-info-item strong { display: block; color: #7a3a2f; margin-bottom: 4px; }
+        .print-info-item.full { grid-column: 1 / -1; }
         .remark-list { margin: 6px 0 0; padding-left: 16px; }
         .remark-list li { margin-bottom: 6px; }
       </style>
@@ -9334,14 +9338,14 @@ function buildPrintableStoreHtml(store) {
         </div>
         <div class="card full">
           <h3>${escapeHtml(labels.alarmGroups)}</h3>
-          <table>
-            <tbody>
-              <tr><th>${escapeHtml(labels.alarmType)}</th><td>${escapeHtml(printableValue(workflow.alarmType))}</td><th>${escapeHtml(labels.alarmCompany)}</th><td>${escapeHtml(printableValue(workflow.alarmCompany))}</td></tr>
-              <tr><th>${escapeHtml(labels.alarmCentralPhone)}</th><td>${escapeHtml(printableValue(workflow.alarmCentralPhone))}</td><th>${escapeHtml(labels.other)}</th><td>${escapeHtml(printableValue(workflow.alarmOther))}</td></tr>
-              <tr><th>${escapeHtml(labels.callGroups)}</th><td colspan="3">${escapeHtml(printableValue(workflow.callGroupsNote))}</td></tr>
-              <tr><th>${escapeHtml(labels.cascades)}</th><td colspan="3">${escapeHtml(printableValue(workflow.cascadeNote))}</td></tr>
-            </tbody>
-          </table>
+          <div class="print-info-grid">
+            <div class="print-info-item"><strong>${escapeHtml(labels.alarmType)}</strong>${escapeHtml(printableValue(workflow.alarmType))}</div>
+            <div class="print-info-item"><strong>${escapeHtml(labels.alarmCompany)}</strong>${escapeHtml(printableValue(workflow.alarmCompany))}</div>
+            <div class="print-info-item"><strong>${escapeHtml(labels.alarmCentralPhone)}</strong>${escapeHtml(printableValue(workflow.alarmCentralPhone))}</div>
+            <div class="print-info-item"><strong>${escapeHtml(labels.other)}</strong>${escapeHtml(printableValue(workflow.alarmOther))}</div>
+            <div class="print-info-item full"><strong>${escapeHtml(labels.callGroups)}</strong>${escapeHtml(printableValue(workflow.callGroupsNote))}</div>
+            <div class="print-info-item full"><strong>${escapeHtml(labels.cascades)}</strong>${escapeHtml(printableValue(workflow.cascadeNote))}</div>
+          </div>
         </div>
         <div class="card full">
           <h3>${escapeHtml(labels.appointments)}</h3>
