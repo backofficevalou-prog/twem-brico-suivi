@@ -1153,11 +1153,32 @@ const pinExpiryInput = document.querySelector("#pinExpiryInput");
 const pinStatusSelect = document.querySelector("#pinStatusSelect");
 const pinAccessList = document.querySelector("#pinAccessList");
 const storeForm = document.querySelector("#storeForm");
+const storeEditSelect = document.querySelector("#storeEditSelect");
 const storeNameInput = document.querySelector("#storeNameInput");
 const storeCityInput = document.querySelector("#storeCityInput");
 const storeCodeInput = document.querySelector("#storeCodeInput");
+const storeShopNumberInput = document.querySelector("#storeShopNumberInput");
+const storeAddressInput = document.querySelector("#storeAddressInput");
+const storeShopTypeSelect = document.querySelector("#storeShopTypeSelect");
+const storeShopSizeInput = document.querySelector("#storeShopSizeInput");
 const storeOwnerSelect = document.querySelector("#storeOwnerSelect");
 const storeManagerInput = document.querySelector("#storeManagerInput");
+const storePoLicencesInput = document.querySelector("#storePoLicencesInput");
+const storePoHpDeskInput = document.querySelector("#storePoHpDeskInput");
+const storePoPmInput = document.querySelector("#storePoPmInput");
+const storePoRentingHwInput = document.querySelector("#storePoRentingHwInput");
+const storeLicenseCountInput = document.querySelector("#storeLicenseCountInput");
+const storeFixCountInput = document.querySelector("#storeFixCountInput");
+const storeMobileCountInput = document.querySelector("#storeMobileCountInput");
+const storeCallButtonCountInput = document.querySelector("#storeCallButtonCountInput");
+const storePanicCountInput = document.querySelector("#storePanicCountInput");
+const storeStatusSelect = document.querySelector("#storeStatusSelect");
+const storeHealthInput = document.querySelector("#storeHealthInput");
+const storeCurrentPlatformInput = document.querySelector("#storeCurrentPlatformInput");
+const storeTargetPlatformInput = document.querySelector("#storeTargetPlatformInput");
+const storeCurrentPhoneDateInput = document.querySelector("#storeCurrentPhoneDateInput");
+const storeCurrentContractClientInput = document.querySelector("#storeCurrentContractClientInput");
+const storeNewButton = document.querySelector("#storeNewButton");
 const languageSelect = document.querySelector("#languageSelect");
 const adminTabs = document.querySelector("#adminTabs");
 const toolForm = document.querySelector("#toolForm");
@@ -3159,6 +3180,19 @@ function syncSelectors() {
   storeOwnerSelect.innerHTML = provenanceOptions
     .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
     .join("");
+  if (storeEditSelect) {
+    const selectedStoreId = storeEditSelect.value;
+    storeEditSelect.innerHTML = [
+      '<option value="">Nouveau magasin</option>',
+      ...state.stores
+        .slice()
+        .sort((a, b) => String(a.code || "").localeCompare(String(b.code || ""), "fr", { numeric: true }))
+        .map((store) => `<option value="${escapeHtml(String(store.id))}">${escapeHtml(`${store.code} - ${store.name}`)}</option>`)
+    ].join("");
+    if ([...storeEditSelect.options].some((option) => option.value === selectedStoreId)) {
+      storeEditSelect.value = selectedStoreId;
+    }
+  }
 
   personRoleSelect.innerHTML = renderRoleOptions(personRoleSelect.value || "manager");
   personLanguageSelect.value = personLanguageSelect.value || "fr";
@@ -11013,36 +11047,121 @@ async function handleStoreSubmit(event) {
   const code = storeCodeInput.value.trim().toUpperCase();
   const owner = storeOwnerSelect.value;
   const manager = storeManagerInput.value.trim();
+  const editId = Number(storeEditSelect?.value || 0);
 
   if (!name || !city || !code || !owner) {
     return;
   }
 
-  state.stores.push({
+  const targetStore = editId
+    ? state.stores.find((store) => store.id === editId)
+    : null;
+  const store = targetStore || {
     id: Date.now(),
-    code,
-    name,
-    city,
-    owner,
-    manager,
-    status: "planned",
-    health: "",
-    updatedAt: new Date().toISOString(),
     steps: [
       { actorType: "store_manager", label: "Magasin", status: "planned", note: "" },
       { actorType: "installer", label: "Telephonie", status: "planned", note: "" },
       { actorType: "electrician", label: "Electricien", status: "planned", note: "" }
     ],
     appointments: []
+  };
+  const workflow = ensureStoreWorkflowData(store);
+
+  Object.assign(store, {
+    code,
+    shopNumber: storeShopNumberInput?.value.trim() || code.replace(/^BRI-/i, ""),
+    name,
+    city,
+    address: storeAddressInput?.value.trim() || "",
+    shopType: normalizeShopTypeValue(storeShopTypeSelect?.value || ""),
+    shopSize: storeShopSizeInput?.value.trim() || "",
+    poLicences: storePoLicencesInput?.value.trim() || "",
+    poHpDesk: storePoHpDeskInput?.value.trim() || "",
+    poPm: storePoPmInput?.value.trim() || "",
+    poRentingHw: storePoRentingHwInput?.value.trim() || "",
+    owner,
+    manager,
+    status: storeStatusSelect?.value || "planned",
+    health: storeHealthInput?.value.trim() || "",
+    licenseCount: Number(storeLicenseCountInput?.value || 0),
+    fixCount: Number(storeFixCountInput?.value || 0),
+    mobileCount: Number(storeMobileCountInput?.value || 0),
+    callButtonCount: Number(storeCallButtonCountInput?.value || 0),
+    panicCount: Number(storePanicCountInput?.value || 0),
+    updatedAt: new Date().toISOString()
   });
+  workflow.currentPlatform = storeCurrentPlatformInput?.value.trim() || "Destiny";
+  workflow.targetPlatform = storeTargetPlatformInput?.value.trim() || "TELEPO";
+  workflow.currentPhoneDate = storeCurrentPhoneDateInput?.value || "";
+  workflow.currentContractClientNumber = storeCurrentContractClientInput?.value.trim() || "";
+
+  if (!targetStore) {
+    state.stores.push(store);
+  }
 
   if (hasRemoteData()) {
-    await syncStoreToRemote(state.stores.at(-1));
+    await syncStoreToRemote(store, targetStore ? `Mise a jour magasin depuis Contacts - ${code}` : `Creation magasin depuis Contacts - ${code}`);
     await loadRemoteState();
   }
-  storeForm.reset();
+  resetStoreContactForm();
   saveState();
   render();
+}
+
+function resetStoreContactForm() {
+  storeForm.reset();
+  if (storeEditSelect) storeEditSelect.value = "";
+  if (storeCodeInput) storeCodeInput.readOnly = false;
+  if (storeOwnerSelect) storeOwnerSelect.value = provenanceOptions[0] || "DOS";
+  if (storeShopTypeSelect) storeShopTypeSelect.value = "";
+  if (storeStatusSelect) storeStatusSelect.value = "planned";
+  if (storeCurrentPlatformInput) storeCurrentPlatformInput.value = "Destiny";
+  if (storeTargetPlatformInput) storeTargetPlatformInput.value = "TELEPO";
+  if (document.querySelector("#addStoreButton")) {
+    document.querySelector("#addStoreButton").textContent = "Ajouter un magasin";
+  }
+}
+
+function fillStoreContactForm(store) {
+  if (!store) {
+    resetStoreContactForm();
+    return;
+  }
+  const workflow = ensureStoreWorkflowData(store);
+  storeNameInput.value = store.name || "";
+  storeCodeInput.value = store.code || "";
+  storeCodeInput.readOnly = true;
+  if (storeShopNumberInput) storeShopNumberInput.value = store.shopNumber || String(store.code || "").replace(/^BRI-/i, "");
+  storeCityInput.value = store.city || "";
+  if (storeAddressInput) storeAddressInput.value = store.address || "";
+  if (storeShopTypeSelect) storeShopTypeSelect.value = normalizeShopTypeValue(store.shopType || "");
+  if (storeShopSizeInput) storeShopSizeInput.value = store.shopSize || "";
+  storeOwnerSelect.value = store.owner || provenanceOptions[0] || "DOS";
+  storeManagerInput.value = store.manager || "";
+  if (storePoLicencesInput) storePoLicencesInput.value = store.poLicences || "";
+  if (storePoHpDeskInput) storePoHpDeskInput.value = store.poHpDesk || "";
+  if (storePoPmInput) storePoPmInput.value = store.poPm || "";
+  if (storePoRentingHwInput) storePoRentingHwInput.value = store.poRentingHw || "";
+  if (storeLicenseCountInput) storeLicenseCountInput.value = store.licenseCount || "";
+  if (storeFixCountInput) storeFixCountInput.value = store.fixCount || "";
+  if (storeMobileCountInput) storeMobileCountInput.value = store.mobileCount || "";
+  if (storeCallButtonCountInput) storeCallButtonCountInput.value = store.callButtonCount || "";
+  if (storePanicCountInput) storePanicCountInput.value = store.panicCount || "";
+  if (storeStatusSelect) storeStatusSelect.value = store.status || "planned";
+  if (storeHealthInput) storeHealthInput.value = store.health || "";
+  if (storeCurrentPlatformInput) storeCurrentPlatformInput.value = workflow.currentPlatform || "Destiny";
+  if (storeTargetPlatformInput) storeTargetPlatformInput.value = workflow.targetPlatform || "TELEPO";
+  if (storeCurrentPhoneDateInput) storeCurrentPhoneDateInput.value = workflow.currentPhoneDate || "";
+  if (storeCurrentContractClientInput) storeCurrentContractClientInput.value = workflow.currentContractClientNumber || "";
+  if (document.querySelector("#addStoreButton")) {
+    document.querySelector("#addStoreButton").textContent = "Enregistrer le magasin";
+  }
+}
+
+function handleStoreEditSelectChange() {
+  const storeId = Number(storeEditSelect?.value || 0);
+  const store = state.stores.find((entry) => entry.id === storeId);
+  fillStoreContactForm(store);
 }
 
 async function handleToolSubmit(event) {
@@ -11150,6 +11269,8 @@ pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
 personForm.addEventListener("submit", handlePersonSubmit);
 intervenantForm?.addEventListener("submit", handleIntervenantSubmit);
 storeForm.addEventListener("submit", handleStoreSubmit);
+storeEditSelect?.addEventListener("change", handleStoreEditSelectChange);
+storeNewButton?.addEventListener("click", resetStoreContactForm);
 adminTabs.addEventListener("click", handleAdminTabClick);
 peopleSearchInput.addEventListener("input", (event) => {
   state.contactSearch = event.target.value.trim().toLowerCase();

@@ -259,19 +259,46 @@
                 </article>
 
                 <article class="admin-card store-admin-card">
-                  <h3 id="storeTitle">Magasins</h3>
+                  <h3 id="storeTitle">Ajouter / modifier un magasin</h3>
                   <form id="storeForm" class="auth-form">
+                    <label>
+                      <span>Magasin existant</span>
+                      <select id="storeEditSelect">
+                        <option value="">Nouveau magasin</option>
+                      </select>
+                    </label>
                     <label>
                       <span id="storeNameLabel">Nom magasin</span>
                       <input type="text" id="storeNameInput" placeholder="Ex: Brico Charleroi">
                     </label>
                     <label>
+                      <span id="storeCodeLabel">Code</span>
+                      <input type="text" id="storeCodeInput" placeholder="Ex: BRI-005">
+                    </label>
+                    <label>
+                      <span>Numero magasin</span>
+                      <input type="text" id="storeShopNumberInput" placeholder="Ex: 3305">
+                    </label>
+                    <label>
                       <span id="storeCityLabel">Ville</span>
                       <input type="text" id="storeCityInput" placeholder="Ex: Charleroi">
                     </label>
+                    <label class="full-row">
+                      <span>Adresse</span>
+                      <input type="text" id="storeAddressInput" placeholder="Rue, code postal, ville">
+                    </label>
                     <label>
-                      <span id="storeCodeLabel">Code</span>
-                      <input type="text" id="storeCodeInput" placeholder="Ex: BRI-005">
+                      <span>Type magasin</span>
+                      <select id="storeShopTypeSelect">
+                        <option value="">A definir</option>
+                        <option value="DOS">DOS</option>
+                        <option value="FOS">FOS</option>
+                        <option value="FOSDOS">FOSDOS</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Taille magasin</span>
+                      <input type="text" id="storeShopSizeInput" placeholder="MSB / LSB / ...">
                     </label>
                     <label>
                       <span id="storeOwnerLabel">Provenance</span>
@@ -281,7 +308,75 @@
                       <span id="storeManagerLabel">Contact magasin</span>
                       <input type="text" id="storeManagerInput" placeholder="Ex: Mme Leroy">
                     </label>
-                    <button type="submit" id="addStoreButton">Ajouter un magasin</button>
+                    <label>
+                      <span>PO licences</span>
+                      <input type="text" id="storePoLicencesInput">
+                    </label>
+                    <label>
+                      <span>PO HP Desk</span>
+                      <input type="text" id="storePoHpDeskInput">
+                    </label>
+                    <label>
+                      <span>PO PM</span>
+                      <input type="text" id="storePoPmInput">
+                    </label>
+                    <label>
+                      <span>PO renting HW</span>
+                      <input type="text" id="storePoRentingHwInput">
+                    </label>
+                    <label>
+                      <span>Licences</span>
+                      <input type="number" min="0" id="storeLicenseCountInput">
+                    </label>
+                    <label>
+                      <span>Postes fixes</span>
+                      <input type="number" min="0" id="storeFixCountInput">
+                    </label>
+                    <label>
+                      <span>Mobiles</span>
+                      <input type="number" min="0" id="storeMobileCountInput">
+                    </label>
+                    <label>
+                      <span>Boutons d'appel</span>
+                      <input type="number" min="0" id="storeCallButtonCountInput">
+                    </label>
+                    <label>
+                      <span>Panic buttons</span>
+                      <input type="number" min="0" id="storePanicCountInput">
+                    </label>
+                    <label>
+                      <span>Statut</span>
+                      <select id="storeStatusSelect">
+                        <option value="planned">A commencer</option>
+                        <option value="in_progress">En cours</option>
+                        <option value="blocked">Bloque</option>
+                        <option value="done">Termine</option>
+                      </select>
+                    </label>
+                    <label class="full-row">
+                      <span>Point a traiter</span>
+                      <input type="text" id="storeHealthInput" placeholder="Blocage, remarque, action attendue">
+                    </label>
+                    <label>
+                      <span>Plateforme actuelle</span>
+                      <input type="text" id="storeCurrentPlatformInput" placeholder="Destiny">
+                    </label>
+                    <label>
+                      <span>Plateforme cible</span>
+                      <input type="text" id="storeTargetPlatformInput" placeholder="TELEPO">
+                    </label>
+                    <label>
+                      <span>Date telephonie actuelle</span>
+                      <input type="date" id="storeCurrentPhoneDateInput">
+                    </label>
+                    <label>
+                      <span>N client contrat actuel</span>
+                      <input type="text" id="storeCurrentContractClientInput" placeholder="Proximus ...">
+                    </label>
+                    <div class="form-actions full-row">
+                      <button type="submit" id="addStoreButton">Ajouter un magasin</button>
+                      <button type="button" id="storeNewButton" class="secondary-button">Nouveau</button>
+                    </div>
                   </form>
                 </article>
 
