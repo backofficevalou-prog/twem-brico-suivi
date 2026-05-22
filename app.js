@@ -2814,6 +2814,39 @@ function missingValidationLabels(store) {
   return missing;
 }
 
+function configControlStatus(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const networkRows = getNetworkConfigRows(store);
+  const networkConfigOk = Boolean(workflow.networkConfigConfirmed)
+    || (networkRows.length > 0 && networkRows.every((row) => normalizeImportCell(row.extensionLabel)));
+  return {
+    vlanOk: workflow.vlan22Activated === "Oui" || Boolean(workflow.vlan22Date),
+    networkConfigOk,
+    previsitOk: workflow.networkSurveyStatus === "OK" || workflow.networkSurveyStatus === "Termine",
+    cablingOk: workflow.cablingStatus === "OK",
+    switchOk: workflow.ltSwitchStatus === "Basculee"
+  };
+}
+
+function configStatusCards(visibleStores, total) {
+  const countOk = (key) => visibleStores.filter((store) => configControlStatus(store)[key]).length;
+  const cardPair = (label, key, okNote = "OK", koNote = "A traiter") => {
+    const okCount = countOk(key);
+    const koCount = visibleStores.length - okCount;
+    return [
+      { label: `${label} OK`, value: okCount, note: okNote, portion: Math.round((okCount / total) * 100), filter: null },
+      { label: `${label} pas OK`, value: koCount, note: koNote, portion: Math.round((koCount / total) * 100), filter: null }
+    ];
+  };
+  return [
+    ...cardPair("VLAN22", "vlanOk", "VLAN valide", "VLAN a valider"),
+    ...cardPair("Config reseau", "networkConfigOk", "Configuration complete", "Configuration incomplete"),
+    ...cardPair("Previsite", "previsitOk", "Previsite OK", "Previsite a suivre"),
+    ...cardPair("Cablage", "cablingOk", "Cablage OK", "Cablage a suivre"),
+    ...cardPair("Switch", "switchOk", "Switch effectue", "Switch a faire")
+  ];
+}
+
 function getFilteredStores() {
   return getRoleScopedStores().filter((store) => {
     const appointments = sortedAppointments(store);
@@ -2896,7 +2929,8 @@ function renderSummary() {
       { label: t("summaryDone"), value: doneCount, note: t("summaryDoneNote"), portion: Math.round((doneCount / total) * 100) },
       { label: t("summaryBlocked"), value: blockedCount, note: t("summaryBlockedNote"), portion: Math.round((blockedCount / total) * 100) },
       { label: t("summaryNoAppointment"), value: noRdvCount, note: t("summaryNoAppointmentNote"), portion: Math.round((noRdvCount / total) * 100) }
-    ]
+    ],
+    configuration: configStatusCards(visibleStores, total)
   };
   const cards = cardsByTab[mainTab] || cardsByTab.dashboard;
 
