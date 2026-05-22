@@ -1426,6 +1426,10 @@ function storeProvenance(store) {
 
 function storeLanguageForPrint(store) {
   const storeLanguage = normalizeImportCell(store?.language);
+  const inferredLanguage = inferStoreLanguage(store);
+  if (inferredLanguage === "nl") {
+    return "nl";
+  }
   if (storeLanguage) {
     return normalizeLanguageCode(storeLanguage);
   }
@@ -1434,6 +1438,20 @@ function storeLanguageForPrint(store) {
     || (store?.manager && person.name === store.manager)
   );
   return normalizeLanguageCode(linkedPerson?.language || "fr");
+}
+
+function inferStoreLanguage(store) {
+  const haystack = normalizeImportCell([store?.name, store?.city, store?.address].filter(Boolean).join(" ")).toLowerCase();
+  if (!haystack) {
+    return "";
+  }
+  const nlSignals = [
+    "aalst", "aarschot", "antwerpen", "brugge", "deurne", "dilbeek", "genk", "gent",
+    "hasselt", "kapellen", "kortrijk", "leuven", "lier", "lokeren", "mechelen",
+    "mortsel", "ninove", "oostende", "roeselare", "sint", "turnhout", "vilvoorde",
+    "waregem", "wetteren", "wilrijk", "zaventem"
+  ];
+  return nlSignals.some((signal) => haystack.includes(signal)) ? "nl" : "";
 }
 
 function managerPersonForStore(store) {
@@ -5727,11 +5745,15 @@ function fillMailTemplate(template, values = {}) {
   });
 }
 
+function hasMailTemplateVariables(template) {
+  return /\[(responsable|date intervention|magasin|code magasin)\]/i.test(String(template || ""));
+}
+
 function buildInstallReminderEmail(store, automation = {}) {
   const workflow = ensureStoreWorkflowData(store);
   const managerPerson = managerPersonForStore(store);
   const language = storeLanguageForPrint(store);
-  const managerName = managerPerson?.name || store.manager || (language === "nl" ? "verantwoordelijke" : "responsable");
+  const managerName = managerPerson?.name || store.manager || store.name || (language === "nl" ? "verantwoordelijke" : "responsable");
   const installDate = emailDateLabel(workflow.destinyInstallDate, language) || workflow.destinyInstallDate || "";
   const subject = language === "nl"
     ? `Herinnering installatie - ${store.name || store.code || "winkel"}`
@@ -5774,7 +5796,9 @@ function buildInstallReminderEmail(store, automation = {}) {
 
   return {
     subject: fillMailTemplate(automation.emailSubject || subject, values),
-    body: automation.emailBodyManual && automation.emailBody ? fillMailTemplate(automation.emailBody, values) : body,
+    body: automation.emailBodyManual && automation.emailBody && hasMailTemplateVariables(automation.emailBody)
+      ? fillMailTemplate(automation.emailBody, values)
+      : body,
     recipient: managerPerson?.email || "",
     language
   };
@@ -5958,8 +5982,9 @@ function ensureAutomationEmailDrafts() {
               ...current,
               automationTitle: baseDraft.automationTitle,
               recipient: current.recipient || baseDraft.recipient,
-              subject: automation.emailSubject || baseDraft.subject,
-              body: current.bodyManual ? current.body : baseDraft.body,
+              subject: baseDraft.subject,
+              body: baseDraft.body,
+              bodyManual: false,
               status: current.status || baseDraft.status
             }
           : baseDraft);
@@ -8252,6 +8277,9 @@ function preserveCoreTwemPeople() {
 
 function languageFromStoreSheet(value) {
   const normalized = normalizeImportCell(value).toLowerCase();
+  if (!normalized) {
+    return "";
+  }
   if (normalized === "n" || normalized === "nl" || normalized === "nl/f") {
     return "nl";
   }
