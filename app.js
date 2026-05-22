@@ -1426,10 +1426,6 @@ function storeProvenance(store) {
 
 function storeLanguageForPrint(store) {
   const storeLanguage = normalizeImportCell(store?.language);
-  const inferredLanguage = inferStoreLanguage(store);
-  if (inferredLanguage === "nl") {
-    return "nl";
-  }
   if (storeLanguage) {
     return normalizeLanguageCode(storeLanguage);
   }
@@ -1437,7 +1433,11 @@ function storeLanguageForPrint(store) {
     (store?.code && person.storeCode === store.code)
     || (store?.manager && person.name === store.manager)
   );
-  return normalizeLanguageCode(linkedPerson?.language || "fr");
+  const personLanguage = normalizeImportCell(linkedPerson?.language);
+  if (personLanguage) {
+    return normalizeLanguageCode(personLanguage);
+  }
+  return inferStoreLanguage(store) || "fr";
 }
 
 function inferStoreLanguage(store) {
