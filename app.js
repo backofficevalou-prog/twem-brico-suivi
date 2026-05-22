@@ -5753,19 +5753,22 @@ function emailDateLabel(value, language = "fr") {
 }
 
 function fillMailTemplate(template, values = {}) {
-  return String(template || "").replace(/\[(responsable|date intervention|date pre-visite|date prévisite|magasin|code magasin)\]/gi, (match, key) => {
+  return String(template || "").replace(/\[(responsable|contact|date intervention|date pre-visite|date prévisite|magasin|code magasin|lien app|pin)\]/gi, (match, key) => {
     const normalized = normalizeImportCell(key).toLowerCase();
     if (normalized === "responsable") return values.managerName || "";
+    if (normalized === "contact") return values.contactName || "";
     if (normalized === "date intervention") return values.installDate || "";
     if (normalized === "date pre-visite" || normalized === "date prévisite") return values.previsitDate || "";
     if (normalized === "magasin") return values.storeName || "";
     if (normalized === "code magasin") return values.storeCode || "";
+    if (normalized === "lien app") return values.appLink || "";
+    if (normalized === "pin") return values.pin || "";
     return match;
   });
 }
 
 function hasMailTemplateVariables(template) {
-  return /\[(responsable|date intervention|date pre-visite|date prévisite|magasin|code magasin)\]/i.test(String(template || ""));
+  return /\[(responsable|contact|date intervention|date pre-visite|date prévisite|magasin|code magasin|lien app|pin)\]/i.test(String(template || ""));
 }
 
 function buildInstallReminderEmail(store, automation = {}) {
@@ -5906,6 +5909,59 @@ function buildPrevisitReminderEmail(store, automation = {}) {
   };
 }
 
+function appAccessLink() {
+  return window.location.href.split("?")[0];
+}
+
+function buildNewPersonWelcomeEmail(person, automation = {}) {
+  const language = normalizeLanguageCode(person?.language || "fr");
+  const contactName = person?.name || (language === "nl" ? "gebruiker" : "utilisateur");
+  const appLink = appAccessLink();
+  const pin = normalizePin(person?.pin) || "------";
+  const subject = language === "nl"
+    ? "Toegang TWEM Brico-app + PIN-code"
+    : "Acces application TWEM Brico + code PIN";
+  const body = language === "nl"
+    ? [
+        `Hallo ${contactName},`,
+        "",
+        "Uw toegang tot de TWEM Brico opvolgingsapplicatie is aangemaakt.",
+        "",
+        `Link naar de applicatie: ${appLink}`,
+        `Uw persoonlijke PIN-code: ${pin}`,
+        "",
+        "Met deze toegang kunt u de informatie opvolgen die voor uw winkel beschikbaar is.",
+        "",
+        "Met vriendelijke groeten,"
+      ].join("\n")
+    : [
+        `Bonjour ${contactName},`,
+        "",
+        "Votre acces a l'application de suivi TWEM Brico a ete cree.",
+        "",
+        `Lien vers l'application: ${appLink}`,
+        `Votre code PIN personnel: ${pin}`,
+        "",
+        "Cet acces vous permet de consulter les informations disponibles pour votre magasin.",
+        "",
+        "Bien a vous,"
+      ].join("\n");
+  const values = {
+    contactName,
+    appLink,
+    pin
+  };
+
+  return {
+    subject: fillMailTemplate(automation.emailSubject || subject, values),
+    body: automation.emailBodyManual && automation.emailBody && hasMailTemplateVariables(automation.emailBody)
+      ? fillMailTemplate(automation.emailBody, values)
+      : body,
+    recipient: person?.email || "",
+    language
+  };
+}
+
 function automationEmailTemplate(automation, context = {}) {
   if (automation.id === "daily_operations_digest") {
     return {
@@ -5919,6 +5975,9 @@ function automationEmailTemplate(automation, context = {}) {
   if (automation.id === "previsit_reminder" && context.store) {
     return buildPrevisitReminderEmail(context.store, automation);
   }
+  if (automation.id === "new_person_welcome" && context.person) {
+    return buildNewPersonWelcomeEmail(context.person, automation);
+  }
 
   const subjectById = {
     store_update_alert: "Nouvelle information magasin a consulter",
@@ -5929,7 +5988,7 @@ function automationEmailTemplate(automation, context = {}) {
   };
   const bodyById = {
     store_update_alert: "Bonjour,\n\nUne nouvelle information importante a ete ajoutee dans une fiche magasin.\nMerci de consulter le lien direct quand tu as un moment.\n\nCe mail restera en preparation tant que l'envoi reel n'est pas branche.",
-    new_person_welcome: "Bonjour,\n\nVoici le lien vers l'application TWEM Brico et ton code PIN personnel.\n\nPour l'instant, cette automatisation reste bloquee tant que la diffusion n'est pas ouverte.",
+    new_person_welcome: "Bonjour [contact],\n\nVotre acces a l'application de suivi TWEM Brico a ete cree.\n\nLien vers l'application: [lien app]\nVotre code PIN personnel: [pin]\n\nCet acces vous permet de consulter les informations disponibles pour votre magasin.\n\nBien a vous,",
     install_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe pour l'installation de votre nouvelle centrale telephonique a la date du [date intervention].\n\nTout est planifie afin que l'intervention se deroule dans les meilleures conditions possibles.\nVous recevrez egalement l'acces a l'application de suivi, qui vous permettra de suivre l'avancement des differentes etapes en temps reel.\n\nNotre equipe reste bien entendu a votre disposition durant toute l'intervention si necessaire.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
     previsit_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe le [date pre-visite] pour effectuer la pre-visite en vue de l'installation de votre nouvelle centrale telephonique.\n\nLors de ce passage, nous verifierons les points de preparation necessaires: VLAN, reseau, cablage, switch et les elements utiles au bon deroulement de l'installation.\n\nCette verification nous permettra de preparer l'intervention finale dans les meilleures conditions possibles.\n\nNotre equipe reste bien entendu a votre disposition si vous avez des questions d'ici la.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
     no_response_escalation: "Bonjour,\n\nUne action attendue n'a pas encore ete consultee ou traitee.\nMerci de verifier le lien vers la fiche magasin.\n\nSi la situation reste bloquee, Valou / TWEM sera prevenu."
@@ -6054,12 +6113,18 @@ function previsitReminderStores() {
 function defaultAutomationEmailDraft(automation, context = {}) {
   const template = automationEmailTemplate(automation, context);
   const isManualBody = Boolean(automation.emailBodyManual);
-  const suffix = context.store ? `-${context.store.id || context.store.code}` : "";
+  const suffix = context.store
+    ? `-${context.store.id || context.store.code}`
+    : context.person
+      ? `-${context.person.id || safeDocumentId("person", context.person.email || context.person.name)}`
+      : "";
   return {
     id: `mail-${automation.id}${suffix}`,
     automationId: automation.id,
     automationTitle: context.store
       ? `${automation.title} - ${context.store.name || context.store.code || "magasin"}`
+      : context.person
+        ? `${automation.title} - ${context.person.name || context.person.email || "contact"}`
       : automation.title,
     recipient: template.recipient || automation.recipients || "",
     subject: automation.emailSubject || template.subject,
@@ -6100,6 +6165,30 @@ function ensureAutomationEmailDrafts() {
       }
       stores.forEach((store) => {
         const baseDraft = defaultAutomationEmailDraft(automation, { store });
+        const current = existingById.get(baseDraft.id);
+        drafts.push(current
+          ? {
+              ...baseDraft,
+              ...current,
+              automationTitle: baseDraft.automationTitle,
+              recipient: current.recipient || baseDraft.recipient,
+              subject: baseDraft.subject,
+              body: baseDraft.body,
+              bodyManual: false,
+              status: current.status || baseDraft.status
+            }
+          : baseDraft);
+      });
+      return;
+    }
+    if (automation.id === "new_person_welcome") {
+      const queuedPeople = (state.people || []).filter((person) =>
+        person.welcomeEmailQueuedAt
+        && normalizePin(person.pin).length === 6
+        && !["disabled", "expired"].includes(person.pinStatus)
+      );
+      queuedPeople.forEach((person) => {
+        const baseDraft = defaultAutomationEmailDraft(automation, { person });
         const current = existingById.get(baseDraft.id);
         drafts.push(current
           ? {
@@ -10645,7 +10734,7 @@ async function handlePersonSubmit(event) {
 
   const generatedPin = generateUniquePin();
   const linkedStoreCode = personStoreCodeInput.value.trim().toUpperCase();
-  state.people.push(hydrateAccessProfile({
+  const createdPerson = hydrateAccessProfile({
     id: `person-${Date.now()}`,
     name,
     role,
@@ -10656,13 +10745,16 @@ async function handlePersonSubmit(event) {
     pin: generatedPin,
     allowedStoreCodes: linkedStoreCode ? [linkedStoreCode] : (role === "manager" ? [] : ["*"]),
     pinCreatedAt: new Date().toISOString(),
-    pinStatus: "active"
-  }));
+    pinStatus: "active",
+    welcomeEmailQueuedAt: new Date().toISOString()
+  });
+  state.people.push(createdPerson);
 
   if (hasRemoteData()) {
-    await syncPersonToRemote(state.people.at(-1));
+    await syncPersonToRemote(createdPerson);
     await loadRemoteState();
   }
+  ensureAutomationEmailDrafts();
   personForm.reset();
   personLanguageSelect.value = "fr";
   saveState();
