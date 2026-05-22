@@ -2136,6 +2136,18 @@ function activeMainWorkspaceTab() {
   return mainWorkspaceTabs.includes(state.activeAdminTab) ? state.activeAdminTab : "dashboard";
 }
 
+function resetWorkspaceFilters() {
+  state.filters = {
+    search: "",
+    status: "all",
+    owner: "all",
+    stage: "all",
+    type: "all",
+    city: "all",
+    date: "all"
+  };
+}
+
 function tabTitle(tab) {
   const isNl = state.language === "nl";
   const titles = {
@@ -2893,15 +2905,7 @@ function renderSummary() {
         state.activeAdminTab = filter.tab;
       }
       if (filter?.reset) {
-        state.filters = {
-          search: "",
-          status: "all",
-          owner: "all",
-          stage: "all",
-          type: "all",
-          city: "all",
-          date: "all"
-        };
+        resetWorkspaceFilters();
       }
       if (filter?.key) {
         state.filters[filter.key] = filter.value;
@@ -2970,15 +2974,7 @@ function renderDashboardExtra(mainTab, visibleStores) {
           state.activeAdminTab = filter.tab;
         }
         if (filter?.reset) {
-          state.filters = {
-            search: "",
-            status: "all",
-            owner: "all",
-            stage: "all",
-            type: "all",
-            city: "all",
-            date: "all"
-          };
+          resetWorkspaceFilters();
         }
         if (filter?.key) {
           state.filters[filter.key] = filter.value;
@@ -9922,6 +9918,9 @@ function handleAdminTabClick(event) {
       return;
     }
     state.activeAdminTab = nextTab;
+    if (nextTab === "dashboard") {
+      resetWorkspaceFilters();
+    }
     saveState();
     render();
     return;
