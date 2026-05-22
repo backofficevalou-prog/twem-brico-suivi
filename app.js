@@ -418,6 +418,24 @@ const defaultAutomations = [
     notes: "Rappel doux au responsable du magasin uniquement: J-2 puis J-1 avant l'installation. Pas d'escalade automatique."
   },
   {
+    id: "previsit_reminder",
+    category: "notifications",
+    title: "Rappel avant pre-visite",
+    description: "Envoyer un mail au responsable du magasin lorsqu'une pre-visite reseau / VLAN / cablage / switch est planifiee.",
+    active: false,
+    trigger: "Date de pre-visite ou preparation externe planifiee dans une fiche magasin",
+    recipients: "Responsable du magasin uniquement",
+    channels: "Mail doux FR/NL",
+    responseDelayHours: 48,
+    escalationHours: 0,
+    repeatHours: 0,
+    maxEscalations: 0,
+    finalAlertRecipient: "",
+    linkTarget: "Lien vers la fiche magasin",
+    languageMode: "Langue du responsable magasin",
+    notes: "Prevenir le responsable magasin des qu'une date future est planifiee pour la pre-visite ou la preparation externe: VLAN, reseau, cablage, switch."
+  },
+  {
     id: "daily_operations_digest",
     category: "notifications",
     title: "Digest quotidien Emir + Valou",
@@ -5735,10 +5753,11 @@ function emailDateLabel(value, language = "fr") {
 }
 
 function fillMailTemplate(template, values = {}) {
-  return String(template || "").replace(/\[(responsable|date intervention|magasin|code magasin)\]/gi, (match, key) => {
+  return String(template || "").replace(/\[(responsable|date intervention|date pre-visite|date prévisite|magasin|code magasin)\]/gi, (match, key) => {
     const normalized = normalizeImportCell(key).toLowerCase();
     if (normalized === "responsable") return values.managerName || "";
     if (normalized === "date intervention") return values.installDate || "";
+    if (normalized === "date pre-visite" || normalized === "date prévisite") return values.previsitDate || "";
     if (normalized === "magasin") return values.storeName || "";
     if (normalized === "code magasin") return values.storeCode || "";
     return match;
@@ -5746,7 +5765,7 @@ function fillMailTemplate(template, values = {}) {
 }
 
 function hasMailTemplateVariables(template) {
-  return /\[(responsable|date intervention|magasin|code magasin)\]/i.test(String(template || ""));
+  return /\[(responsable|date intervention|date pre-visite|date prévisite|magasin|code magasin)\]/i.test(String(template || ""));
 }
 
 function buildInstallReminderEmail(store, automation = {}) {
@@ -5804,6 +5823,89 @@ function buildInstallReminderEmail(store, automation = {}) {
   };
 }
 
+function previsitDateForStore(store, options = {}) {
+  const workflow = ensureStoreWorkflowData(store);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const candidates = [
+    workflow.previsitDate,
+    workflow.vlan22Date,
+    workflow.cablingDate,
+    workflow.ltSwitchDate || workflow.transferDate
+  ]
+    .map((value) => ({
+      raw: value,
+      date: normalizeDateOnly(value)
+    }))
+    .filter((entry) =>
+      entry.date instanceof Date
+      && !Number.isNaN(entry.date.getTime())
+      && (!options.futureOnly || entry.date >= today)
+    );
+  if (!candidates.length) {
+    return "";
+  }
+  candidates.sort((left, right) => left.date - right.date);
+  return candidates[0].raw;
+}
+
+function buildPrevisitReminderEmail(store, automation = {}) {
+  const managerPerson = managerPersonForStore(store);
+  const language = storeLanguageForPrint(store);
+  const managerName = managerPerson?.name || store.manager || store.name || (language === "nl" ? "verantwoordelijke" : "responsable");
+  const rawPrevisitDate = previsitDateForStore(store, { futureOnly: true }) || previsitDateForStore(store);
+  const previsitDate = emailDateLabel(rawPrevisitDate, language) || rawPrevisitDate || "";
+  const subject = language === "nl"
+    ? `Aankondiging pre-visit - ${store.name || store.code || "winkel"}`
+    : `Pre-visite planifiee - ${store.name || store.code || "magasin"}`;
+  const body = language === "nl"
+    ? [
+        `Hallo ${managerName},`,
+        "",
+        `Wij bevestigen de komst van ons team op ${previsitDate} voor de pre-visit ter voorbereiding van de installatie van uw nieuwe telefooncentrale.`,
+        "",
+        "Tijdens deze passage controleren we de nodige voorbereidingspunten: VLAN, netwerk, bekabeling, switch en de elementen die nodig zijn voor een vlotte installatie.",
+        "",
+        "Deze controle helpt ons om de latere installatie in de best mogelijke omstandigheden te laten verlopen.",
+        "",
+        "Ons team blijft uiteraard beschikbaar als u intussen vragen heeft.",
+        "",
+        "Alvast bedankt voor uw ontvangst en samenwerking.",
+        "",
+        "Met vriendelijke groeten,"
+      ].join("\n")
+    : [
+        `Bonjour ${managerName},`,
+        "",
+        `Nous vous confirmons le passage de notre equipe le ${previsitDate} pour effectuer la pre-visite en vue de l'installation de votre nouvelle centrale telephonique.`,
+        "",
+        "Lors de ce passage, nous verifierons les points de preparation necessaires: VLAN, reseau, cablage, switch et les elements utiles au bon deroulement de l'installation.",
+        "",
+        "Cette verification nous permettra de preparer l'intervention finale dans les meilleures conditions possibles.",
+        "",
+        "Notre equipe reste bien entendu a votre disposition si vous avez des questions d'ici la.",
+        "",
+        "Nous vous remercions d'avance pour votre accueil et votre collaboration.",
+        "",
+        "Bien a vous,"
+      ].join("\n");
+  const values = {
+    managerName,
+    previsitDate,
+    storeName: store.name || "",
+    storeCode: store.code || ""
+  };
+
+  return {
+    subject: fillMailTemplate(automation.emailSubject || subject, values),
+    body: automation.emailBodyManual && automation.emailBody && hasMailTemplateVariables(automation.emailBody)
+      ? fillMailTemplate(automation.emailBody, values)
+      : body,
+    recipient: managerPerson?.email || "",
+    language
+  };
+}
+
 function automationEmailTemplate(automation, context = {}) {
   if (automation.id === "daily_operations_digest") {
     return {
@@ -5814,17 +5916,22 @@ function automationEmailTemplate(automation, context = {}) {
   if (automation.id === "install_reminder" && context.store) {
     return buildInstallReminderEmail(context.store, automation);
   }
+  if (automation.id === "previsit_reminder" && context.store) {
+    return buildPrevisitReminderEmail(context.store, automation);
+  }
 
   const subjectById = {
     store_update_alert: "Nouvelle information magasin a consulter",
     new_person_welcome: "Acces application TWEM Brico + code PIN",
     install_reminder: "Rappel doux - installation planifiee",
+    previsit_reminder: "Pre-visite planifiee",
     no_response_escalation: "Relance action attendue"
   };
   const bodyById = {
     store_update_alert: "Bonjour,\n\nUne nouvelle information importante a ete ajoutee dans une fiche magasin.\nMerci de consulter le lien direct quand tu as un moment.\n\nCe mail restera en preparation tant que l'envoi reel n'est pas branche.",
     new_person_welcome: "Bonjour,\n\nVoici le lien vers l'application TWEM Brico et ton code PIN personnel.\n\nPour l'instant, cette automatisation reste bloquee tant que la diffusion n'est pas ouverte.",
     install_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe pour l'installation de votre nouvelle centrale telephonique a la date du [date intervention].\n\nTout est planifie afin que l'intervention se deroule dans les meilleures conditions possibles.\nVous recevrez egalement l'acces a l'application de suivi, qui vous permettra de suivre l'avancement des differentes etapes en temps reel.\n\nNotre equipe reste bien entendu a votre disposition durant toute l'intervention si necessaire.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
+    previsit_reminder: "Bonjour [responsable],\n\nNous vous confirmons le passage de notre equipe le [date pre-visite] pour effectuer la pre-visite en vue de l'installation de votre nouvelle centrale telephonique.\n\nLors de ce passage, nous verifierons les points de preparation necessaires: VLAN, reseau, cablage, switch et les elements utiles au bon deroulement de l'installation.\n\nCette verification nous permettra de preparer l'intervention finale dans les meilleures conditions possibles.\n\nNotre equipe reste bien entendu a votre disposition si vous avez des questions d'ici la.\n\nNous vous remercions d'avance pour votre accueil et votre collaboration.\n\nBien a vous,",
     no_response_escalation: "Bonjour,\n\nUne action attendue n'a pas encore ete consultee ou traitee.\nMerci de verifier le lien vers la fiche magasin.\n\nSi la situation reste bloquee, Valou / TWEM sera prevenu."
   };
   return {
@@ -5930,6 +6037,20 @@ function installReminderStores() {
     });
 }
 
+function previsitReminderStores() {
+  return (state.stores || [])
+    .filter((store) => {
+      const previsitDate = normalizeDateOnly(previsitDateForStore(store, { futureOnly: true }));
+      return Boolean(previsitDate);
+    })
+    .sort((left, right) => {
+      const leftDate = normalizeDateOnly(previsitDateForStore(left, { futureOnly: true }));
+      const rightDate = normalizeDateOnly(previsitDateForStore(right, { futureOnly: true }));
+      return (leftDate?.getTime?.() || 0) - (rightDate?.getTime?.() || 0)
+        || String(left.name || left.code || "").localeCompare(String(right.name || right.code || ""));
+    });
+}
+
 function defaultAutomationEmailDraft(automation, context = {}) {
   const template = automationEmailTemplate(automation, context);
   const isManualBody = Boolean(automation.emailBodyManual);
@@ -5954,9 +6075,13 @@ function ensureAutomationEmailDrafts() {
   const existingById = new Map((state.automationEmails || []).map((email) => [email.id, email]));
   const existingByAutomation = new Map((state.automationEmails || []).map((email) => [email.automationId, email]));
   const drafts = [];
+  const storeScopedAutomations = {
+    install_reminder: installReminderStores,
+    previsit_reminder: previsitReminderStores
+  };
   (state.automations || []).forEach((automation) => {
-    if (automation.id === "install_reminder") {
-      const stores = installReminderStores();
+    if (storeScopedAutomations[automation.id]) {
+      const stores = storeScopedAutomations[automation.id]();
       if (!stores.length) {
         const current = existingByAutomation.get(automation.id);
         const baseDraft = defaultAutomationEmailDraft(automation);
@@ -6521,7 +6646,7 @@ function handleAutomationFieldChange(event) {
   state.automationEmails
     .filter((entry) => entry.automationId === item.id)
     .forEach((emailDraft) => {
-      if (field === "recipients" && item.id !== "install_reminder") {
+      if (field === "recipients" && !["install_reminder", "previsit_reminder"].includes(item.id)) {
         emailDraft.recipient = item.recipients || "";
       }
       if (field === "active" && ["draft", "ready"].includes(emailDraft.status)) {
