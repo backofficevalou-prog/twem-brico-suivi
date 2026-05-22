@@ -2808,7 +2808,7 @@ function missingValidationLabels(store) {
   const workflow = ensureStoreWorkflowData(store);
   const missing = [];
   if (!workflow.networkConfigConfirmed) missing.push("Config magasin");
-  if (workflow.vlan22Activated !== "Oui") missing.push("IT / VLAN22");
+  if (workflow.vlan22Activated !== "Oui") missing.push("VLAN22");
   if (workflow.charlesRouxStatus !== "OK") missing.push("Infra");
   if (workflow.networkSurveyStatus !== "OK") missing.push("Pre-visite");
   if (workflow.destinyInstallDone !== "Oui") missing.push("Installation Destiny");
@@ -2876,7 +2876,7 @@ function renderSummary() {
     ],
     timeline: [
       { label: "Interventions planifiees", value: visibleStores.filter((store) => sortedAppointments(store).length).length, note: "Chronologie magasins", portion: Math.round((visibleStores.filter((store) => sortedAppointments(store).length).length / total) * 100), filter: null },
-      { label: "Validation IT", value: validationItCount, note: "VLAN / reseau a valider", portion: Math.round((validationItCount / total) * 100), filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
+      { label: "Validation VLAN22", value: validationItCount, note: "VLAN22 a valider", portion: Math.round((validationItCount / total) * 100), filter: { key: "stage", value: "Validation VLAN22", tab: "timeline" } },
       { label: "Validation infra", value: validationInfraCount, note: "Cablage / alarme", portion: Math.round((validationInfraCount / total) * 100), filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
       { label: "Installations a risque", value: riskCount, note: "Points sensibles a traiter", portion: Math.round((riskCount / total) * 100), filter: { key: "status", value: "blocked", tab: "timeline" } }
     ],
@@ -2958,7 +2958,7 @@ function renderDashboardExtra(mainTab, visibleStores) {
             ${[
               { label: "A lancer", value: visibleStores.filter((store) => store.status === "planned").length, note: "Dossiers a demarrer", filter: { key: "status", value: "planned", tab: "stores" } },
               { label: "En attente infos", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Config magasin attendue", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
-              { label: "Validation IT", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "Reseau / VLAN", filter: { key: "stage", value: "Validation IT", tab: "timeline" } },
+              { label: "Validation VLAN22", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length, note: "VLAN22 a valider", filter: { key: "stage", value: "Validation VLAN22", tab: "timeline" } },
               { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "Cablage / alarme", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
               { label: "En cours", value: visibleStores.filter(hasPlannedIntervention).length, note: "Interventions prevues", filter: { reset: true, key: "search", value: "intervention prevue", tab: "stores" } },
               { label: "RUN", value: visibleStores.filter(hasActiveSav).length, note: "Magasins avec SAV", filter: { reset: true, key: "search", value: "sav actif", tab: "stores" } },
@@ -4822,7 +4822,7 @@ function nextActionForStore(store) {
   const workflow = ensureStoreWorkflowData(store);
   if (store.status === "blocked") return "Deblocage projet";
   if (!workflow.networkConfigConfirmed) return "Validation manager config";
-  if (workflow.vlan22Activated !== "Oui") return "Validation IT / VLAN22";
+  if (workflow.vlan22Activated !== "Oui") return "Validation VLAN22";
   if (workflow.destinyInstallDone !== "Oui") return "Installation Destiny";
   return workflow.ltSwitchStatus === "Basculee" ? "RUN / SAV" : "Bascule plateforme";
 }
@@ -4831,7 +4831,7 @@ function currentWorkflowStage(store) {
   const workflow = ensureStoreWorkflowData(store);
   if (store.status === "blocked") return "Blocage chantier";
   if (!workflow.networkConfigConfirmed) return "Collecte infos";
-  if (workflow.vlan22Activated !== "Oui") return "Validation IT";
+  if (workflow.vlan22Activated !== "Oui") return "Validation VLAN22";
   if (workflow.charlesRouxStatus !== "OK") return "Validation Infra";
   if (workflow.networkSurveyStatus !== "OK") return "Pre-visite";
   if (workflow.destinyInstallDone !== "Oui") return "Installation";
