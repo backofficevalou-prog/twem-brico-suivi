@@ -44,8 +44,7 @@ function extensionRowsForCategory(categoryFilter = "") {
     .filter((row) => {
       if (!categoryFilter) return true;
       const rowKey = extensionCategoryKey(row.category);
-      if (targetKey === "fixed") return rowKey === "fixed";
-      if (targetKey === "mobile") return rowKey === "mobile";
+      if (targetKey === "fixed" || targetKey === "mobile") return rowKey === "fixed" || rowKey === "mobile";
       if (targetKey === "flash") return rowKey === "flash";
       if (targetKey === "call") return rowKey === "call";
       if (targetKey === "panic") return rowKey === "panic";
