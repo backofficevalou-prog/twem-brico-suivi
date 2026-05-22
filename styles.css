@@ -385,6 +385,25 @@ button {
   min-width: 104px;
 }
 
+.store-list-table th:nth-child(1),
+.store-list-table td:nth-child(1) {
+  width: 112px;
+  min-width: 112px;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.store-list-table th:nth-child(2),
+.store-list-table td:nth-child(2) {
+  width: 180px;
+  max-width: 180px;
+}
+
+.store-list-table td:nth-child(2) .cell-note {
+  display: block;
+  max-width: 150px;
+}
+
 .stores-summary-row td {
   padding-top: 16px;
   padding-bottom: 16px;

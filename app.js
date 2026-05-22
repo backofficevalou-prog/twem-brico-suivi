@@ -5504,6 +5504,7 @@ function renderStores() {
   const stores = getFilteredStores();
   projectTableBody.innerHTML = "";
   const projectTable = document.querySelector(".project-table");
+  projectTable?.classList.remove("store-list-table");
 
   if (!stores.length) {
     projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
@@ -5535,6 +5536,7 @@ function renderStores() {
       case "stores":
       default:
         projectTable?.classList.add("compact-rows-table");
+        projectTable?.classList.add("store-list-table");
         setMainTableHeaders(isPlannedInterventionListView()
           ? ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "Intervention", "Statut", "Validations manquantes", "Actions"]
           : ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
