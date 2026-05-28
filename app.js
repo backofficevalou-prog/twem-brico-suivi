@@ -5032,14 +5032,39 @@ function renderStoreOverviewRows(stores, mode = "stores") {
   attachStoreInteractiveHandlers();
 }
 
+const MAIN_TABLE_HEADER_IDS = ["thDetail", "thStore", "thTwem", "thManager", "thPhone", "thElectrician", "thAppointment", "thStatus", "thIssue"];
+
+function resetMainTableHeaderStructure() {
+  const headerRow = document.querySelector(".project-table thead tr");
+  if (!headerRow) return;
+  if (MAIN_TABLE_HEADER_IDS.every((id) => document.getElementById(id))) return;
+  headerRow.innerHTML = MAIN_TABLE_HEADER_IDS
+    .map((id) => `<th id="${id}"></th>`)
+    .join("");
+}
+
 function setMainTableHeaders(headers) {
-  const ids = ["thDetail", "thStore", "thTwem", "thManager", "thPhone", "thElectrician", "thAppointment", "thStatus", "thIssue"];
+  resetMainTableHeaderStructure();
+  const ids = MAIN_TABLE_HEADER_IDS;
   ids.forEach((id, index) => {
     const node = document.getElementById(id);
     if (node) {
       node.textContent = headers[index] || "";
     }
   });
+}
+
+function setInvoiceTableHeaders() {
+  const headerRow = document.querySelector(".project-table thead tr");
+  if (!headerRow) return;
+  headerRow.innerHTML = `
+    <th>N magasin</th>
+    <th>Nom magasin</th>
+    <th colspan="4">PO</th>
+    <th>A facturer</th>
+    <th>En remplacement</th>
+    <th>Statut cde / livraison</th>
+  `;
 }
 
 function storeQuickActions() {
@@ -5238,12 +5263,23 @@ function hasMissingInvoicePo(store) {
     .every((value) => normalizeImportCell(value));
 }
 
-function invoicePoCell(title, value) {
+function invoicePoLine(title, value) {
   const normalized = normalizeImportCell(value);
   return `
-    <div class="invoice-po-cell">
-      <span class="mini-label">${escapeHtml(title)}</span>
+    <div class="invoice-po-line">
+      <span>${escapeHtml(title)}</span>
       <strong>${escapeHtml(normalized || "A renseigner")}</strong>
+    </div>
+  `;
+}
+
+function invoicePoBlock(store) {
+  return `
+    <div class="invoice-po-stack">
+      ${invoicePoLine("PO Licences", store.poLicences)}
+      ${invoicePoLine("PO HP Desk", store.poHpDesk)}
+      ${invoicePoLine("PO PM", store.poPm)}
+      ${invoicePoLine("PO renting HW", store.poRentingHw)}
     </div>
   `;
 }
@@ -5401,7 +5437,7 @@ function renderInvoiceStatusList(tickets) {
 }
 
 function renderInvoiceRows(stores) {
-  setMainTableHeaders(["N magasin", "Nom magasin", "PO licences", "PO HP Desk", "PO PM", "PO renting HW", "A facturer", "En remplacement", "Statut cde / livraison"]);
+  setInvoiceTableHeaders();
   const sortScope = ["billable", "replacement"].includes(state.filters.invoice) ? state.filters.invoice : "";
   const sortedStores = [...stores].sort((left, right) => {
     const leftTime = oldestInvoiceTicketTime(left, sortScope);
@@ -5411,22 +5447,21 @@ function renderInvoiceRows(stores) {
     }
     return String(left.code || left.name || "").localeCompare(String(right.code || right.name || ""), "fr", { numeric: true });
   });
-  renderCompactStoreRows(sortedStores, (store) => {
+  projectTableBody.innerHTML = sortedStores.map((store) => {
     const billableTickets = invoiceTicketsForStore(store, "billable");
     const replacementTickets = invoiceTicketsForStore(store, "replacement");
     const allInvoiceTickets = [...billableTickets, ...replacementTickets];
-    return [
-      `<strong>${escapeHtml(store.shopNumber || store.code || "-")}</strong><div class="cell-note">${escapeHtml(store.code || "")}</div>`,
-      `<strong>${escapeHtml(store.name || "-")}</strong><div class="cell-note">${escapeHtml([store.city, store.shopType].filter(Boolean).join(" - ") || "-")}</div>`,
-      invoicePoCell("PO licences", store.poLicences),
-      invoicePoCell("PO HP Desk", store.poHpDesk),
-      invoicePoCell("PO PM", store.poPm),
-      invoicePoCell("PO renting HW", store.poRentingHw),
-      renderInvoiceTicketList(billableTickets, "Aucune commande a facturer", "billable"),
-      renderInvoiceTicketList(replacementTickets, "Aucun remplacement", "replacement"),
-      renderInvoiceStatusList(allInvoiceTickets)
-    ];
-  });
+    return `
+      <tr>
+        <td><strong>${escapeHtml(store.shopNumber || store.code || "-")}</strong><div class="cell-note">${escapeHtml(store.code || "")}</div></td>
+        <td><strong>${escapeHtml(store.name || "-")}</strong><div class="cell-note">${escapeHtml([store.city, store.shopType].filter(Boolean).join(" - ") || "-")}</div></td>
+        <td colspan="4">${invoicePoBlock(store)}</td>
+        <td>${renderInvoiceTicketList(billableTickets, "Aucune commande a facturer", "billable")}</td>
+        <td>${renderInvoiceTicketList(replacementTickets, "Aucun remplacement", "replacement")}</td>
+        <td>${renderInvoiceStatusList(allInvoiceTickets)}</td>
+      </tr>
+    `;
+  }).join("");
   attachInvoiceHandlers();
 }
 

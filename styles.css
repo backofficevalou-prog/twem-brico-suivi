@@ -707,16 +707,35 @@ button {
   margin: 0;
 }
 
-.invoice-po-cell,
+.invoice-po-stack,
 .invoice-order-list,
 .invoice-order-item {
   display: grid;
   gap: 4px;
 }
 
-.invoice-po-cell strong,
 .invoice-order-item strong {
   overflow-wrap: anywhere;
+}
+
+.invoice-po-stack {
+  gap: 5px;
+  min-width: 260px;
+}
+
+.invoice-po-line {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.invoice-po-line span {
+  color: var(--muted);
+}
+
+.invoice-po-line strong {
+  font-weight: 700;
 }
 
 .invoice-order-list {
