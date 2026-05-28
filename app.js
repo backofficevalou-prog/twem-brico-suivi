@@ -3001,7 +3001,7 @@ function renderSummary() {
   const total = visibleStores.length || 1;
   const doneCount = visibleStores.filter((store) => store.status === "done").length;
   const blockedCount = visibleStores.filter((store) => store.status === "blocked").length;
-  const noRdvCount = visibleStores.filter((store) => store.appointments.length === 0).length;
+  const noRdvCount = visibleStores.filter((store) => !hasPlannedIntervention(store)).length;
   const deploymentCount = visibleStores.filter(hasPlannedIntervention).length;
   const runCount = visibleStores.filter(hasActiveSav).length;
   const dosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "DOS").length;
@@ -3018,7 +3018,7 @@ function renderSummary() {
       { label: "FOS", value: fosCount, note: "Type magasin FOS", portion: Math.round((fosCount / total) * 100), filter: { key: "type", value: "FOS", tab: "stores" } },
       { label: "FOSDOS", value: fosdosCount, note: "Type magasin FOSDOS", portion: Math.round((fosdosCount / total) * 100), filter: { key: "type", value: "FOSDOS", tab: "stores" } },
       { label: "En deploiement", value: deploymentCount, note: "Interventions prevues", portion: Math.round((deploymentCount / total) * 100), filter: { reset: true, key: "search", value: "intervention prevue", tab: "stores" } },
-      { label: "En RUN", value: runCount, note: "Magasins avec SAV", portion: Math.round((runCount / total) * 100), filter: { reset: true, key: "search", value: "sav actif", tab: "stores" } },
+      { label: "Helpdesk on", value: runCount, note: "Magasins avec SAV", portion: Math.round((runCount / total) * 100), filter: { reset: true, key: "search", value: "sav actif", tab: "stores" } },
       { label: "Clotures", value: doneCount, note: "Projets finalises", portion: Math.round((doneCount / total) * 100), filter: { key: "status", value: "done", tab: "stores" } },
       { label: "Bloques", value: blockedCount, note: "Dossiers a debloquer", portion: Math.round((blockedCount / total) * 100), filter: { key: "status", value: "blocked", tab: "stores" } }
     ],
@@ -9350,7 +9350,7 @@ function buildReportHtml() {
         <div class="card"><strong>${t("summaryStores")}</strong><div>${stores.length}</div></div>
         <div class="card"><strong>${t("summaryDone")}</strong><div>${stores.filter((store) => store.status === "done").length}</div></div>
         <div class="card"><strong>${t("summaryBlocked")}</strong><div>${stores.filter((store) => store.status === "blocked").length}</div></div>
-        <div class="card"><strong>${t("summaryNoAppointment")}</strong><div>${stores.filter((store) => store.appointments.length === 0).length}</div></div>
+        <div class="card"><strong>${t("summaryNoAppointment")}</strong><div>${stores.filter((store) => !hasPlannedIntervention(store)).length}</div></div>
       </div>
       <table>
         <thead>
