@@ -707,6 +707,35 @@ button {
   margin: 0;
 }
 
+.invoice-po-cell,
+.invoice-order-list,
+.invoice-order-item {
+  display: grid;
+  gap: 4px;
+}
+
+.invoice-po-cell strong,
+.invoice-order-item strong {
+  overflow-wrap: anywhere;
+}
+
+.invoice-order-list {
+  gap: 8px;
+}
+
+.invoice-order-item {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  font-size: 0.88rem;
+}
+
+.invoice-order-item span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .extensions-table {
   width: 100%;
   min-width: 760px;

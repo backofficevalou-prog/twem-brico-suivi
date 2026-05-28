@@ -534,6 +534,14 @@ const visibilityTabCatalog = [
     ]
   },
   {
+    key: "invoice",
+    label: "Invoice",
+    blocks: [
+      { key: "invoice_po", label: "PO magasins", hint: "Numeros PO par magasin." },
+      { key: "invoice_orders", label: "Commandes / facturation", hint: "A facturer, remplacement, statut commande et livraison." }
+    ]
+  },
+  {
     key: "contacts",
     label: "Contacts",
     blocks: [
@@ -1069,7 +1077,7 @@ function isStoreEditorDirty() {
   return Date.now() - storeEditorDraftLock.lastTouchedAt < 15 * 60 * 1000;
 }
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -2211,14 +2219,14 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
-    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
+    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
+    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
+    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"]
   };
   return map[role] || ["dashboard"];
 }
@@ -2273,6 +2281,7 @@ function tabTitle(tab) {
     configuration: isNl ? "Configuratie winkel" : "Configuration magasin",
     sav: "SAV / Tickets",
     extensions: "Extensions",
+    invoice: "Invoice",
     contacts: isNl ? "Contacten" : "Contacts",
     reports: isNl ? "Rapporten" : "Rapports",
     automations: isNl ? "Automatiseringen" : "Automatisations",
@@ -2984,7 +2993,22 @@ function getFilteredStores() {
     const savKeywords = hasActiveSav(store)
       ? "sav actif sav ouvert sav en cours"
       : "";
-    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords} ${interventionKeywords} ${savKeywords}`.toLowerCase();
+    const invoiceHaystack = [
+      store.poLicences,
+      store.poHpDesk,
+      store.poPm,
+      store.poRentingHw,
+      ...invoiceTicketsForStore(store).map((ticket) => [
+        ticket.requestKind,
+        ticket.materialLabel,
+        ticket.concern,
+        ticket.orderWorkflowStatus,
+        invoiceOrderReference(ticket),
+        invoiceOrderApprovedDate(ticket),
+        invoiceOrderDeliveredDate(ticket)
+      ].join(" "))
+    ].join(" ");
+    const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords} ${interventionKeywords} ${savKeywords} ${invoiceHaystack}`.toLowerCase();
     const matchesSearch = haystack.includes(state.filters.search);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || storeProvenance(store) === state.filters.owner;
@@ -3039,6 +3063,12 @@ function renderSummary() {
       { label: "Postes fixes", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).fixCount, 0), note: "Quota total fixe", portion: 100, filter: null },
       { label: "Mobiles", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).mobileCount, 0), note: "Quota total mobile", portion: 100, filter: null },
       { label: "Call / Panic", value: visibleStores.reduce((sum, store) => sum + getStoreQuantityPlan(store).callButtonCount + getStoreQuantityPlan(store).panicCount, 0), note: "Lignes specifiques", portion: 100, filter: null }
+    ],
+    invoice: [
+      { label: "Magasins", value: visibleStores.length, note: "Suivi facturation", portion: 100, filter: null },
+      { label: "PO manquants", value: visibleStores.filter(hasMissingInvoicePo).length, note: "Au moins un PO absent", portion: Math.round((visibleStores.filter(hasMissingInvoicePo).length / total) * 100), filter: null },
+      { label: "A facturer", value: visibleStores.reduce((sum, store) => sum + invoiceTicketsForStore(store, "billable").length, 0), note: "Commandes supplementaires", portion: 100, filter: null },
+      { label: "Remplacements", value: visibleStores.reduce((sum, store) => sum + invoiceTicketsForStore(store, "replacement").length, 0), note: "Materiel casse / remplace", portion: 100, filter: null }
     ],
     stores: [
       { label: t("summaryStores"), value: visibleStores.length, note: t("summaryStoresNote"), portion: 100 },
@@ -5199,6 +5229,114 @@ function renderMigrationRows(stores) {
   });
 }
 
+function hasMissingInvoicePo(store) {
+  return ![store.poLicences, store.poHpDesk, store.poPm, store.poRentingHw]
+    .every((value) => normalizeImportCell(value));
+}
+
+function invoicePoCell(title, value) {
+  const normalized = normalizeImportCell(value);
+  return `
+    <div class="invoice-po-cell">
+      <span class="mini-label">${escapeHtml(title)}</span>
+      <strong>${escapeHtml(normalized || "A renseigner")}</strong>
+    </div>
+  `;
+}
+
+function invoiceTicketType(ticket) {
+  const billingType = normalizeImportCell(ticket.billingType || ticket.invoiceType).toLowerCase();
+  const requestKind = normalizeImportCell(ticket.requestKind).toLowerCase();
+  const concern = normalizeImportCell(ticket.concern).toLowerCase();
+  if (billingType.includes("remplacement") || requestKind.includes("casse") || concern.includes("remplacement")) {
+    return "replacement";
+  }
+  if (billingType.includes("factur") || requestKind.includes("supplementaire") || concern.includes("factur")) {
+    return "billable";
+  }
+  return "";
+}
+
+function invoiceTicketsForStore(store, type = "") {
+  return ticketsForStore(store.id)
+    .filter((ticket) => normalizeImportCell(ticket.requestKind).toLowerCase().includes("commande")
+      || normalizeImportCell(ticket.billingType || ticket.invoiceType))
+    .filter((ticket) => !type || invoiceTicketType(ticket) === type);
+}
+
+function invoiceOrderReference(ticket) {
+  return normalizeImportCell(ticket.orderNumber || ticket.commandNumber || ticket.orderRef || ticket.purchaseOrderNumber || "");
+}
+
+function invoiceOrderApprovedDate(ticket) {
+  return normalizeImportCell(ticket.orderApprovedAt || ticket.approvedAt || ticket.commandApprovedAt || ticket.approvalDate || "");
+}
+
+function invoiceOrderDeliveredDate(ticket) {
+  return normalizeImportCell(ticket.deliveredAt || ticket.deliveryDate || ticket.orderDeliveredAt || "");
+}
+
+function invoiceTicketLabel(ticket) {
+  const material = normalizeImportCell(ticket.materialLabel) || normalizeImportCell(ticket.concern) || "Commande";
+  const quantity = normalizeImportCell(ticket.quantityRequested) || "1";
+  return `${material} x${quantity}`;
+}
+
+function renderInvoiceTicketList(tickets, emptyLabel) {
+  if (!tickets.length) {
+    return `<span class="cell-note">${escapeHtml(emptyLabel)}</span>`;
+  }
+  return `
+    <div class="invoice-order-list">
+      ${tickets.map((ticket) => `
+        <div class="invoice-order-item">
+          <strong>${escapeHtml(invoiceTicketLabel(ticket))}</strong>
+          <span>${escapeHtml(ticket.orderWorkflowStatus || ticketStatusLabel(ticket.status) || "A renseigner")}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderInvoiceStatusList(tickets) {
+  if (!tickets.length) {
+    return '<span class="cell-note">Aucune commande liee</span>';
+  }
+  return `
+    <div class="invoice-order-list">
+      ${tickets.map((ticket) => `
+        <div class="invoice-order-item">
+          <strong>${escapeHtml(invoiceTicketLabel(ticket))}</strong>
+          <span>Statut cde: ${escapeHtml(ticket.orderWorkflowStatus || ticketStatusLabel(ticket.status) || "A renseigner")}</span>
+          <span>Cde approuvee: ${escapeHtml(invoiceOrderApprovedDate(ticket) || "A renseigner")}</span>
+          <span>N commande: ${escapeHtml(invoiceOrderReference(ticket) || "A renseigner")}</span>
+          <span>Livre: ${escapeHtml(invoiceOrderDeliveredDate(ticket) || "A renseigner")}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderInvoiceRows(stores) {
+  setMainTableHeaders(["N magasin", "Nom magasin", "PO licences", "PO HP Desk", "PO PM", "PO renting HW", "A facturer", "En remplacement", "Statut cde / livraison"]);
+  renderCompactStoreRows(stores, (store) => {
+    const billableTickets = invoiceTicketsForStore(store, "billable");
+    const replacementTickets = invoiceTicketsForStore(store, "replacement");
+    const allInvoiceTickets = [...billableTickets, ...replacementTickets];
+    return [
+      `<strong>${escapeHtml(store.shopNumber || store.code || "-")}</strong><div class="cell-note">${escapeHtml(store.code || "")}</div>`,
+      `<strong>${escapeHtml(store.name || "-")}</strong><div class="cell-note">${escapeHtml([store.city, store.shopType].filter(Boolean).join(" - ") || "-")}</div>`,
+      invoicePoCell("PO licences", store.poLicences),
+      invoicePoCell("PO HP Desk", store.poHpDesk),
+      invoicePoCell("PO PM", store.poPm),
+      invoicePoCell("PO renting HW", store.poRentingHw),
+      renderInvoiceTicketList(billableTickets, "Aucune commande a facturer"),
+      renderInvoiceTicketList(replacementTickets, "Aucun remplacement"),
+      renderInvoiceStatusList(allInvoiceTickets)
+    ];
+  });
+}
+
 function renderSavRows() {
   setMainTableHeaders(["Code", "Magasin", "Ticket", "Demandeur", "Service", "Ouverture", "Etat", "Dernier suivi", "Action"]);
   const filteredTickets = getFilteredTickets();
@@ -5695,6 +5833,10 @@ function renderStores() {
     case "extensions":
       projectTable?.classList.add("compact-rows-table");
       renderExtensionsRowsV2(stores);
+      return;
+    case "invoice":
+      projectTable?.classList.add("compact-rows-table");
+      renderInvoiceRows(stores);
       return;
     case "dashboard":
       projectTable?.classList.add("dashboard-summary-only");
