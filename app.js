@@ -1027,7 +1027,8 @@ const state = {
     stage: "all",
     type: "all",
     city: "all",
-    date: "all"
+    date: "all",
+    invoice: "all"
   },
   expandedStoreIds: new Set()
 };
@@ -2268,7 +2269,8 @@ function resetWorkspaceFilters() {
     stage: "all",
     type: "all",
     city: "all",
-    date: "all"
+    date: "all",
+    invoice: "all"
   };
 }
 
@@ -3016,7 +3018,8 @@ function getFilteredStores() {
     const matchesType = state.filters.type === "all" || normalizeShopTypeValue(store.shopType || "") === state.filters.type;
     const matchesCity = state.filters.city === "all" || store.city === state.filters.city;
     const matchesDate = matchesDateScope(store);
-    return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate;
+    const matchesInvoice = matchesInvoiceScope(store);
+    return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate && matchesInvoice;
   });
 }
 
@@ -3066,9 +3069,9 @@ function renderSummary() {
     ],
     invoice: [
       { label: "Magasins", value: visibleStores.length, note: "Suivi facturation", portion: 100, filter: null },
-      { label: "PO manquants", value: visibleStores.filter(hasMissingInvoicePo).length, note: "Au moins un PO absent", portion: Math.round((visibleStores.filter(hasMissingInvoicePo).length / total) * 100), filter: null },
-      { label: "A facturer", value: visibleStores.reduce((sum, store) => sum + invoiceTicketsForStore(store, "billable").length, 0), note: "Commandes supplementaires", portion: 100, filter: null },
-      { label: "Remplacements", value: visibleStores.reduce((sum, store) => sum + invoiceTicketsForStore(store, "replacement").length, 0), note: "Materiel casse / remplace", portion: 100, filter: null }
+      { label: "PO manquants", value: visibleStores.filter(hasMissingInvoicePo).length, note: "Au moins un PO absent", portion: Math.round((visibleStores.filter(hasMissingInvoicePo).length / total) * 100), filter: { reset: true, key: "invoice", value: "missing_po", tab: "invoice" } },
+      { label: "A facturer", value: visibleStores.reduce((sum, store) => sum + invoiceTicketsForStore(store, "billable").length, 0), note: "Commandes supplementaires", portion: 100, filter: { reset: true, key: "invoice", value: "billable", tab: "invoice" } },
+      { label: "Remplacements", value: visibleStores.reduce((sum, store) => sum + invoiceTicketsForStore(store, "replacement").length, 0), note: "Materiel casse / remplace", portion: 100, filter: { reset: true, key: "invoice", value: "replacement", tab: "invoice" } }
     ],
     stores: [
       { label: t("summaryStores"), value: visibleStores.length, note: t("summaryStoresNote"), portion: 100 },
@@ -5264,6 +5267,32 @@ function invoiceTicketsForStore(store, type = "") {
     .filter((ticket) => !type || invoiceTicketType(ticket) === type);
 }
 
+function matchesInvoiceScope(store) {
+  const scope = state.filters.invoice || "all";
+  if (scope === "all") {
+    return true;
+  }
+  if (scope === "missing_po") {
+    return hasMissingInvoicePo(store);
+  }
+  if (scope === "billable" || scope === "replacement") {
+    return invoiceTicketsForStore(store, scope).length > 0;
+  }
+  if (scope === "with_orders") {
+    return invoiceTicketsForStore(store).length > 0;
+  }
+  return true;
+}
+
+function invoiceTicketTime(ticket) {
+  return Date.parse(ticket.createdAt || ticket.orderApprovedAt || ticket.approvedAt || ticket.deliveryDate || "") || Number.MAX_SAFE_INTEGER;
+}
+
+function oldestInvoiceTicketTime(store, type = "") {
+  const times = invoiceTicketsForStore(store, type).map(invoiceTicketTime);
+  return times.length ? Math.min(...times) : Number.MAX_SAFE_INTEGER;
+}
+
 function invoiceOrderReference(ticket) {
   return normalizeImportCell(ticket.orderNumber || ticket.commandNumber || ticket.orderRef || ticket.purchaseOrderNumber || "");
 }
@@ -5319,7 +5348,16 @@ function renderInvoiceStatusList(tickets) {
 
 function renderInvoiceRows(stores) {
   setMainTableHeaders(["N magasin", "Nom magasin", "PO licences", "PO HP Desk", "PO PM", "PO renting HW", "A facturer", "En remplacement", "Statut cde / livraison"]);
-  renderCompactStoreRows(stores, (store) => {
+  const sortScope = ["billable", "replacement"].includes(state.filters.invoice) ? state.filters.invoice : "";
+  const sortedStores = [...stores].sort((left, right) => {
+    const leftTime = oldestInvoiceTicketTime(left, sortScope);
+    const rightTime = oldestInvoiceTicketTime(right, sortScope);
+    if (leftTime !== rightTime) {
+      return leftTime - rightTime;
+    }
+    return String(left.code || left.name || "").localeCompare(String(right.code || right.name || ""), "fr", { numeric: true });
+  });
+  renderCompactStoreRows(sortedStores, (store) => {
     const billableTickets = invoiceTicketsForStore(store, "billable");
     const replacementTickets = invoiceTicketsForStore(store, "replacement");
     const allInvoiceTickets = [...billableTickets, ...replacementTickets];
