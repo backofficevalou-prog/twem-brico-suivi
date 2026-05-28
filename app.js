@@ -5252,10 +5252,10 @@ function invoiceTicketType(ticket) {
   const billingType = normalizeImportCell(ticket.billingType || ticket.invoiceType).toLowerCase();
   const requestKind = normalizeImportCell(ticket.requestKind).toLowerCase();
   const concern = normalizeImportCell(ticket.concern).toLowerCase();
-  if (billingType.includes("remplacement") || requestKind.includes("casse") || concern.includes("remplacement")) {
+  if (billingType.includes("remplac") || billingType.includes("remplacement") || requestKind.includes("casse") || concern.includes("remplacement")) {
     return "replacement";
   }
-  if (billingType.includes("factur") || requestKind.includes("supplementaire") || concern.includes("factur")) {
+  if (billingType.includes("factur") || billingType.includes("supplementaire") || requestKind.includes("supplementaire") || concern.includes("factur")) {
     return "billable";
   }
   return "";
@@ -5323,17 +5323,42 @@ function invoiceTicketLabel(ticket) {
   return `${material} x${quantity}`;
 }
 
-function renderInvoiceTicketList(tickets, emptyLabel) {
+function invoiceBillingTypeValue(ticket, fallbackType = "") {
+  const raw = normalizeImportCell(ticket.billingType || ticket.invoiceType);
+  if (raw) {
+    return raw;
+  }
+  if (fallbackType === "replacement" || invoiceTicketType(ticket) === "replacement") {
+    return "A remplacer";
+  }
+  if (normalizeImportCell(ticket.requestKind).toLowerCase().includes("supplementaire")) {
+    return "Supplementaire";
+  }
+  return "A facturer";
+}
+
+function renderInvoiceTicketList(tickets, emptyLabel, fallbackType = "") {
   if (!tickets.length) {
     return `<span class="cell-note">${escapeHtml(emptyLabel)}</span>`;
   }
   return `
     <div class="invoice-order-list">
       ${tickets.map((ticket) => `
-        <div class="invoice-order-item">
-          <strong>${escapeHtml(normalizeImportCell(ticket.materialLabel) || normalizeImportCell(ticket.concern) || "Commande")}</strong>
-          <span>Quantite: ${escapeHtml(String(ticket.quantityRequested || "1"))}</span>
-          <span>Type: ${escapeHtml(ticket.requestKind || "Commande")}</span>
+        <div class="invoice-order-item invoice-order-edit" data-invoice-ticket="${escapeHtml(ticket.id)}">
+          <label>
+            <span>Detail</span>
+            <input type="text" data-invoice-field="materialLabel" value="${escapeHtml(normalizeImportCell(ticket.materialLabel) || normalizeImportCell(ticket.concern) || "")}" placeholder="Detail commande">
+          </label>
+          <label>
+            <span>Quantite</span>
+            <input type="number" min="1" step="1" data-invoice-field="quantityRequested" value="${escapeHtml(String(ticket.quantityRequested || "1"))}">
+          </label>
+          <label>
+            <span>Statut</span>
+            <select data-invoice-field="billingType">
+              ${renderOptions(["A facturer", "A remplacer", "Supplementaire"], invoiceBillingTypeValue(ticket, fallbackType))}
+            </select>
+          </label>
         </div>
       `).join("")}
     </div>
@@ -5397,8 +5422,8 @@ function renderInvoiceRows(stores) {
       invoicePoCell("PO HP Desk", store.poHpDesk),
       invoicePoCell("PO PM", store.poPm),
       invoicePoCell("PO renting HW", store.poRentingHw),
-      renderInvoiceTicketList(billableTickets, "Aucune commande a facturer"),
-      renderInvoiceTicketList(replacementTickets, "Aucun remplacement"),
+      renderInvoiceTicketList(billableTickets, "Aucune commande a facturer", "billable"),
+      renderInvoiceTicketList(replacementTickets, "Aucun remplacement", "replacement"),
       renderInvoiceStatusList(allInvoiceTickets)
     ];
   });
