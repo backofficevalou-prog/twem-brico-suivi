@@ -508,6 +508,7 @@ const defaultAutomations = [
     active: true,
     trigger: "Tous les matins a partir du 2026-05-22",
     recipients: "Emir + Valou",
+    digestAdditionalRecipientIds: [],
     channels: "Mail quotidien",
     responseDelayHours: 9,
     escalationHours: 0,
@@ -6155,6 +6156,56 @@ function automationEmailStatusClass(status) {
   return "automation-email-status status-draft";
 }
 
+function personRecipientValue(person = {}) {
+  return normalizeImportCell(person.email) || normalizeImportCell(person.name);
+}
+
+function digestBasePeople() {
+  return ["Emir", "Valou"]
+    .map((name) => (state.people || []).find((person) => person.name === name) || { id: name, name })
+    .filter(Boolean);
+}
+
+function digestAdditionalPeople(automation = {}) {
+  const ids = Array.isArray(automation.digestAdditionalRecipientIds) ? automation.digestAdditionalRecipientIds : [];
+  return ids
+    .map((id) => (state.people || []).find((person) => String(person.id) === String(id)))
+    .filter(Boolean);
+}
+
+function digestRecipientPeople(automation = {}) {
+  const seen = new Set();
+  return [...digestBasePeople(), ...digestAdditionalPeople(automation)].filter((person) => {
+    const key = personRecipientValue(person).toLowerCase();
+    if (!key || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function digestRecipientLabel(automation = {}) {
+  const recipients = digestRecipientPeople(automation)
+    .map((person) => personRecipientValue(person) || person.name)
+    .filter(Boolean);
+  return recipients.join(", ") || "Emir + Valou";
+}
+
+function renderDigestRecipientOptions(automation = {}) {
+  const selectedIds = new Set(Array.isArray(automation.digestAdditionalRecipientIds) ? automation.digestAdditionalRecipientIds.map(String) : []);
+  const baseNames = new Set(["emir", "valou"]);
+  return (state.people || [])
+    .filter((person) => normalizeImportCell(person.name) && !baseNames.has(normalizeImportCell(person.name).toLowerCase()))
+    .sort((left, right) => normalizeImportCell(left.name).localeCompare(normalizeImportCell(right.name), "fr", { sensitivity: "base" }))
+    .map((person) => {
+      const id = String(person.id || person.email || person.name);
+      const label = [person.name, person.email].filter(Boolean).join(" - ");
+      return `<option value="${escapeHtml(id)}" ${selectedIds.has(id) ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    })
+    .join("");
+}
+
 function nextMorningIso(hour = 9) {
   const date = new Date();
   date.setDate(date.getDate() + 1);
@@ -6520,7 +6571,8 @@ function automationEmailTemplate(automation, context = {}) {
   if (automation.id === "daily_operations_digest") {
     return {
       subject: "Digest quotidien - installations, blocages et SAV",
-      body: buildDailyOperationsDigestBody()
+      body: buildDailyOperationsDigestBody(),
+      recipient: digestRecipientLabel(automation)
     };
   }
   if (automation.id === "store_update_alert" && context.activity) {
@@ -6803,7 +6855,7 @@ function ensureAutomationEmailDrafts() {
           ...baseDraft,
           ...current,
           automationTitle: automation.title,
-          recipient: current.recipient || automation.recipients || "",
+          recipient: automation.id === "daily_operations_digest" ? baseDraft.recipient : (current.recipient || automation.recipients || ""),
           subject: automation.emailSubject || baseDraft.subject,
           body: automation.emailBodyManual ? (current.body || baseDraft.body) : baseDraft.body,
           status: current.status || baseDraft.status
@@ -6961,8 +7013,16 @@ function renderAutomations() {
                 </label>
                 <label class="automation-field">
                   <span>${state.language === "nl" ? "Ontvangers" : "Destinataires"}</span>
-                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="recipients" value="${escapeHtml(item.recipients)}">
+                  <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="recipients" value="${escapeHtml(item.id === "daily_operations_digest" ? digestRecipientLabel(item) : item.recipients)}" ${item.id === "daily_operations_digest" ? "readonly" : ""}>
                 </label>
+                ${item.id === "daily_operations_digest" ? `
+                  <label class="automation-field automation-field-wide">
+                    <span>Destinataires supplementaires du digest</span>
+                    <select class="automation-multi-select" multiple data-automation-id="${escapeHtml(item.id)}" data-automation-field="digestAdditionalRecipientIds">
+                      ${renderDigestRecipientOptions(item)}
+                    </select>
+                  </label>
+                ` : ""}
                 <label class="automation-field">
                   <span>${state.language === "nl" ? "Kanaal" : "Canal"}</span>
                   <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="channels" value="${escapeHtml(item.channels)}">
@@ -7316,18 +7376,24 @@ function handleAutomationFieldChange(event) {
 
   if (target.type === "checkbox") {
     item[field] = target.checked;
+  } else if (target.multiple) {
+    item[field] = [...target.selectedOptions].map((option) => option.value);
   } else if (target.type === "number") {
     item[field] = Number(target.value || 0);
   } else {
     item[field] = target.value;
   }
 
+  if (item.id === "daily_operations_digest" && field === "digestAdditionalRecipientIds") {
+    item.recipients = digestRecipientLabel(item);
+  }
+
   ensureAutomationEmailDrafts();
   state.automationEmails
     .filter((entry) => entry.automationId === item.id)
     .forEach((emailDraft) => {
-      if (field === "recipients" && !["store_update_alert", "install_reminder", "previsit_reminder"].includes(item.id)) {
-        emailDraft.recipient = item.recipients || "";
+      if ((field === "recipients" || field === "digestAdditionalRecipientIds") && !["store_update_alert", "install_reminder", "previsit_reminder"].includes(item.id)) {
+        emailDraft.recipient = item.id === "daily_operations_digest" ? digestRecipientLabel(item) : (item.recipients || "");
       }
       if (field === "active" && ["draft", "ready"].includes(emailDraft.status)) {
         emailDraft.status = item.active ? "ready" : "draft";
@@ -7340,7 +7406,7 @@ function handleAutomationFieldChange(event) {
   }
 
   saveState();
-  if (field === "active" || field === "recipients") {
+  if (field === "active" || field === "recipients" || field === "digestAdditionalRecipientIds") {
     renderAutomations();
   }
 }

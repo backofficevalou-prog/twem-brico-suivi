@@ -2160,6 +2160,10 @@ button {
   resize: vertical;
 }
 
+.automation-multi-select {
+  min-height: 132px;
+}
+
 .automation-field-wide {
   grid-column: span 2;
 }
