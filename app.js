@@ -608,6 +608,14 @@ const visibilityTabCatalog = [
     ]
   },
   {
+    key: "tuto",
+    label: "TUTO",
+    blocks: [
+      { key: "tuto_videos", label: "Videos d'utilisation", hint: "Tutoriels courts par theme." },
+      { key: "tuto_helpdesk", label: "Contacts support", hint: "Helpdesk, telephonie et support app." }
+    ]
+  },
+  {
     key: "contacts",
     label: "Contacts",
     blocks: [
@@ -1144,7 +1152,7 @@ function isStoreEditorDirty() {
   return Date.now() - storeEditorDraftLock.lastTouchedAt < 15 * 60 * 1000;
 }
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -1737,6 +1745,7 @@ function localUiState() {
     language: state.language,
     activeAdminTab: state.activeAdminTab,
     activeAutomationSubtab: state.activeAutomationSubtab,
+    tutorialSeenByUser: state.tutorialSeenByUser,
     toolItems: state.toolItems,
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
@@ -1764,6 +1773,7 @@ function loadState() {
       activeUserName: "",
       language: "fr",
       activeAdminTab: "dashboard",
+      tutorialSeenByUser: {},
         toolItems: [],
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
@@ -1799,6 +1809,7 @@ function loadState() {
       language: parsed.language || "fr",
       activeAdminTab: parsed.activeAdminTab || "dashboard",
       activeAutomationSubtab: parsed.activeAutomationSubtab || "rules",
+      tutorialSeenByUser: parsed.tutorialSeenByUser || {},
         toolItems: parsed.toolItems || [],
         accessOverrides: parsed.accessOverrides || [],
         roleOptions: normalizedRoleOptions(parsed.roleOptions),
@@ -1821,6 +1832,7 @@ function loadState() {
       activeUserName: "",
       language: "fr",
       activeAdminTab: "dashboard",
+      tutorialSeenByUser: {},
         toolItems: [],
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
@@ -2286,14 +2298,14 @@ function allowedStoresForUser(user = currentUser()) {
 function defaultTabsForRole(role) {
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
-    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
-    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
-    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
-    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
+    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"]
   };
   return map[role] || ["dashboard"];
 }
@@ -2350,6 +2362,7 @@ function tabTitle(tab) {
     sav: "SAV / Tickets",
     extensions: "Extensions",
     invoice: "Invoice",
+    tuto: "TUTO",
     contacts: isNl ? "Contacten" : "Contacts",
     reports: isNl ? "Rapporten" : "Rapports",
     automations: isNl ? "Automatiseringen" : "Automatisations",
@@ -5269,6 +5282,68 @@ function renderDashboardRows(stores) {
   projectTableBody.innerHTML = "";
 }
 
+const tutorialVideos = [
+  {
+    title: "Premiere connexion",
+    description: "Se connecter avec son PIN, comprendre les onglets visibles et retrouver sa fiche magasin.",
+    status: "Video a ajouter"
+  },
+  {
+    title: "Creer un SAV",
+    description: "Ouvrir une demande, choisir les personnes a mobiliser, suivre l'historique et changer le statut.",
+    status: "Video a ajouter"
+  },
+  {
+    title: "Infos reseau",
+    description: "Lire les informations reseau, VLAN, cablage, pre-visite et points de preparation.",
+    status: "Video a ajouter"
+  },
+  {
+    title: "Planning et rendez-vous",
+    description: "Consulter les dates, comprendre les rendez-vous prevus et les prochaines actions.",
+    status: "Video a ajouter"
+  },
+  {
+    title: "Commandes et materiel",
+    description: "Comprendre les commandes, quantites, remplacements, livraison et elements a facturer.",
+    status: "Video a ajouter"
+  }
+];
+
+function renderTutorialRows() {
+  setMainTableHeaders([]);
+  projectTableBody.innerHTML = `
+    <tr>
+      <td colspan="9" class="tuto-cell">
+        <section class="tuto-shell">
+          <div class="tuto-helpdesk">
+            <strong>Helpdesk 999</strong>
+            <span>Probleme de telephonie : envoyer un mail a <a href="mailto:Emir@brico.be">Emir@brico.be</a></span>
+            <span>Probleme d'app : envoyer un mail a <a href="mailto:backoffice@twem.be">backoffice@twem.be</a></span>
+          </div>
+          <div class="tuto-intro">
+            <h3>Tutoriels d'utilisation</h3>
+            <p>Les videos seront ajoutees par theme pour pouvoir remplacer uniquement la partie concernee si un point change.</p>
+          </div>
+          <div class="tuto-grid">
+            ${tutorialVideos.map((video) => `
+              <article class="tuto-video-card">
+                <div class="tuto-video-placeholder">
+                  <span>${escapeHtml(video.status)}</span>
+                </div>
+                <div>
+                  <h4>${escapeHtml(video.title)}</h4>
+                  <p>${escapeHtml(video.description)}</p>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      </td>
+    </tr>
+  `;
+}
+
 function renderActivitiesRows(stores) {
   setMainTableHeaders(["Code", "Magasin", "Activite", "Responsable", "Priorite", "SLA", "Etat", "Historique", "Action"]);
   renderCompactStoreRows(stores, (store) => {
@@ -6032,6 +6107,9 @@ function renderStores() {
     case "invoice":
       projectTable?.classList.add("compact-rows-table");
       renderInvoiceRows(stores);
+      return;
+    case "tuto":
+      renderTutorialRows();
       return;
     case "dashboard":
       projectTable?.classList.add("dashboard-summary-only");
@@ -11180,6 +11258,22 @@ function firstAccessibleTabForUser(user = currentUser()) {
   return tabs[0] || "dashboard";
 }
 
+function tutorialSeenKeyForUser(user = currentUser()) {
+  return String(user?.id || user?.email || user?.name || "").toLowerCase();
+}
+
+function shouldOpenTutorialOnLogin(user) {
+  const key = tutorialSeenKeyForUser(user);
+  return Boolean(key && canAccessTab("tuto", user) && !state.tutorialSeenByUser?.[key]);
+}
+
+function markTutorialSeenForUser(user) {
+  const key = tutorialSeenKeyForUser(user);
+  if (!key) return;
+  state.tutorialSeenByUser ||= {};
+  state.tutorialSeenByUser[key] = new Date().toISOString();
+}
+
 function ensureValidActiveTab() {
   if (!canAccessTab(state.activeAdminTab)) {
     state.activeAdminTab = firstAccessibleTabForUser();
@@ -11225,7 +11319,12 @@ async function handlePinSubmit(event) {
 
   state.activeUserName = matchedPerson.name;
   state.pinValidated = true;
-  state.activeAdminTab = firstAccessibleTabForUser(matchedPerson);
+  if (shouldOpenTutorialOnLogin(matchedPerson)) {
+    state.activeAdminTab = "tuto";
+    markTutorialSeenForUser(matchedPerson);
+  } else {
+    state.activeAdminTab = firstAccessibleTabForUser(matchedPerson);
+  }
   updateFocusFromQuery();
   pinInput.value = "";
   if (pinFeedback) {

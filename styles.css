@@ -782,6 +782,75 @@ button {
   box-shadow: 0 0 0 2px rgba(195, 55, 46, 0.12);
 }
 
+.tuto-cell {
+  padding: 0;
+}
+
+.tuto-shell {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.tuto-helpdesk {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--brand-pink);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.tuto-helpdesk strong {
+  font-size: 1rem;
+}
+
+.tuto-helpdesk a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.tuto-intro h3,
+.tuto-video-card h4 {
+  margin: 0;
+}
+
+.tuto-intro p,
+.tuto-video-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.tuto-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tuto-video-card {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.75fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tuto-video-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 94px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #f7f5ee;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
 .extensions-table {
   width: 100%;
   min-width: 760px;
@@ -2933,6 +3002,11 @@ button {
   }
 
   .sav-people-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tuto-grid,
+  .tuto-video-card {
     grid-template-columns: 1fr;
   }
 
