@@ -234,6 +234,71 @@ const extraMaterialWorkflowOptions = [
   "N de commande recu",
   "Commande passee"
 ];
+
+function savPersonOptions(store = null) {
+  const people = [...(state.people || [])]
+    .filter((person) => normalizeImportCell(person?.name))
+    .sort((left, right) => normalizeImportCell(left.name).localeCompare(normalizeImportCell(right.name), "fr", { sensitivity: "base" }));
+  const seen = new Set();
+  return people
+    .filter((person) => {
+      const name = normalizeImportCell(person.name);
+      if (!name || seen.has(name.toLowerCase())) {
+        return false;
+      }
+      seen.add(name.toLowerCase());
+      return true;
+    })
+    .map((person) => {
+      const role = roleLabel(person.role || "");
+      const storeCode = normalizeImportCell(person.storeCode);
+      const details = [role, storeCode && store?.code !== storeCode ? storeCode : ""].filter(Boolean).join(" - ");
+      return {
+        value: person.name,
+        label: details ? `${person.name} (${details})` : person.name
+      };
+    });
+}
+
+function ticketTargetPeople(ticket = {}) {
+  const rawPeople = Array.isArray(ticket.targetPeople)
+    ? ticket.targetPeople
+    : Array.isArray(ticket.targetPersonNames)
+      ? ticket.targetPersonNames
+      : [];
+  const people = rawPeople
+    .map((value) => normalizeImportCell(value))
+    .filter(Boolean);
+  if (people.length) {
+    return [...new Set(people)];
+  }
+  const legacyTarget = normalizeImportCell(ticket.targetService);
+  if (!legacyTarget) {
+    return [];
+  }
+  return legacyTarget
+    .split(/[,;|]/)
+    .map((value) => normalizeImportCell(value))
+    .filter(Boolean);
+}
+
+function ticketTargetLabel(ticket = {}) {
+  return ticketTargetPeople(ticket).join(", ") || normalizeImportCell(ticket.targetService) || "Personne a definir";
+}
+
+function renderSavPersonCheckboxes(store) {
+  const options = savPersonOptions(store);
+  if (!options.length) {
+    return '<div class="empty-state sav-empty">Aucune personne disponible dans les contacts.</div>';
+  }
+  return options.map((option) => `
+    <label class="sav-person-option">
+      <input type="checkbox" name="new_ticket_people" value="${escapeHtml(option.value)}">
+      <span>${escapeHtml(option.label)}</span>
+    </label>
+  `).join("");
+}
+
 const extensionCatalogRows = [
   { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "900", label: "Zaagmachine", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
   { category: "Bouton Appel", model: "HELIOS IP Verso1 B PoE", number: "901", label: "tuin", oldNumber: "", language: "fr_BE", item: "F3007", activation: "" },
@@ -1548,7 +1613,7 @@ function buildAppwriteTicketDocument(ticket) {
     store_code: ticket.storeCode || "",
     store_name: ticket.storeName || "",
     requester_name: ticket.requesterName || "",
-    target_service: ticket.targetService || "",
+    target_service: ticketTargetLabel(ticket),
     concern: ticket.concern || "",
     initial_note: ticket.initialNote || "",
     status: ticket.status || "open",
@@ -5466,7 +5531,7 @@ function renderInvoiceRows(stores) {
 }
 
 function renderSavRows() {
-  setMainTableHeaders(["Code", "Magasin", "Ticket", "Demandeur", "Service", "Ouverture", "Etat", "Dernier suivi", "Action"]);
+  setMainTableHeaders(["Code", "Magasin", "Ticket", "Demandeur", "Personnes", "Ouverture", "Etat", "Dernier suivi", "Action"]);
   const filteredTickets = getFilteredTickets();
 
   if (!filteredTickets.length) {
@@ -5488,7 +5553,7 @@ function renderSavRows() {
           </div>
         </td>
         <td>${escapeHtml(ticket.requesterName || "-")}</td>
-        <td>${escapeHtml(ticket.targetService || "-")}</td>
+        <td>${escapeHtml(ticketTargetLabel(ticket))}</td>
         <td>${escapeHtml(formatDateTime(ticket.createdAt))}</td>
         <td><span class="${ticketBadgeClass(ticket.status)}">${escapeHtml(ticketStatusLabel(ticket.status))}</span></td>
         <td>${escapeHtml(latestUpdate ? `${formatDateTime(latestUpdate.createdAt)} - ${latestUpdate.authorName}` : "Demande initiale")}</td>
@@ -5772,7 +5837,7 @@ function getFilteredTickets() {
         ticket.storeCode,
         ticket.storeName,
         ticket.requesterName,
-        ticket.targetService,
+        ticketTargetLabel(ticket),
         ticket.concern,
         ticket.initialNote,
         ...(ticket.updates || []).map((update) => `${update.authorName} ${update.note}`)
@@ -5814,12 +5879,12 @@ function buildSavCard(store) {
                 ${renderOptions(storeRequestTypeOptions, "SAV")}
               </select>
             </label>
-            <label>
-              <span>Service a mobiliser</span>
-              <select name="new_ticket_service">
-                ${renderOptions(["TWEM", "Destiny", "IT", "Infra", "Magasin", "Autre"], "Destiny")}
-              </select>
-            </label>
+            <fieldset class="sav-people-field">
+              <legend>Personnes a mobiliser</legend>
+              <div class="sav-people-grid">
+                ${renderSavPersonCheckboxes(store)}
+              </div>
+            </fieldset>
           </div>
 
           <div class="two-col">
@@ -5882,6 +5947,7 @@ function buildTicketThread(store, ticket) {
   const updates = [...(ticket.updates || [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const contextRows = [
     ticket.requestKind ? `<div><strong>Type</strong> ${escapeHtml(ticket.requestKind)}</div>` : "",
+    `<div><strong>Personnes</strong> ${escapeHtml(ticketTargetLabel(ticket))}</div>`,
     ticket.materialLabel ? `<div><strong>Materiel</strong> ${escapeHtml(ticket.materialLabel)}</div>` : "",
     ticket.extensionLabel ? `<div><strong>Extension</strong> ${escapeHtml(ticket.extensionLabel)}</div>` : "",
     ticket.quantityRequested ? `<div><strong>Quantite</strong> ${escapeHtml(String(ticket.quantityRequested))}</div>` : "",
@@ -5892,7 +5958,7 @@ function buildTicketThread(store, ticket) {
       <div class="sav-thread-head">
         <div>
           <strong>${escapeHtml(ticket.id)} - ${escapeHtml(ticket.concern || "Sans objet")}</strong>
-          <div class="cell-note">Demande initiale par ${escapeHtml(ticket.requesterName || "-")} le ${escapeHtml(formatDateTime(ticket.createdAt))} - ${escapeHtml(ticket.targetService || "Service a definir")}</div>
+          <div class="cell-note">Demande initiale par ${escapeHtml(ticket.requesterName || "-")} le ${escapeHtml(formatDateTime(ticket.createdAt))} - ${escapeHtml(ticketTargetLabel(ticket))}</div>
         </div>
         <span class="${ticketBadgeClass(ticket.status)}">${escapeHtml(ticketStatusLabel(ticket.status))}</span>
       </div>
@@ -6480,7 +6546,7 @@ function getBlockedStoresForDigest() {
 function getTicketsForDigest(status) {
   return (state.tickets || [])
     .filter((ticket) => ticket.status === status)
-    .map((ticket) => `${ticket.id || "-"} | ${ticket.storeCode || ""} ${ticket.storeName || ""} | ${ticket.concern || "-"} | ${ticket.targetService || "-"}`.trim());
+    .map((ticket) => `${ticket.id || "-"} | ${ticket.storeCode || ""} ${ticket.storeName || ""} | ${ticket.concern || "-"} | ${ticketTargetLabel(ticket)}`.trim());
 }
 
 function buildDailyOperationsDigestBody() {
@@ -9977,7 +10043,7 @@ function buildPrintableStoreHtml(store) {
         noAppointments: "Geen afspraak gepland.",
         tickets: "SAV / tickets",
         reference: "Referentie",
-        service: "Dienst",
+        service: "Personen",
         subject: "Onderwerp",
         noTickets: "Geen SAV-ticket."
       }
@@ -10075,7 +10141,7 @@ function buildPrintableStoreHtml(store) {
         noAppointments: "Aucun rendez-vous planifie.",
         tickets: "SAV / tickets",
         reference: "Reference",
-        service: "Service",
+        service: "Personnes",
         subject: "Sujet",
         noTickets: "Aucun ticket SAV."
       };
@@ -10318,7 +10384,7 @@ function buildPrintableStoreHtml(store) {
                 ${tickets.map((ticket) => `
                   <tr>
                     <td>${escapeHtml(ticket.id)}</td>
-                    <td>${escapeHtml(printableValue(ticket.targetService))}</td>
+                    <td>${escapeHtml(printableValue(ticketTargetLabel(ticket)))}</td>
                     <td>${escapeHtml(printableValue(ticket.requestKind || "SAV"))}</td>
                     <td>${escapeHtml(printableValue(ticket.concern))}</td>
                     <td>${escapeHtml(ticketStatusLabel(ticket.status, storeLanguage))}</td>
@@ -10617,7 +10683,10 @@ async function handleSavCreate(event) {
 
   const concern = form.querySelector('[name="new_ticket_concern"]').value.trim();
   const initialNote = form.querySelector('[name="new_ticket_note"]').value.trim();
-  const targetService = form.querySelector('[name="new_ticket_service"]').value;
+  const targetPeople = [...form.querySelectorAll('[name="new_ticket_people"]:checked')]
+    .map((field) => normalizeImportCell(field.value))
+    .filter(Boolean);
+  const targetService = targetPeople.join(", ");
   const requestKind = form.querySelector('[name="new_ticket_kind"]')?.value || "SAV";
   const materialLabel = form.querySelector('[name="new_ticket_material"]')?.value || "";
   const extensionLabel = form.querySelector('[name="new_ticket_extension"]')?.value || "";
@@ -10636,6 +10705,12 @@ async function handleSavCreate(event) {
     }
     return;
   }
+  if (!targetPeople.length) {
+    if (feedback) {
+      feedback.textContent = "Selectionne au moins une personne a mobiliser.";
+    }
+    return;
+  }
 
   const now = new Date().toISOString();
   const ticket = {
@@ -10645,6 +10720,7 @@ async function handleSavCreate(event) {
     storeName: store.name,
     requesterName: currentUser()?.name || state.activeUserName || store.manager || "-",
     targetService,
+    targetPeople,
     concern: resolvedConcern,
     initialNote,
     requestKind,
@@ -10672,7 +10748,9 @@ async function handleSavCreate(event) {
 
   form.querySelector('[name="new_ticket_concern"]').value = "";
   form.querySelector('[name="new_ticket_note"]').value = "";
-  form.querySelector('[name="new_ticket_service"]').value = "Destiny";
+  form.querySelectorAll('[name="new_ticket_people"]:checked').forEach((field) => {
+    field.checked = false;
+  });
   form.querySelector('[name="new_ticket_kind"]').value = "SAV";
   form.querySelector('[name="new_ticket_material"]').value = "";
   form.querySelector('[name="new_ticket_extension"]').value = "";

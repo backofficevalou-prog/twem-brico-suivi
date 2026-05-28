@@ -1385,6 +1385,46 @@ button {
   margin-bottom: 10px;
 }
 
+.sav-people-field {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  min-width: 0;
+}
+
+.sav-people-field legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.sav-people-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 178px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.sav-person-option {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  min-width: 0;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.sav-person-option input {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.sav-person-option span {
+  overflow-wrap: anywhere;
+}
+
 .sav-thread-context {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1400,7 +1440,7 @@ button {
 
 .sav-split {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -1410,6 +1450,7 @@ button {
   border-radius: 14px;
   background: #fffdf8;
   padding: 14px;
+  min-width: 0;
 }
 
 .sav-current-card h4 {
@@ -2885,6 +2926,10 @@ button {
 
   .quantity-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .sav-people-grid {
+    grid-template-columns: 1fr;
   }
 
   .topbar {
