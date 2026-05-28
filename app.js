@@ -6409,43 +6409,101 @@ function buildStoreUpdateAlertEmail(activity, automation = {}) {
   };
 }
 
+function storesForPersonAccess(person = {}) {
+  const codes = Array.isArray(person.allowedStoreCodes) && person.allowedStoreCodes.length
+    ? person.allowedStoreCodes
+    : person.storeCode
+      ? [person.storeCode]
+      : [];
+  if (!codes.length || codes.includes("*")) {
+    return person.storeCode
+      ? (state.stores || []).filter((store) => store.code === person.storeCode)
+      : [];
+  }
+  return (state.stores || []).filter((store) => codes.includes(store.code));
+}
+
+function accessMailStoreTypeGroup(person = {}) {
+  const types = storesForPersonAccess(person)
+    .map((store) => normalizeShopTypeValue(store.shopType))
+    .filter(Boolean);
+  if (types.some((type) => type === "FOS" || type === "FOSDOS")) {
+    return "FOS-FOSDOS";
+  }
+  if (types.some((type) => type === "DOS")) {
+    return "DOS";
+  }
+  return "DOS";
+}
+
+function accessMailStoreLabel(person = {}) {
+  const stores = storesForPersonAccess(person);
+  if (!stores.length) {
+    return "";
+  }
+  return stores
+    .map((store) => [store.code, store.name].filter(Boolean).join(" - "))
+    .join(", ");
+}
+
+function defaultAccessMailBody({ language, contactName, appLink, pin, storeLabel, storeTypeGroup }) {
+  const isFos = storeTypeGroup === "FOS-FOSDOS";
+  if (language === "nl") {
+    return [
+      `Hallo ${contactName},`,
+      "",
+      isFos
+        ? "Uw toegang tot de TWEM Brico opvolgingsapplicatie voor uw FOS / FOSDOS-winkel is aangemaakt."
+        : "Uw toegang tot de TWEM Brico opvolgingsapplicatie voor uw DOS-winkel is aangemaakt.",
+      storeLabel ? `Betrokken winkel(s): ${storeLabel}` : null,
+      "",
+      `Link naar de applicatie: ${appLink}`,
+      `Uw persoonlijke PIN-code: ${pin}`,
+      "",
+      isFos
+        ? "Met deze toegang kunt u de voorbereiding, interventies, afspraken en opvolging voor het FOS / FOSDOS-traject raadplegen."
+        : "Met deze toegang kunt u de informatie, afspraken en opvolging voor het DOS-traject raadplegen.",
+      "",
+      "Met vriendelijke groeten,"
+    ].filter((line) => line !== null).join("\n");
+  }
+  return [
+    `Bonjour ${contactName},`,
+    "",
+    isFos
+      ? "Votre acces a l'application de suivi TWEM Brico pour votre magasin FOS / FOSDOS a ete cree."
+      : "Votre acces a l'application de suivi TWEM Brico pour votre magasin DOS a ete cree.",
+    storeLabel ? `Magasin(s) concerne(s): ${storeLabel}` : null,
+    "",
+    `Lien vers l'application: ${appLink}`,
+    `Votre code PIN personnel: ${pin}`,
+    "",
+    isFos
+      ? "Cet acces vous permet de consulter la preparation, les interventions, les rendez-vous et le suivi du parcours FOS / FOSDOS."
+      : "Cet acces vous permet de consulter les informations, les rendez-vous et le suivi du parcours DOS.",
+    "",
+    "Bien a vous,"
+  ].filter((line) => line !== null).join("\n");
+}
+
 function buildNewPersonWelcomeEmail(person, automation = {}) {
   const language = normalizeLanguageCode(person?.language || "fr");
   const contactName = person?.name || (language === "nl" ? "gebruiker" : "utilisateur");
   const appLink = appAccessLink();
   const pin = normalizePin(person?.pin) || "------";
+  const storeTypeGroup = accessMailStoreTypeGroup(person);
+  const storeLabel = accessMailStoreLabel(person);
   const subject = language === "nl"
-    ? "Toegang TWEM Brico-app + PIN-code"
-    : "Acces application TWEM Brico + code PIN";
-  const body = language === "nl"
-    ? [
-        `Hallo ${contactName},`,
-        "",
-        "Uw toegang tot de TWEM Brico opvolgingsapplicatie is aangemaakt.",
-        "",
-        `Link naar de applicatie: ${appLink}`,
-        `Uw persoonlijke PIN-code: ${pin}`,
-        "",
-        "Met deze toegang kunt u de informatie opvolgen die voor uw winkel beschikbaar is.",
-        "",
-        "Met vriendelijke groeten,"
-      ].join("\n")
-    : [
-        `Bonjour ${contactName},`,
-        "",
-        "Votre acces a l'application de suivi TWEM Brico a ete cree.",
-        "",
-        `Lien vers l'application: ${appLink}`,
-        `Votre code PIN personnel: ${pin}`,
-        "",
-        "Cet acces vous permet de consulter les informations disponibles pour votre magasin.",
-        "",
-        "Bien a vous,"
-      ].join("\n");
+    ? `Toegang TWEM Brico-app ${storeTypeGroup} + PIN-code`
+    : `Acces application TWEM Brico ${storeTypeGroup} + code PIN`;
+  const body = defaultAccessMailBody({ language, contactName, appLink, pin, storeLabel, storeTypeGroup });
   const values = {
     contactName,
     appLink,
-    pin
+    pin,
+    storeName: storeLabel,
+    storeCode: storeLabel,
+    storeType: storeTypeGroup
   };
 
   return {
