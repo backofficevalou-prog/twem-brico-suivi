@@ -757,6 +757,12 @@ button {
   font: inherit;
 }
 
+.invoice-order-edit input.is-save-error,
+.invoice-order-edit select.is-save-error {
+  border-color: #c3372e;
+  box-shadow: 0 0 0 2px rgba(195, 55, 46, 0.12);
+}
+
 .extensions-table {
   width: 100%;
   min-width: 760px;

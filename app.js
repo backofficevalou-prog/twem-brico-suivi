@@ -10794,6 +10794,24 @@ async function handleSavRowStatusUpdate(event) {
   render();
 }
 
+async function syncInvoiceTicketToRemote(ticket) {
+  if (!hasRemoteData()) {
+    return;
+  }
+  if (supabaseClient) {
+    await syncAllRemoteState();
+    return;
+  }
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
+  await upsertAppwriteDocument(
+    appwriteTicketsCollectionId,
+    ticketRemoteSyncKey(ticket),
+    buildAppwriteTicketDocument(ticket)
+  );
+}
+
 async function handleInvoiceFieldChange(event) {
   const field = event.currentTarget.getAttribute("data-invoice-field");
   const wrapper = event.currentTarget.closest("[data-invoice-ticket]");
@@ -10812,12 +10830,15 @@ async function handleInvoiceFieldChange(event) {
     ticket.orderWorkflowStatus = nextValue;
   }
   ticket.updatedAt = new Date().toISOString();
-
-  if (hasRemoteData()) {
-    await syncSavStateToRemote();
-  }
   saveState();
-  render();
+
+  try {
+    await syncInvoiceTicketToRemote(ticket);
+    event.currentTarget.classList.remove("is-save-error");
+  } catch (error) {
+    console.error("Invoice ticket sync error", error);
+    event.currentTarget.classList.add("is-save-error");
+  }
 }
 
 function attachInvoiceHandlers() {
