@@ -3005,8 +3005,9 @@ function getFilteredStores() {
         ticket.materialLabel,
         ticket.concern,
         ticket.orderWorkflowStatus,
+        ticket.invoiceOrderStatus,
+        ticket.orderApproved,
         invoiceOrderReference(ticket),
-        invoiceOrderApprovedDate(ticket),
         invoiceOrderDeliveredDate(ticket)
       ].join(" "))
     ].join(" ");
@@ -5297,8 +5298,19 @@ function invoiceOrderReference(ticket) {
   return normalizeImportCell(ticket.orderNumber || ticket.commandNumber || ticket.orderRef || ticket.purchaseOrderNumber || "");
 }
 
-function invoiceOrderApprovedDate(ticket) {
-  return normalizeImportCell(ticket.orderApprovedAt || ticket.approvedAt || ticket.commandApprovedAt || ticket.approvalDate || "");
+function invoiceOrderStatus(ticket) {
+  return normalizeImportCell(ticket.invoiceOrderStatus || ticket.orderWorkflowStatus || ticketStatusLabel(ticket.status) || "En cours");
+}
+
+function invoiceOrderApprovedValue(ticket) {
+  const raw = normalizeImportCell(ticket.orderApproved || ticket.commandApproved || ticket.invoiceApproved || "");
+  if (/^(oui|yes|true|1)$/i.test(raw)) {
+    return "Oui";
+  }
+  if (/^(non|no|false|0)$/i.test(raw)) {
+    return "Non";
+  }
+  return raw || "Non";
 }
 
 function invoiceOrderDeliveredDate(ticket) {
@@ -5319,8 +5331,9 @@ function renderInvoiceTicketList(tickets, emptyLabel) {
     <div class="invoice-order-list">
       ${tickets.map((ticket) => `
         <div class="invoice-order-item">
-          <strong>${escapeHtml(invoiceTicketLabel(ticket))}</strong>
-          <span>${escapeHtml(ticket.orderWorkflowStatus || ticketStatusLabel(ticket.status) || "A renseigner")}</span>
+          <strong>${escapeHtml(normalizeImportCell(ticket.materialLabel) || normalizeImportCell(ticket.concern) || "Commande")}</strong>
+          <span>Quantite: ${escapeHtml(String(ticket.quantityRequested || "1"))}</span>
+          <span>Type: ${escapeHtml(ticket.requestKind || "Commande")}</span>
         </div>
       `).join("")}
     </div>
@@ -5334,12 +5347,28 @@ function renderInvoiceStatusList(tickets) {
   return `
     <div class="invoice-order-list">
       ${tickets.map((ticket) => `
-        <div class="invoice-order-item">
+        <div class="invoice-order-item invoice-order-edit" data-invoice-ticket="${escapeHtml(ticket.id)}">
           <strong>${escapeHtml(invoiceTicketLabel(ticket))}</strong>
-          <span>Statut cde: ${escapeHtml(ticket.orderWorkflowStatus || ticketStatusLabel(ticket.status) || "A renseigner")}</span>
-          <span>Cde approuvee: ${escapeHtml(invoiceOrderApprovedDate(ticket) || "A renseigner")}</span>
-          <span>N commande: ${escapeHtml(invoiceOrderReference(ticket) || "A renseigner")}</span>
-          <span>Livre: ${escapeHtml(invoiceOrderDeliveredDate(ticket) || "A renseigner")}</span>
+          <label>
+            <span>Statut cde</span>
+            <select data-invoice-field="invoiceOrderStatus">
+              ${renderOptions(["En cours", "Attente accord"], invoiceOrderStatus(ticket))}
+            </select>
+          </label>
+          <label>
+            <span>Cde approuvee</span>
+            <select data-invoice-field="orderApproved">
+              ${renderOptions(["Non", "Oui"], invoiceOrderApprovedValue(ticket))}
+            </select>
+          </label>
+          <label>
+            <span>N commande</span>
+            <input type="text" data-invoice-field="orderNumber" value="${escapeHtml(invoiceOrderReference(ticket))}" placeholder="N commande">
+          </label>
+          <label>
+            <span>Livre</span>
+            <input type="date" data-invoice-field="deliveredAt" value="${escapeHtml(invoiceOrderDeliveredDate(ticket))}">
+          </label>
         </div>
       `).join("")}
     </div>
@@ -5373,6 +5402,7 @@ function renderInvoiceRows(stores) {
       renderInvoiceStatusList(allInvoiceTickets)
     ];
   });
+  attachInvoiceHandlers();
 }
 
 function renderSavRows() {
@@ -10737,6 +10767,38 @@ async function handleSavRowStatusUpdate(event) {
   }
   saveState();
   render();
+}
+
+async function handleInvoiceFieldChange(event) {
+  const field = event.currentTarget.getAttribute("data-invoice-field");
+  const wrapper = event.currentTarget.closest("[data-invoice-ticket]");
+  const ticketId = wrapper?.getAttribute("data-invoice-ticket");
+  const ticket = state.tickets.find((entry) => entry.id === ticketId);
+  if (!field || !ticket) {
+    return;
+  }
+  const nextValue = event.currentTarget.value;
+  if (String(ticket[field] || "") === String(nextValue || "")) {
+    return;
+  }
+
+  ticket[field] = nextValue;
+  if (field === "invoiceOrderStatus") {
+    ticket.orderWorkflowStatus = nextValue;
+  }
+  ticket.updatedAt = new Date().toISOString();
+
+  if (hasRemoteData()) {
+    await syncSavStateToRemote();
+  }
+  saveState();
+  render();
+}
+
+function attachInvoiceHandlers() {
+  projectTableBody.querySelectorAll("[data-invoice-field]").forEach((field) => {
+    field.addEventListener("change", handleInvoiceFieldChange);
+  });
 }
 
 async function handlePersonEditSubmit(event) {
