@@ -3803,7 +3803,7 @@ function buildStorePilotSkeleton(store) {
         ${quantityCells.map(([label, fieldName, value]) => `
           <div class="quantity-card">
             <span class="mini-label">${label}</span>
-            ${isSupAdmin()
+            ${isAdminTwem()
               ? `<input type="number" min="0" name="${fieldName}" value="${escapeHtml(String(value))}">`
               : `<strong>${value}</strong>`}
           </div>
@@ -11080,7 +11080,7 @@ async function handleStoreEditorSubmit(event) {
   const quantityInputsPresent = form.querySelector('[name="license_count"]')
     || form.querySelector('[name="fix_count"]')
     || form.querySelector('[name="mobile_count"]');
-  if (isSupAdmin() && quantityInputsPresent) {
+  if (isAdminTwem() && quantityInputsPresent) {
     store.licenseCount = Math.max(0, Number(form.querySelector('[name="license_count"]')?.value) || 0);
     store.fixCount = Math.max(0, Number(form.querySelector('[name="fix_count"]')?.value) || 0);
     store.fixBigCount = Math.max(0, Number(form.querySelector('[name="fix_big_count"]')?.value) || 0);
