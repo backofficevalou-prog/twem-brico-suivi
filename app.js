@@ -236,7 +236,13 @@ const extraMaterialWorkflowOptions = [
 ];
 
 function isOperationalIntervenant(person) {
-  return Boolean(person && normalizeImportCell(person.name) && isIntervenantRole(canonicalRoleKey(person.role)));
+  const role = canonicalRoleKey(person?.role);
+  const globalOperationalRoles = ["twem", "brico"];
+  return Boolean(
+    person
+    && normalizeImportCell(person.name)
+    && (isIntervenantRole(role) || globalOperationalRoles.includes(role))
+  );
 }
 
 function intervenantPeopleForSelection(selectedNames = []) {
@@ -2583,6 +2589,8 @@ function roleLabel(role) {
     supadmin_twem: "SupAdmin TWEM",
     admin_twem: "Admin TWEM",
     direction_brico: "Direction Brico",
+    twem: "TWEM",
+    brico: "Brico",
     supmanager: "SupManager",
     manager: "Manager magasin",
     magasin: "Magasin",
