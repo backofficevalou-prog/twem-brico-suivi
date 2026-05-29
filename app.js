@@ -2444,6 +2444,22 @@ function getRoleScopedStores() {
   return state.stores.filter((store) => storeCodes.includes(store.code));
 }
 
+function visibleActivitiesForUser(user = currentUser()) {
+  if (!user || canSeeAllStores(user)) {
+    return state.activities;
+  }
+  const allowedCodes = allowedStoresForUser(user);
+  if (allowedCodes.includes("*")) {
+    return state.activities;
+  }
+  const storesByName = new Map(state.stores.map((store) => [normalizeImportCell(store.name).toLowerCase(), store]));
+  const allowedSet = new Set(allowedCodes);
+  return state.activities.filter((activity) => {
+    const store = storesByName.get(normalizeImportCell(activity.storeName).toLowerCase());
+    return Boolean(store && allowedSet.has(store.code));
+  });
+}
+
 function stepFor(store, actorType) {
   return store.steps.find((step) => step.actorType === actorType);
 }
@@ -6177,7 +6193,7 @@ function renderActivities() {
   reportArchiveList.innerHTML = "";
   const storesByName = new Map(state.stores.map((store) => [normalizeImportCell(store.name).toLowerCase(), store]));
   const groupsByStore = new Map();
-  state.activities.forEach((activity) => {
+  visibleActivitiesForUser().forEach((activity) => {
     const store = storesByName.get(normalizeImportCell(activity.storeName).toLowerCase());
     const key = store?.code || normalizeImportCell(activity.storeName).toLowerCase();
     if (!groupsByStore.has(key)) {
@@ -10000,7 +10016,7 @@ function buildReportHtml() {
       <div class="section">
         <h2>${t("recentActivity")}</h2>
         <ul>
-          ${state.activities.slice(0, 10).map((activity) => `<li>${escapeHtml(activity.storeName)} - ${escapeHtml(activity.comment)} - ${escapeHtml(formatDateTime(activity.createdAt))}</li>`).join("")}
+          ${visibleActivitiesForUser().slice(0, 10).map((activity) => `<li>${escapeHtml(activity.storeName)} - ${escapeHtml(activity.comment)} - ${escapeHtml(formatDateTime(activity.createdAt))}</li>`).join("")}
         </ul>
       </div>
     </body>
