@@ -445,6 +445,34 @@ const defaultRoleOptions = [
   "logistic_coord_dstny"
 ];
 const defaultIntervenantRoleOptions = ["telephonie_destiny", "pm_dstny", "uc_pm_fr_nl_dstny", "uc_tech_fr_nl_dstny", "logistic_coord_dstny"];
+const tutorialVideosSettingsItemId = "__tutorial_videos__";
+const defaultTutorialVideos = [
+  {
+    key: "first_login",
+    title: "Premiere connexion",
+    description: "Se connecter avec son PIN, comprendre les onglets visibles et retrouver sa fiche magasin."
+  },
+  {
+    key: "create_sav",
+    title: "Creer un SAV",
+    description: "Ouvrir une demande, choisir les personnes a mobiliser, suivre l'historique et changer le statut."
+  },
+  {
+    key: "network_info",
+    title: "Infos reseau",
+    description: "Lire les informations reseau, VLAN, cablage, pre-visite et points de preparation."
+  },
+  {
+    key: "planning",
+    title: "Planning et rendez-vous",
+    description: "Consulter les dates, comprendre les rendez-vous prevus et les prochaines actions."
+  },
+  {
+    key: "orders_material",
+    title: "Commandes et materiel",
+    description: "Comprendre les commandes, quantites, remplacements, livraison et elements a facturer."
+  }
+];
 const defaultAutomations = [
   {
     id: "store_update_alert",
@@ -1100,6 +1128,7 @@ const state = {
   toolItems: [],
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
+  tutorialVideos: clone(defaultTutorialVideos),
   automations: clone(defaultAutomations),
   roleVisibilityConfig: {},
   visibilityEditorRole: "supadmin_twem",
@@ -1554,9 +1583,17 @@ function normalizeAppwriteActivity(document) {
 
 function buildAppwriteSettingsDocument() {
   state.roleVisibilityConfig = normalizedRoleVisibilityConfig(state.roleVisibilityConfig || {});
+  const cleanToolItems = (state.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
   return {
     role_options_json: JSON.stringify(state.roleOptions || []),
-    tool_items_json: JSON.stringify(state.toolItems || []),
+    tool_items_json: JSON.stringify([
+      ...cleanToolItems,
+      {
+        id: tutorialVideosSettingsItemId,
+        kind: "tutorial_videos",
+        videos: normalizedTutorialVideos(state.tutorialVideos || [])
+      }
+    ]),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
     role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
     automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
@@ -1772,6 +1809,7 @@ function localUiState() {
     accessOverrides: state.accessOverrides,
     roleOptions: state.roleOptions,
     automations: state.automations,
+    tutorialVideos: state.tutorialVideos,
     roleVisibilityConfig: state.roleVisibilityConfig,
     visibilityEditorRole: state.visibilityEditorRole,
     roleViewUnlocked: state.roleViewUnlocked,
@@ -1799,6 +1837,7 @@ function loadState() {
         toolItems: [],
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
+        tutorialVideos: clone(defaultTutorialVideos),
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
@@ -1835,6 +1874,7 @@ function loadState() {
         toolItems: parsed.toolItems || [],
         accessOverrides: parsed.accessOverrides || [],
         roleOptions: normalizedRoleOptions(parsed.roleOptions),
+        tutorialVideos: normalizedTutorialVideos(parsed.tutorialVideos || []),
         automations: normalizedAutomations(parsed.automations),
         roleVisibilityConfig: parsed.roleVisibilityConfig || {},
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
@@ -1858,6 +1898,7 @@ function loadState() {
         toolItems: [],
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
+        tutorialVideos: clone(defaultTutorialVideos),
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
@@ -5419,36 +5460,79 @@ function renderDashboardRows(stores) {
   projectTableBody.innerHTML = "";
 }
 
-const tutorialVideos = [
-  {
-    title: "Premiere connexion",
-    description: "Se connecter avec son PIN, comprendre les onglets visibles et retrouver sa fiche magasin.",
-    status: "Video a ajouter"
-  },
-  {
-    title: "Creer un SAV",
-    description: "Ouvrir une demande, choisir les personnes a mobiliser, suivre l'historique et changer le statut.",
-    status: "Video a ajouter"
-  },
-  {
-    title: "Infos reseau",
-    description: "Lire les informations reseau, VLAN, cablage, pre-visite et points de preparation.",
-    status: "Video a ajouter"
-  },
-  {
-    title: "Planning et rendez-vous",
-    description: "Consulter les dates, comprendre les rendez-vous prevus et les prochaines actions.",
-    status: "Video a ajouter"
-  },
-  {
-    title: "Commandes et materiel",
-    description: "Comprendre les commandes, quantites, remplacements, livraison et elements a facturer.",
-    status: "Video a ajouter"
+function googleDrivePreviewUrl(url = "") {
+  const value = String(url || "").trim();
+  if (!value) {
+    return "";
   }
-];
+  const fileMatch = value.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  const idParamMatch = value.match(/[?&]id=([^&]+)/i);
+  const fileId = fileMatch?.[1] || idParamMatch?.[1] || "";
+  if (fileId) {
+    return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
+  }
+  return value;
+}
+
+function normalizedTutorialVideos(videos = []) {
+  const byKey = new Map((videos || []).map((video) => [String(video?.key || ""), video]));
+  return defaultTutorialVideos.map((base) => {
+    const saved = byKey.get(base.key) || {};
+    const url = normalizeImportCell(saved.url || saved.videoUrl || "");
+    return {
+      ...base,
+      url,
+      embedUrl: googleDrivePreviewUrl(url)
+    };
+  });
+}
+
+function renderTutorialVideoMedia(video) {
+  if (!video.embedUrl) {
+    return `
+      <div class="tuto-video-placeholder">
+        <span>Video a ajouter</span>
+      </div>
+    `;
+  }
+  return `
+    <iframe
+      class="tuto-video-frame"
+      src="${escapeHtml(video.embedUrl)}"
+      title="${escapeHtml(video.title)}"
+      allow="autoplay; encrypted-media; fullscreen"
+      allowfullscreen
+      loading="lazy"></iframe>
+  `;
+}
+
+async function handleTutorialVideoSubmit(event) {
+  event.preventDefault();
+  if (!isAdminTwem()) {
+    return;
+  }
+  const form = event.currentTarget;
+  const key = form.getAttribute("data-tutorial-key");
+  const url = form.querySelector('[name="tutorial_url"]')?.value.trim() || "";
+  state.tutorialVideos = normalizedTutorialVideos(state.tutorialVideos).map((video) =>
+    video.key === key ? { ...video, url, embedUrl: googleDrivePreviewUrl(url) } : video
+  );
+  saveState();
+  renderTutorialRows();
+  if (hasRemoteData()) {
+    try {
+      await syncSettingsToRemote();
+    } catch (error) {
+      console.error("Impossible de synchroniser la video tuto.", error);
+      window.alert("Lien video sauvegarde localement, mais la synchronisation distante a echoue.");
+    }
+  }
+}
 
 function renderTutorialRows() {
   setMainTableHeaders([]);
+  const videos = normalizedTutorialVideos(state.tutorialVideos);
+  const canEditVideos = isAdminTwem();
   projectTableBody.innerHTML = `
     <tr>
       <td colspan="9" class="tuto-cell">
@@ -5463,14 +5547,19 @@ function renderTutorialRows() {
             <p>Les videos seront ajoutees par theme pour pouvoir remplacer uniquement la partie concernee si un point change.</p>
           </div>
           <div class="tuto-grid">
-            ${tutorialVideos.map((video) => `
+            ${videos.map((video) => `
               <article class="tuto-video-card">
-                <div class="tuto-video-placeholder">
-                  <span>${escapeHtml(video.status)}</span>
-                </div>
+                ${renderTutorialVideoMedia(video)}
                 <div>
                   <h4>${escapeHtml(video.title)}</h4>
                   <p>${escapeHtml(video.description)}</p>
+                  ${video.url ? `<a class="tuto-video-link" href="${escapeHtml(video.url)}" target="_blank" rel="noreferrer">Ouvrir la video</a>` : ""}
+                  ${canEditVideos ? `
+                    <form class="tuto-video-form" data-tutorial-key="${escapeHtml(video.key)}">
+                      <input type="url" name="tutorial_url" value="${escapeHtml(video.url || "")}" placeholder="Coller le lien Google Drive">
+                      <button type="submit" class="mini-button">Enregistrer</button>
+                    </form>
+                  ` : ""}
                 </div>
               </article>
             `).join("")}
@@ -5479,6 +5568,9 @@ function renderTutorialRows() {
       </td>
     </tr>
   `;
+  projectTableBody.querySelectorAll(".tuto-video-form").forEach((form) => {
+    form.addEventListener("submit", handleTutorialVideoSubmit);
+  });
 }
 
 function renderActivitiesRows(stores) {
@@ -7951,13 +8043,14 @@ function renderPinAccessList() {
 
 function renderToolList() {
   toolList.innerHTML = "";
+  const visibleToolItems = (state.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
 
-  if (!state.toolItems.length) {
+  if (!visibleToolItems.length) {
     toolList.innerHTML = '<div class="empty-state">Aucune note pour le moment.</div>';
     return;
   }
 
-  state.toolItems.forEach((item) => {
+  visibleToolItems.forEach((item) => {
     const row = document.createElement("div");
     row.className = "simple-item";
     row.innerHTML = `
@@ -8247,13 +8340,16 @@ async function loadRemoteState() {
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
-    state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
+    const remoteToolItems = parseJsonField(settingsDocument.tool_items_json, []);
+    const tutorialVideosItem = remoteToolItems.find((item) => item?.id === tutorialVideosSettingsItemId || item?.kind === "tutorial_videos");
+    state.toolItems = remoteToolItems.filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
     const remoteRoleVisibilityConfig = parseJsonField(settingsDocument.role_visibility_config_json, null);
     if (remoteRoleVisibilityConfig && Object.keys(remoteRoleVisibilityConfig).length) {
       state.roleVisibilityConfig = normalizedRoleVisibilityConfig(remoteRoleVisibilityConfig);
     }
     state.automations = normalizedAutomations(parseJsonField(settingsDocument.automations_json, state.automations || []));
+    state.tutorialVideos = normalizedTutorialVideos(tutorialVideosItem?.videos || state.tutorialVideos || []);
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
       extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index)));
@@ -8262,6 +8358,7 @@ async function loadRemoteState() {
     state.roleOptions = state.roleOptions?.length ? normalizedRoleOptions(state.roleOptions) : [...defaultRoleOptions];
     state.toolItems = state.toolItems || [];
     state.accessOverrides = state.accessOverrides || [];
+    state.tutorialVideos = normalizedTutorialVideos(state.tutorialVideos || []);
   }
 
   if (state.activeUserName && !state.people.some((person) => person.name === state.activeUserName)) {
@@ -12128,9 +12225,10 @@ async function init() {
   state.activeAdminTab = stored.activeAdminTab || "dashboard";
   state.activeAutomationSubtab = stored.activeAutomationSubtab || "rules";
   state.pinValidated = false;
-  state.toolItems = stored.toolItems || [];
+  state.toolItems = (stored.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
   state.accessOverrides = stored.accessOverrides || [];
   state.roleOptions = normalizedRoleOptions(stored.roleOptions);
+  state.tutorialVideos = normalizedTutorialVideos(stored.tutorialVideos || []);
   state.automations = normalizedAutomations(stored.automations);
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";

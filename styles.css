@@ -832,7 +832,7 @@ button {
   display: grid;
   grid-template-columns: minmax(150px, 0.75fr) minmax(0, 1fr);
   gap: 12px;
-  align-items: center;
+  align-items: start;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -849,6 +849,38 @@ button {
   color: var(--muted);
   font-size: 0.88rem;
   text-align: center;
+}
+
+.tuto-video-frame {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 112px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f5ee;
+}
+
+.tuto-video-link {
+  display: inline-flex;
+  margin-top: 8px;
+  color: var(--brand-red);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tuto-video-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tuto-video-form input {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
 }
 
 .extensions-table {
@@ -3178,7 +3210,8 @@ button {
   }
 
   .tuto-grid,
-  .tuto-video-card {
+  .tuto-video-card,
+  .tuto-video-form {
     grid-template-columns: 1fr;
   }
 
