@@ -1538,6 +1538,7 @@ function normalizeAppwriteActivity(document) {
 }
 
 function buildAppwriteSettingsDocument() {
+  state.roleVisibilityConfig = normalizedRoleVisibilityConfig(state.roleVisibilityConfig || {});
   return {
     role_options_json: JSON.stringify(state.roleOptions || []),
     tool_items_json: JSON.stringify(state.toolItems || []),
@@ -2026,6 +2027,21 @@ function normalizedRoleOptions(list) {
   return [...new Set([...(Array.isArray(list) ? list : []), ...defaultRoleOptions]
     .map(canonicalRoleKey)
     .filter((role) => role && !removedRoles.has(role)))];
+}
+
+function normalizedRoleVisibilityConfig(config = {}) {
+  const allowedRoles = new Set(normalizedRoleOptions(state.roleOptions || defaultRoleOptions));
+  return Object.entries(config || {}).reduce((nextConfig, [role, value]) => {
+    const canonicalRole = canonicalRoleKey(role);
+    if (!allowedRoles.has(canonicalRole)) {
+      return nextConfig;
+    }
+    nextConfig[canonicalRole] = {
+      ...(nextConfig[canonicalRole] || {}),
+      ...(value || {})
+    };
+    return nextConfig;
+  }, {});
 }
 
 function recordImportExportHistory(type, label, detail = "") {
@@ -8221,7 +8237,7 @@ async function loadRemoteState() {
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
     const remoteRoleVisibilityConfig = parseJsonField(settingsDocument.role_visibility_config_json, null);
     if (remoteRoleVisibilityConfig && Object.keys(remoteRoleVisibilityConfig).length) {
-      state.roleVisibilityConfig = remoteRoleVisibilityConfig;
+      state.roleVisibilityConfig = normalizedRoleVisibilityConfig(remoteRoleVisibilityConfig);
     }
     state.automations = normalizedAutomations(parseJsonField(settingsDocument.automations_json, state.automations || []));
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
