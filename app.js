@@ -1284,6 +1284,12 @@ const pinStoreMultiSelect = document.querySelector("#pinStoreMultiSelect");
 const pinExpiryInput = document.querySelector("#pinExpiryInput");
 const pinStatusSelect = document.querySelector("#pinStatusSelect");
 const pinAccessList = document.querySelector("#pinAccessList");
+const pinRolloutSearchInput = document.querySelector("#pinRolloutSearchInput");
+const pinRolloutStatusFilter = document.querySelector("#pinRolloutStatusFilter");
+const pinRolloutSummary = document.querySelector("#pinRolloutSummary");
+const pinRolloutList = document.querySelector("#pinRolloutList");
+const pinRolloutOpenButton = document.querySelector("#pinRolloutOpenButton");
+const pinRolloutCloseButton = document.querySelector("#pinRolloutCloseButton");
 const storeForm = document.querySelector("#storeForm");
 const storeEditSelect = document.querySelector("#storeEditSelect");
 const storeNameInput = document.querySelector("#storeNameInput");
@@ -7994,6 +8000,119 @@ function filterPinStoreOptions() {
   });
 }
 
+function canManageRolloutPerson(person) {
+  const role = canonicalRoleKey(person?.role);
+  return Boolean(person?.id && !["supadmin_twem", "admin_twem"].includes(role));
+}
+
+function pinRolloutStatus(person) {
+  return ["disabled", "expired"].includes(person?.pinStatus) ? "closed" : "open";
+}
+
+function pinRolloutStoreLabel(person) {
+  if (person.allowedStoreCodes?.includes("*")) {
+    return "Tous les magasins";
+  }
+  const codes = person.allowedStoreCodes?.length ? person.allowedStoreCodes : (person.storeCode ? [person.storeCode] : []);
+  if (!codes.length) {
+    return "-";
+  }
+  return codes
+    .map((code) => {
+      const store = state.stores.find((entry) => entry.code === code);
+      return store ? `${store.code} ${store.name}` : code;
+    })
+    .join(", ");
+}
+
+function pinRolloutPeople() {
+  const search = normalizeImportCell(pinRolloutSearchInput?.value).toLowerCase();
+  const statusFilter = pinRolloutStatusFilter?.value || "all";
+  return state.people
+    .filter(canManageRolloutPerson)
+    .filter((person) => {
+      const status = pinRolloutStatus(person);
+      if (statusFilter !== "all" && status !== statusFilter) {
+        return false;
+      }
+      if (!search) {
+        return true;
+      }
+      const haystack = [
+        person.name,
+        person.email,
+        roleLabel(person.role),
+        person.role,
+        person.storeCode,
+        pinRolloutStoreLabel(person)
+      ].join(" ").toLowerCase();
+      return haystack.includes(search);
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+}
+
+function renderPinRolloutList() {
+  if (!pinRolloutList) {
+    return;
+  }
+  const people = pinRolloutPeople();
+  const manageable = state.people.filter(canManageRolloutPerson);
+  const openCount = manageable.filter((person) => pinRolloutStatus(person) === "open").length;
+  const closedCount = Math.max(0, manageable.length - openCount);
+  if (pinRolloutSummary) {
+    pinRolloutSummary.textContent = `${openCount} acces ouvert(s) - ${closedCount} ferme(s) - ${people.length} affiche(s)`;
+  }
+  if (!people.length) {
+    pinRolloutList.innerHTML = '<div class="empty-state">Aucune personne ne correspond a ce filtre.</div>';
+    return;
+  }
+  pinRolloutList.innerHTML = people.map((person) => {
+    const isOpen = pinRolloutStatus(person) === "open";
+    return `
+      <label class="simple-item pin-rollout-row">
+        <input type="checkbox" data-pin-rollout-person="${escapeHtml(person.id)}">
+        <span>
+          <strong>${escapeHtml(person.name || "-")}</strong>
+          <span class="override-meta">${escapeHtml([roleLabel(person.role), person.email || "", pinRolloutStoreLabel(person)].filter(Boolean).join(" - "))}</span>
+        </span>
+        <span class="pin-rollout-status ${isOpen ? "is-open" : "is-closed"}">${isOpen ? "Ouvert" : "Ferme"}</span>
+      </label>
+    `;
+  }).join("");
+}
+
+async function applyPinRollout(action) {
+  const selectedIds = [...(pinRolloutList?.querySelectorAll("[data-pin-rollout-person]:checked") || [])]
+    .map((checkbox) => checkbox.getAttribute("data-pin-rollout-person"))
+    .filter(Boolean);
+  if (!selectedIds.length) {
+    window.alert("Coche au moins une personne.");
+    return;
+  }
+  const selectedPeople = state.people.filter((person) => selectedIds.includes(person.id) && canManageRolloutPerson(person));
+  selectedPeople.forEach((person) => {
+    if (action === "open") {
+      person.pinStatus = "active";
+      if (normalizePin(person.pin).length !== 6) {
+        person.pin = generateUniquePin();
+      }
+      person.welcomeEmailQueuedAt = new Date().toISOString();
+    } else {
+      person.pinStatus = "disabled";
+    }
+  });
+  ensureAutomationEmailDrafts();
+  if (hasRemoteData()) {
+    for (const person of selectedPeople) {
+      await syncPersonToRemote(person);
+    }
+    await syncSettingsToRemote();
+    await loadRemoteState();
+  }
+  saveState();
+  render();
+}
+
 function renderPinAccessList() {
   if (!pinAccessList) {
     return;
@@ -8954,6 +9073,7 @@ function render() {
     return;
   }
   if (activePanel === "pin-access") {
+    renderPinRolloutList();
     renderPinAccessList();
     return;
   }
@@ -12204,6 +12324,10 @@ quickReturnViewButton?.addEventListener("click", handleResetUserView);
 pinPersonNameInput?.addEventListener("change", syncPinAccessFromSelectedPerson);
 pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
+pinRolloutSearchInput?.addEventListener("input", renderPinRolloutList);
+pinRolloutStatusFilter?.addEventListener("change", renderPinRolloutList);
+pinRolloutOpenButton?.addEventListener("click", () => applyPinRollout("open"));
+pinRolloutCloseButton?.addEventListener("click", () => applyPinRollout("close"));
 personForm.addEventListener("submit", handlePersonSubmit);
 intervenantForm?.addEventListener("submit", handleIntervenantSubmit);
 intervenantRoleForm?.addEventListener("submit", handleIntervenantRoleSubmit);
