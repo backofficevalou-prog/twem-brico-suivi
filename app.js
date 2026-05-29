@@ -2344,7 +2344,6 @@ function resetImportedStoresForKickoff(stores = []) {
     nextStore.steps = freshImportedSteps();
     nextStore.appointments = Array.isArray(nextStore.appointments) ? nextStore.appointments : [];
     const workflow = ensureStoreWorkflowData(nextStore);
-    workflow.destinyInstallDate = "";
     workflow.collectDate = "";
     workflow.itValidationDate = "";
     workflow.previsitDate = "";
@@ -10049,7 +10048,6 @@ function importTelephonyRows(rows) {
 
     const workflow = ensureStoreWorkflowData(store);
     workflow.currentPhoneDate = formatImportDateValue(readImportValue(row, ["installation_date", "installation_on_date", "install_date"], workflow.currentPhoneDate || ""));
-    workflow.destinyInstallDate = "";
     workflow.collectDate = "";
     workflow.itValidationDate = "";
     workflow.previsitDate = "";
@@ -10135,7 +10133,6 @@ function importStoresRows(rows) {
     workflow.alarmType = normalizeImportCell(readImportValue(row, ["type_d_alarme_pstn_data", "type_dalarme_pstn_data"], workflow.alarmType || "A confirmer"));
     workflow.mobileOperator = normalizeImportCell(readImportValue(row, ["reseau_mobile"], workflow.mobileOperator || ""));
     workflow.callFlowNote = normalizeImportCell(readImportValue(row, ["call_flow"], workflow.callFlowNote || ""));
-    workflow.destinyInstallDate = "";
     workflow.collectDate = "";
     workflow.itValidationDate = "";
     workflow.previsitDate = "";
