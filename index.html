@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260529g">
+  <link rel="stylesheet" href="styles.css?v=20260529h">
 </head>
 <body>
   <div class="pin-gate" id="pinGate">
@@ -660,6 +660,12 @@
                 <h3>Historique des acces PIN</h3>
                 <div id="pinAccessList" class="simple-list"></div>
               </article>
+
+              <article class="admin-card" id="pinLoginJournalCard">
+                <h3>Journal des connexions</h3>
+                <p>Visible uniquement Valou et Emir. Lecture des connexions effectuees via PIN.</p>
+                <div id="pinLoginJournal" class="simple-list pin-login-journal"></div>
+              </article>
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="import-export">
@@ -791,6 +797,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260529g"></script>
+  <script src="app.js?v=20260529h"></script>
 </body>
 </html>

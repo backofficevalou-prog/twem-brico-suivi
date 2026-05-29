@@ -2834,6 +2834,18 @@ button {
   margin-top: 12px;
 }
 
+.pin-login-journal {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.pin-login-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.2fr) minmax(150px, 0.9fr) minmax(120px, 0.8fr) minmax(190px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
 .person-row-actions {
   display: flex;
   flex-direction: row;
@@ -3386,6 +3398,7 @@ button {
   .import-export-grid,
   .pin-rollout-toolbar,
   .pin-rollout-row,
+  .pin-login-row,
   .timeline-strip {
     grid-template-columns: 1fr;
   }

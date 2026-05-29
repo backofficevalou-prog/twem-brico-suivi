@@ -1290,6 +1290,8 @@ const pinRolloutSummary = document.querySelector("#pinRolloutSummary");
 const pinRolloutList = document.querySelector("#pinRolloutList");
 const pinRolloutOpenButton = document.querySelector("#pinRolloutOpenButton");
 const pinRolloutCloseButton = document.querySelector("#pinRolloutCloseButton");
+const pinLoginJournalCard = document.querySelector("#pinLoginJournalCard");
+const pinLoginJournal = document.querySelector("#pinLoginJournal");
 const storeForm = document.querySelector("#storeForm");
 const storeEditSelect = document.querySelector("#storeEditSelect");
 const storeNameInput = document.querySelector("#storeNameInput");
@@ -8188,6 +8190,49 @@ function renderPinAccessList() {
   });
 }
 
+function renderPinLoginJournal() {
+  if (!pinLoginJournal || !pinLoginJournalCard) {
+    return;
+  }
+  const visible = isAdminTwem();
+  pinLoginJournalCard.classList.toggle("hidden-panel", !visible);
+  if (!visible) {
+    pinLoginJournal.innerHTML = "";
+    return;
+  }
+  const rows = state.people
+    .flatMap((person) => (person.loginHistory || []).map((entry) => ({ person, entry })))
+    .filter(({ entry }) => entry?.at)
+    .sort((a, b) => new Date(b.entry.at) - new Date(a.entry.at))
+    .slice(0, 120);
+
+  if (!rows.length) {
+    pinLoginJournal.innerHTML = '<div class="empty-state">Aucune connexion enregistree pour le moment.</div>';
+    return;
+  }
+
+  pinLoginJournal.innerHTML = rows.map(({ person, entry }) => `
+    <div class="simple-item pin-login-row">
+      <div>
+        <strong>${escapeHtml(person.name || "-")}</strong>
+        <div class="override-meta">${escapeHtml([roleLabel(person.role), pinRolloutStoreLabel(person)].filter(Boolean).join(" - "))}</div>
+      </div>
+      <div>
+        <strong>${escapeHtml(formatDateTime(entry.at))}</strong>
+        <div class="override-meta">Date connexion</div>
+      </div>
+      <div>
+        <strong>${escapeHtml(entry.source || "-")}</strong>
+        <div class="override-meta">Source</div>
+      </div>
+      <div>
+        <strong>${escapeHtml(person.email || "-")}</strong>
+        <div class="override-meta">Mail</div>
+      </div>
+    </div>
+  `).join("");
+}
+
 function renderToolList() {
   toolList.innerHTML = "";
   const visibleToolItems = (state.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
@@ -9075,6 +9120,7 @@ function render() {
   if (activePanel === "pin-access") {
     renderPinRolloutList();
     renderPinAccessList();
+    renderPinLoginJournal();
     return;
   }
   if (activePanel === "tools") {
@@ -11743,7 +11789,11 @@ async function handlePinSubmit(event) {
   }
 
   matchedPerson.loginHistory = [
-    { at: new Date().toISOString(), source: window.location.hostname },
+    {
+      at: new Date().toISOString(),
+      source: window.location.hostname || "app",
+      userAgent: window.navigator?.userAgent || ""
+    },
     ...(matchedPerson.loginHistory || [])
   ].slice(0, 20);
 
