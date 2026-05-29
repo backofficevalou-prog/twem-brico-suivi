@@ -2320,7 +2320,10 @@ function accessibleTabsForUser(user = currentUser()) {
   if (user.accessibleTabs?.includes("*") || isSupAdmin(user)) {
     return ["*"];
   }
-  return [...new Set([...(defaultTabsForRole(user.role) || []), ...(user.accessibleTabs || [])])];
+  const roleDefaults = defaultTabsForRole(user.role) || ["dashboard"];
+  const savedTabs = Array.isArray(user.accessibleTabs) ? user.accessibleTabs.filter(Boolean) : [];
+  const mergedTabs = [...new Set([...roleDefaults, ...savedTabs])];
+  return mergedTabs.length ? mergedTabs : ["dashboard"];
 }
 
 function canAccessTab(tab, user = currentUser()) {
@@ -11350,7 +11353,7 @@ function firstAccessibleTabForUser(user = currentUser()) {
   if (tabs.includes("*")) {
     return "dashboard";
   }
-  return tabs[0] || "dashboard";
+  return tabs.find((tab) => tab !== "dashboard") || tabs[0] || "dashboard";
 }
 
 function tutorialSeenKeyForUser(user = currentUser()) {
