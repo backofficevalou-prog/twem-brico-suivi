@@ -85,11 +85,26 @@ async function appwriteFetch(path, options = {}) {
 
 async function listRows(tableId) {
   const databaseId = requiredEnv("APPWRITE_DATABASE_ID");
-  const page = await appwriteFetch(`/tablesdb/${databaseId}/tables/${tableId}/rows`);
-  const rows = page.rows || [];
-  if (page.total && page.total > rows.length) {
-    console.warn(`Only ${rows.length}/${page.total} rows loaded for ${tableId}.`);
+  const limit = Number(env("APPWRITE_PAGE_SIZE", "100"));
+  const rows = [];
+  let offset = 0;
+
+  while (true) {
+    const params = new URLSearchParams();
+    params.append("queries[]", JSON.stringify({ method: "limit", values: [limit] }));
+    params.append("queries[]", JSON.stringify({ method: "offset", values: [offset] }));
+    const page = await appwriteFetch(`/tablesdb/${databaseId}/tables/${tableId}/rows?${params.toString()}`);
+    const batch = page.rows || [];
+    rows.push(...batch);
+    if (batch.length < limit || (page.total && rows.length >= page.total)) {
+      if (page.total) {
+        console.log(`${rows.length}/${page.total} rows loaded for ${tableId}.`);
+      }
+      break;
+    }
+    offset += batch.length;
   }
+
   return rows;
 }
 
