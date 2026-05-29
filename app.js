@@ -3263,6 +3263,14 @@ function interventionDateLabel(store) {
   return workflow.destinyInstallDate || "";
 }
 
+function compareStoresByInterventionDate(left, right) {
+  const fallbackDate = new Date(8640000000000000);
+  const leftDate = normalizeDateOnly(interventionDateLabel(left)) || fallbackDate;
+  const rightDate = normalizeDateOnly(interventionDateLabel(right)) || fallbackDate;
+  return leftDate - rightDate
+    || normalizeImportCell(left.code).localeCompare(normalizeImportCell(right.code), "fr", { numeric: true });
+}
+
 function missingValidationLabels(store) {
   const workflow = ensureStoreWorkflowData(store);
   const missing = [];
@@ -3308,7 +3316,7 @@ function configStatusCards(visibleStores, total) {
 }
 
 function getFilteredStores() {
-  return getRoleScopedStores().filter((store) => {
+  const filteredStores = getRoleScopedStores().filter((store) => {
     const appointments = sortedAppointments(store);
     const nextAction = appointments[0]?.note || store.health || "";
     const stage = currentWorkflowStage(store);
@@ -3355,6 +3363,11 @@ function getFilteredStores() {
     const matchesInvoice = matchesInvoiceScope(store);
     return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate && matchesInvoice;
   });
+
+  if (isPlannedInterventionListView()) {
+    return filteredStores.slice().sort(compareStoresByInterventionDate);
+  }
+  return filteredStores;
 }
 
 function renderSummary() {
@@ -10477,11 +10490,7 @@ function buildReportHtml() {
 function buildPrintableCurrentListHtml() {
   const stores = getFilteredStores()
     .slice()
-    .sort((left, right) => {
-      const leftDate = normalizeDateOnly(interventionDateLabel(left)) || new Date(8640000000000000);
-      const rightDate = normalizeDateOnly(interventionDateLabel(right)) || new Date(8640000000000000);
-      return leftDate - rightDate || normalizeImportCell(left.code).localeCompare(normalizeImportCell(right.code), "fr", { numeric: true });
-    });
+    .sort(compareStoresByInterventionDate);
   const generatedAt = new Intl.DateTimeFormat("fr-BE", {
     day: "2-digit",
     month: "2-digit",
