@@ -254,31 +254,48 @@ async function sendOutlookMail({ subject, body, recipients }) {
   if (!response.ok) {
     throw new Error(`Graph sendMail ${response.status}: ${text}`);
   }
+  return {
+    status: response.status,
+    statusText: response.statusText || ""
+  };
 }
 
 async function main() {
   const storesCollection = env("APPWRITE_STORES_COLLECTION_ID", "stores");
   const ticketsCollection = env("APPWRITE_TICKETS_COLLECTION_ID", "tickets");
-  const recipients = env("DIGEST_RECIPIENTS", "emir@twem.be,valou@twem.be")
+  const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,valou@twem.be")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+  const testRecipients = env("TEST_RECIPIENTS", "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const recipients = testRecipients.length ? testRecipients : configuredRecipients;
+  if (!recipients.length) {
+    throw new Error("No digest recipients configured.");
+  }
   const targetDate = addDays(new Date(), 1);
   const [stores, tickets] = await Promise.all([
     listRows(storesCollection).then((rows) => rows.map(normalizeStore)),
     listRows(ticketsCollection).then((rows) => rows.map(normalizeTicket))
   ]);
-  const subject = `Digest quotidien TWEM Brico - ${formatFrDate(targetDate)}`;
+  const subjectPrefix = testRecipients.length ? "[TEST] " : "";
+  const subject = `${subjectPrefix}Digest quotidien TWEM Brico - ${formatFrDate(targetDate)}`;
   const body = buildDigestBody(stores, tickets, targetDate);
   const dryRun = env("DRY_RUN", "true").toLowerCase() !== "false";
+  let mailResult = null;
   if (!dryRun) {
-    await sendOutlookMail({ subject, body, recipients });
+    mailResult = await sendOutlookMail({ subject, body, recipients });
   }
   return {
     ok: true,
     dryRun,
+    testMode: Boolean(testRecipients.length),
     recipients,
+    configuredRecipients,
     subject,
+    mailResult,
     preview: body
   };
 }
