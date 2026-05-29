@@ -6322,7 +6322,7 @@ function digestRecipientSummaryHtml(automation = {}) {
   `).join("");
 }
 
-function renderDigestRecipientOptions(automation = {}) {
+function renderDigestRecipientChoices(automation = {}) {
   const selectedIds = new Set(Array.isArray(automation.digestAdditionalRecipientIds) ? automation.digestAdditionalRecipientIds.map(String) : []);
   const baseNames = new Set(["emir", "valou"]);
   return (state.people || [])
@@ -6331,7 +6331,12 @@ function renderDigestRecipientOptions(automation = {}) {
     .map((person) => {
       const id = String(person.id || person.email || person.name);
       const label = [person.name, person.email].filter(Boolean).join(" - ");
-      return `<option value="${escapeHtml(id)}" ${selectedIds.has(id) ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      return `
+        <label class="digest-recipient-choice">
+          <input type="checkbox" value="${escapeHtml(id)}" data-automation-id="${escapeHtml(automation.id)}" data-automation-field="digestAdditionalRecipientIds" ${selectedIds.has(id) ? "checked" : ""}>
+          <span>${escapeHtml(label)}</span>
+        </label>
+      `;
     })
     .join("");
 }
@@ -7146,15 +7151,15 @@ function renderAutomations() {
                   <input type="text" data-automation-id="${escapeHtml(item.id)}" data-automation-field="recipients" value="${escapeHtml(item.id === "daily_operations_digest" ? digestRecipientLabel(item) : item.recipients)}" ${item.id === "daily_operations_digest" ? "readonly" : ""}>
                 </label>
                 ${item.id === "daily_operations_digest" ? `
-                  <label class="automation-field automation-field-wide">
+                  <div class="automation-field automation-field-wide">
                     <span>Destinataires supplementaires du digest</span>
-                    <select class="automation-multi-select" multiple data-automation-id="${escapeHtml(item.id)}" data-automation-field="digestAdditionalRecipientIds">
-                      ${renderDigestRecipientOptions(item)}
-                    </select>
+                    <div class="digest-recipient-choices">
+                      ${renderDigestRecipientChoices(item)}
+                    </div>
                     <div class="digest-recipient-summary" data-digest-recipient-summary="${escapeHtml(item.id)}">
                       ${digestRecipientSummaryHtml(item)}
                     </div>
-                  </label>
+                  </div>
                 ` : ""}
                 <label class="automation-field">
                   <span>${state.language === "nl" ? "Kanaal" : "Canal"}</span>
@@ -7507,7 +7512,10 @@ function handleAutomationFieldChange(event) {
     return;
   }
 
-  if (target.type === "checkbox") {
+  if (item.id === "daily_operations_digest" && field === "digestAdditionalRecipientIds") {
+    item[field] = [...automationList.querySelectorAll(`[data-automation-id="${item.id}"][data-automation-field="digestAdditionalRecipientIds"]:checked`)]
+      .map((input) => input.value);
+  } else if (target.type === "checkbox") {
     item[field] = target.checked;
   } else if (target.multiple) {
     item[field] = [...target.selectedOptions].map((option) => option.value);
