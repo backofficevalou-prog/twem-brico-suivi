@@ -6247,7 +6247,11 @@ function digestBasePeople() {
 function digestAdditionalPeople(automation = {}) {
   const ids = Array.isArray(automation.digestAdditionalRecipientIds) ? automation.digestAdditionalRecipientIds : [];
   return ids
-    .map((id) => (state.people || []).find((person) => String(person.id) === String(id)))
+    .map((id) => (state.people || []).find((person) =>
+      String(person.id || "") === String(id)
+      || String(person.email || "") === String(id)
+      || String(person.name || "") === String(id)
+    ))
     .filter(Boolean);
 }
 
@@ -6268,6 +6272,19 @@ function digestRecipientLabel(automation = {}) {
     .map((person) => personRecipientValue(person) || person.name)
     .filter(Boolean);
   return recipients.join(", ") || "Emir + Valou";
+}
+
+function digestRecipientSummaryHtml(automation = {}) {
+  const people = digestRecipientPeople(automation);
+  if (!people.length) {
+    return '<span class="digest-recipient-chip">Emir + Valou</span>';
+  }
+  return people.map((person) => `
+    <span class="digest-recipient-chip">
+      <strong>${escapeHtml(person.name || "-")}</strong>
+      ${person.email ? `<small>${escapeHtml(person.email)}</small>` : ""}
+    </span>
+  `).join("");
 }
 
 function renderDigestRecipientOptions(automation = {}) {
@@ -7099,6 +7116,9 @@ function renderAutomations() {
                     <select class="automation-multi-select" multiple data-automation-id="${escapeHtml(item.id)}" data-automation-field="digestAdditionalRecipientIds">
                       ${renderDigestRecipientOptions(item)}
                     </select>
+                    <div class="digest-recipient-summary" data-digest-recipient-summary="${escapeHtml(item.id)}">
+                      ${digestRecipientSummaryHtml(item)}
+                    </div>
                   </label>
                 ` : ""}
                 <label class="automation-field">
@@ -7484,7 +7504,19 @@ function handleAutomationFieldChange(event) {
   }
 
   saveState();
-  if (field === "active" || field === "recipients" || field === "digestAdditionalRecipientIds") {
+  if (field === "digestAdditionalRecipientIds") {
+    const recipientInput = automationList?.querySelector(`[data-automation-id="${item.id}"][data-automation-field="recipients"]`);
+    const summary = automationList?.querySelector(`[data-digest-recipient-summary="${item.id}"]`);
+    if (recipientInput) {
+      recipientInput.value = digestRecipientLabel(item);
+    }
+    if (summary) {
+      summary.innerHTML = digestRecipientSummaryHtml(item);
+    }
+    renderAutomationEmailQueue();
+    return;
+  }
+  if (field === "active" || field === "recipients") {
     renderAutomations();
   }
 }

@@ -2111,6 +2111,28 @@ button {
   font-size: 0.82rem;
 }
 
+.digest-recipient-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.digest-recipient-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff8d1;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+}
+
+.digest-recipient-chip small {
+  color: var(--muted);
+}
+
 .automation-subtabs {
   display: flex;
   flex-wrap: wrap;
