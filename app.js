@@ -424,11 +424,12 @@ const defaultRoleOptions = [
   "manager",
   "magasin",
   "telephonie_destiny",
-  "it",
-  "infra",
-  "intervenant"
+  "pm_dstny",
+  "uc_pm_fr_nl_dstny",
+  "uc_tech_fr_nl_dstny",
+  "logistic_coord_dstny"
 ];
-const defaultIntervenantRoleOptions = ["telephonie_destiny", "it", "infra", "intervenant"];
+const defaultIntervenantRoleOptions = ["telephonie_destiny", "pm_dstny", "uc_pm_fr_nl_dstny", "uc_tech_fr_nl_dstny", "logistic_coord_dstny"];
 const defaultAutomations = [
   {
     id: "store_update_alert",
@@ -1541,6 +1542,7 @@ function buildAppwriteSettingsDocument() {
     role_options_json: JSON.stringify(state.roleOptions || []),
     tool_items_json: JSON.stringify(state.toolItems || []),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
+    role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
     automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
     extension_catalog_json: JSON.stringify(extensionCatalogRows || [])
   };
@@ -2013,7 +2015,10 @@ function normalizedAutomations(list) {
 }
 
 function normalizedRoleOptions(list) {
-  return [...new Set([...(Array.isArray(list) ? list : []), ...defaultRoleOptions])];
+  const removedRoles = new Set(["it", "infra", "intervenant", "uc_pm_nl_dstny", "uc_tech_fr_dstny"]);
+  return [...new Set([...(Array.isArray(list) ? list : []), ...defaultRoleOptions]
+    .map(canonicalRoleKey)
+    .filter((role) => role && !removedRoles.has(role)))];
 }
 
 function recordImportExportHistory(type, label, detail = "") {
@@ -2309,6 +2314,10 @@ function defaultTabsForRole(role) {
     manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    pm_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    uc_pm_fr_nl_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    uc_tech_fr_nl_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
+    logistic_coord_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"]
@@ -2393,6 +2402,10 @@ function editableZonesForRole(role) {
     manager: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
     magasin: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
     telephonie_destiny: ["appointments", "order_articles", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "status_admin", "sav_ticket"],
+    pm_dstny: ["appointments", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "sav_ticket"],
+    uc_pm_fr_nl_dstny: ["appointments", "destiny_coordination", "external_prep", "destiny_closure", "problem_notes", "sav_ticket"],
+    uc_tech_fr_nl_dstny: ["appointments", "external_prep", "network_config", "store_posts", "problem_notes", "sav_ticket"],
+    logistic_coord_dstny: ["appointments", "order_articles", "problem_notes", "sav_ticket"],
     it: ["appointments", "external_prep", "network_config", "store_posts", "sav_ticket"],
     infra: ["appointments", "external_prep", "problem_notes", "sav_ticket"],
     default: ["appointments", "sav_ticket"]
@@ -2542,6 +2555,10 @@ function roleLabel(role) {
     manager: "Manager magasin",
     magasin: "Magasin",
     telephonie_destiny: "Telephonie / Destiny",
+    pm_dstny: "PM dstny",
+    uc_pm_fr_nl_dstny: "uc pm fr & nl dstny",
+    uc_tech_fr_nl_dstny: "uc tech fr & nl dstny",
+    logistic_coord_dstny: "logistic coord dstny",
     it: "IT",
     infra: "Infra",
     intervenant: "Autre intervenant"
@@ -2564,7 +2581,12 @@ function canonicalRoleKey(value = "") {
     direction: "direction_brico",
     directory: "direction_brico",
     directory_brico: "direction_brico",
-    direction_brico: "direction_brico"
+    direction_brico: "direction_brico",
+    uc_pm_fr_nl_dstny: "uc_pm_fr_nl_dstny",
+    uc_pm_fr_and_nl_dstny: "uc_pm_fr_nl_dstny",
+    uc_tech_fr_nl_dstny: "uc_tech_fr_nl_dstny",
+    uc_tech_fr_and_nl_dstny: "uc_tech_fr_nl_dstny",
+    logistic_coord_dstny: "logistic_coord_dstny"
   };
   return aliases[normalized] || normalized;
 }
@@ -8190,6 +8212,10 @@ async function loadRemoteState() {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     state.toolItems = parseJsonField(settingsDocument.tool_items_json, []);
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
+    const remoteRoleVisibilityConfig = parseJsonField(settingsDocument.role_visibility_config_json, null);
+    if (remoteRoleVisibilityConfig && Object.keys(remoteRoleVisibilityConfig).length) {
+      state.roleVisibilityConfig = remoteRoleVisibilityConfig;
+    }
     state.automations = normalizedAutomations(parseJsonField(settingsDocument.automations_json, state.automations || []));
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
