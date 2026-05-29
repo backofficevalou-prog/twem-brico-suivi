@@ -3189,7 +3189,7 @@ function missingValidationLabels(store) {
   if (!workflow.networkConfigConfirmed) missing.push("Config magasin");
   if (workflow.vlan22Activated !== "Oui") missing.push("VLAN22");
   if (workflow.charlesRouxStatus !== "OK") missing.push("Infra");
-  if (workflow.networkSurveyStatus !== "OK") missing.push("Pre-visite");
+  if (externalPrepStatusLabel(workflow) !== "Termine") missing.push("Pre-visite");
   if (workflow.destinyInstallDone !== "Oui") missing.push("Installation Destiny");
   return missing;
 }
@@ -3202,7 +3202,7 @@ function configControlStatus(store) {
   return {
     vlanOk: workflow.vlan22Activated === "Oui" || workflow.vlan22Activated === "OK" || Boolean(workflow.vlan22Date),
     networkConfigOk,
-    previsitOk: workflow.networkSurveyStatus === "OK" || workflow.networkSurveyStatus === "Termine",
+    previsitOk: externalPrepStatusLabel(workflow) === "Termine",
     cablingOk: workflow.cablingStatus === "OK",
     switchOk: workflow.ltSwitchStatus === "Basculee" || workflow.ltSwitchStatus === "OK"
   };
@@ -3290,7 +3290,10 @@ function renderSummary() {
   const fosdosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOSDOS").length;
   const validationItCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).vlan22Activated !== "Oui").length;
   const validationInfraCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length;
-  const riskCount = visibleStores.filter((store) => store.status === "blocked" || ensureStoreWorkflowData(store).networkSurveyStatus !== "OK").length;
+  const riskCount = visibleStores.filter((store) => {
+    const workflow = ensureStoreWorkflowData(store);
+    return store.status === "blocked" || externalPrepStatusLabel(workflow) !== "Termine";
+  }).length;
   const mainTab = activeMainWorkspaceTab();
   const cardsByTab = {
     dashboard: [
@@ -4083,6 +4086,31 @@ function buildStoreSectionNav(mode = "stores", store = null) {
   `;
 }
 
+function externalPrepProgress(workflow) {
+  const done = [
+    Boolean(normalizeImportCell(workflow.vlan22Date))
+      || ["oui", "ok", "bloque"].includes(normalizeRoleKey(workflow.vlan22Activated)),
+    Boolean(normalizeImportCell(workflow.cablingDate))
+      || ["ok", "bloque", "probleme"].includes(normalizeRoleKey(workflow.cablingStatus)),
+    Boolean(normalizeImportCell(workflow.ltSwitchDate || workflow.transferDate))
+      || ["ok", "bloque", "probleme", "basculee"].includes(normalizeRoleKey(workflow.ltSwitchStatus)),
+    Boolean(normalizeImportCell(workflow.mobileCoverage))
+      && normalizeRoleKey(workflow.mobileCoverage) !== "a_verifier"
+  ].filter(Boolean).length;
+  return { done, total: 4 };
+}
+
+function externalPrepStatusLabel(workflow) {
+  const progress = externalPrepProgress(workflow);
+  if (progress.done === 0) {
+    return "A faire";
+  }
+  if (progress.done >= progress.total) {
+    return "Termine";
+  }
+  return `Partiel ${progress.done}/${progress.total}`;
+}
+
   function buildConfigurationSummaryCard(store) {
     const workflow = ensureStoreWorkflowData(store);
     const networkRows = getNetworkConfigRows(store);
@@ -4099,8 +4127,8 @@ function buildStoreSectionNav(mode = "stores", store = null) {
 
     const confirmedRows = [
       ["Coordination Destiny", workflow.destinyPmName || workflow.destinyInstallDate ? "Fait" : "A faire"],
-      ["Pre-visite", workflow.networkSurveyStatus === "Termine" || workflow.networkSurveyStatus === "OK" ? "Faite" : "A faire"],
-      ["Preparation externe", workflow.vlan22Activated === "Oui" || workflow.charlesRouxStatus === "OK" ? "Faite" : "A faire"],
+      ["Pre-visite", externalPrepStatusLabel(workflow)],
+      ["Preparation externe", externalPrepStatusLabel(workflow)],
       ["VLAN22 active", workflow.vlan22Date ? "Oui" : (workflow.vlan22Activated || "A faire")],
       ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
       ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"],
@@ -5343,7 +5371,7 @@ function currentWorkflowStage(store) {
   if (!workflow.networkConfigConfirmed) return "Collecte infos";
   if (workflow.vlan22Activated !== "Oui") return "Validation VLAN22";
   if (workflow.charlesRouxStatus !== "OK") return "Validation Infra";
-  if (workflow.networkSurveyStatus !== "OK") return "Pre-visite";
+  if (externalPrepStatusLabel(workflow) !== "Termine") return "Pre-visite";
   if (workflow.destinyInstallDone !== "Oui") return "Installation";
   if (workflow.ltSwitchStatus === "Basculee") return "RUN";
   return "A lancer";
@@ -5395,8 +5423,8 @@ function renderTimelineRows(stores) {
       {
         date: workflow.previsitDate || "A confirmer",
         label: "Pre-visite",
-        status: workflow.networkSurveyStatus === "OK" ? "done" : "planned",
-        note: workflow.networkSurveyStatus || "A planifier"
+        status: externalPrepStatusLabel(workflow) === "Termine" ? "done" : "planned",
+        note: externalPrepStatusLabel(workflow)
       },
       {
         date: workflow.destinyInstallDate || "A confirmer",
@@ -11114,6 +11142,7 @@ async function handleStoreEditorSubmit(event) {
     : (closureSwitchField?.value || preparationSwitchField?.value || workflow.ltSwitchStatus);
   workflow.ltSwitchStatus = switchValue === "OK" ? "Basculee" : switchValue;
   workflow.ltSwitchDate = form.querySelector('[name="lt_switch_date"]')?.value || workflow.ltSwitchDate || "";
+  workflow.networkSurveyStatus = externalPrepStatusLabel(workflow);
   workflow.installSwitchDate = form.querySelector('[name="install_switch_date"]')?.value || "";
   workflow.installCableDate = form.querySelector('[name="install_cable_date"]')?.value || "";
   workflow.installAntennaDate = form.querySelector('[name="install_antenna_date"]')?.value || "";
