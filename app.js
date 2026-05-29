@@ -2365,6 +2365,16 @@ function isAdminTwem(user = currentUser()) {
   return Boolean(user && (user.role === "admin_twem" || isSupAdmin(user)));
 }
 
+function canSeePinLoginJournal(user = currentUser()) {
+  const name = normalizeImportCell(user?.name).toLowerCase();
+  const email = normalizeImportCell(user?.email).toLowerCase();
+  return Boolean(
+    isAdminTwem(user)
+    || ["valou", "emir"].includes(name)
+    || ["backoffice@twem.be", "emir.massart@brico.be", "emir@twem.be"].includes(email)
+  );
+}
+
 function isTwemUser() {
   const user = currentUser();
   return Boolean(user && ["supadmin_twem", "admin_twem"].includes(user.role));
@@ -8194,7 +8204,7 @@ function renderPinLoginJournal() {
   if (!pinLoginJournal || !pinLoginJournalCard) {
     return;
   }
-  const visible = isAdminTwem();
+  const visible = canSeePinLoginJournal();
   pinLoginJournalCard.classList.toggle("hidden-panel", !visible);
   if (!visible) {
     pinLoginJournal.innerHTML = "";
