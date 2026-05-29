@@ -8211,10 +8211,10 @@ function renderPinLoginJournal() {
     return;
   }
   const rows = state.people
-    .flatMap((person) => (person.loginHistory || []).map((entry) => ({ person, entry })))
+    .map((person) => ({ person, entry: person.loginHistory?.[0] }))
     .filter(({ entry }) => entry?.at)
     .sort((a, b) => new Date(b.entry.at) - new Date(a.entry.at))
-    .slice(0, 120);
+    .slice(0, 240);
 
   if (!rows.length) {
     pinLoginJournal.innerHTML = '<div class="empty-state">Aucune connexion enregistree pour le moment.</div>';
@@ -11798,14 +11798,11 @@ async function handlePinSubmit(event) {
     return;
   }
 
-  matchedPerson.loginHistory = [
-    {
-      at: new Date().toISOString(),
-      source: window.location.hostname || "app",
-      userAgent: window.navigator?.userAgent || ""
-    },
-    ...(matchedPerson.loginHistory || [])
-  ].slice(0, 20);
+  matchedPerson.loginHistory = [{
+    at: new Date().toISOString(),
+    source: window.location.hostname || "app",
+    userAgent: window.navigator?.userAgent || ""
+  }];
 
   state.activeUserName = matchedPerson.name;
   state.pinValidated = true;
