@@ -427,6 +427,7 @@ const defaultRoleOptions = [
   "infra",
   "intervenant"
 ];
+const defaultIntervenantRoleOptions = ["telephonie_destiny", "it", "infra", "intervenant"];
 const defaultAutomations = [
   {
     id: "store_update_alert",
@@ -1220,6 +1221,8 @@ const peopleSearchInput = document.querySelector("#peopleSearchInput");
 const intervenantForm = document.querySelector("#intervenantForm");
 const intervenantPersonSelect = document.querySelector("#intervenantPersonSelect");
 const intervenantRoleSelect = document.querySelector("#intervenantRoleSelect");
+const intervenantRoleForm = document.querySelector("#intervenantRoleForm");
+const intervenantRoleInput = document.querySelector("#intervenantRoleInput");
 const intervenantList = document.querySelector("#intervenantList");
 const roleForm = document.querySelector("#roleForm");
 const roleInput = document.querySelector("#roleInput");
@@ -2517,7 +2520,36 @@ function roleLabel(role) {
     infra: "Infra",
     intervenant: "Autre intervenant"
   };
-  return labels[role] || role;
+  return labels[role] || String(role || "").replace(/_/g, " ");
+}
+
+function normalizeRoleKey(value = "") {
+  return normalizeImportCell(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function isIntervenantRole(role) {
+  const normalized = String(role || "");
+  return defaultIntervenantRoleOptions.includes(normalized)
+    || ((state.roleOptions || []).includes(normalized) && !defaultRoleOptions.includes(normalized));
+}
+
+function intervenantRoleOptions() {
+  return [...new Set([
+    ...defaultIntervenantRoleOptions,
+    ...(state.roleOptions || []).filter((role) => isIntervenantRole(role))
+  ])];
+}
+
+function renderIntervenantRoleOptions(selectedValue) {
+  return renderOptions(
+    intervenantRoleOptions().map((role) => ({ value: role, label: roleLabel(role) })),
+    selectedValue
+  );
 }
 
 function defaultVisibilityModesForRole(role) {
@@ -3317,6 +3349,9 @@ function syncSelectors() {
       .sort((a, b) => a.name.localeCompare(b.name, "fr"))
       .map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml(person.name)}</option>`)
       .join("");
+  }
+  if (intervenantRoleSelect) {
+    intervenantRoleSelect.innerHTML = renderIntervenantRoleOptions(intervenantRoleSelect.value || "intervenant");
   }
 
   if (pinRoleSelect) {
@@ -7287,7 +7322,7 @@ function renderIntervenantList() {
   }
 
   const intervenants = state.people
-    .filter((person) => ["telephonie_destiny", "it", "infra", "intervenant"].includes(person.role))
+    .filter((person) => isIntervenantRole(person.role))
     .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
 
   if (!intervenants.length) {
@@ -11642,7 +11677,7 @@ async function handleIntervenantSubmit(event) {
     return;
   }
 
-  if (!["telephonie_destiny", "it", "infra", "intervenant"].includes(person.role)) {
+  if (!isIntervenantRole(person.role)) {
     person.previousRoleBeforeIntervenant = person.role;
   }
   person.role = nextRole;
@@ -11653,6 +11688,32 @@ async function handleIntervenantSubmit(event) {
   saveState();
   render();
   scrollToFocusedUpdate();
+}
+
+async function handleIntervenantRoleSubmit(event) {
+  event.preventDefault();
+  const role = normalizeRoleKey(intervenantRoleInput?.value || "");
+  if (!role || state.roleOptions.includes(role)) {
+    return;
+  }
+
+  state.roleOptions.push(role);
+  state.roleOptions = normalizedRoleOptions(state.roleOptions);
+  state.roleVisibilityConfig[role] = defaultVisibilityModesForRole("intervenant");
+  if (intervenantRoleInput) {
+    intervenantRoleInput.value = "";
+  }
+  if (intervenantRoleSelect) {
+    intervenantRoleSelect.innerHTML = renderIntervenantRoleOptions(role);
+    intervenantRoleSelect.value = role;
+  }
+
+  if (hasRemoteData()) {
+    await syncSettingsToRemote();
+    await loadRemoteState();
+  }
+  saveState();
+  render();
 }
 
 async function handleIntervenantRemove(event) {
@@ -11902,6 +11963,7 @@ pinPersonNameInput?.addEventListener("blur", syncPinAccessFromSelectedPerson);
 pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
 personForm.addEventListener("submit", handlePersonSubmit);
 intervenantForm?.addEventListener("submit", handleIntervenantSubmit);
+intervenantRoleForm?.addEventListener("submit", handleIntervenantRoleSubmit);
 storeForm.addEventListener("submit", handleStoreSubmit);
 storeEditSelect?.addEventListener("change", handleStoreEditSelectChange);
 storeNewButton?.addEventListener("click", resetStoreContactForm);
