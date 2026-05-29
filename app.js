@@ -419,7 +419,6 @@ const extensionCatalogRows = [
 const defaultRoleOptions = [
   "supadmin_twem",
   "admin_twem",
-  "direction",
   "direction_brico",
   "supmanager",
   "manager",
@@ -2301,14 +2300,11 @@ function allowedStoresForUser(user = currentUser()) {
 }
 
 function defaultTabsForRole(role) {
-  const normalizedRole = normalizeRoleKey(role);
+  const normalizedRole = canonicalRoleKey(role);
   const map = {
     supadmin_twem: ["*"],
     admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
-    direction: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     direction_brico: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    directory: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    directory_brico: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations"],
     manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
     magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
@@ -2388,14 +2384,11 @@ function tabTitle(tab) {
 }
 
 function editableZonesForRole(role) {
-  const normalizedRole = normalizeRoleKey(role);
+  const normalizedRole = canonicalRoleKey(role);
   const map = {
     supadmin_twem: ["all"],
     admin_twem: ["all"],
-    direction: ["problem_notes", "brico_feedback", "sav_ticket"],
     direction_brico: ["problem_notes", "brico_feedback", "sav_ticket"],
-    directory: ["problem_notes", "brico_feedback", "sav_ticket"],
-    directory_brico: ["problem_notes", "brico_feedback", "sav_ticket"],
     supmanager: ["appointments", "project_prep", "problem_notes", "brico_feedback", "status_admin", "configuration_request", "sav_ticket"],
     manager: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
     magasin: ["appointments", "project_prep", "configuration_request", "network_config", "brico_feedback", "problem_notes", "sav_ticket"],
@@ -2540,14 +2533,11 @@ function generateUniquePin() {
 }
 
 function roleLabel(role) {
-  const normalizedRole = normalizeRoleKey(role);
+  const normalizedRole = canonicalRoleKey(role);
   const labels = {
     supadmin_twem: "SupAdmin TWEM",
     admin_twem: "Admin TWEM",
-    direction: "Direction",
     direction_brico: "Direction Brico",
-    directory: "Direction",
-    directory_brico: "Direction Brico",
     supmanager: "SupManager",
     manager: "Manager magasin",
     magasin: "Magasin",
@@ -2566,6 +2556,17 @@ function normalizeRoleKey(value = "") {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function canonicalRoleKey(value = "") {
+  const normalized = normalizeRoleKey(value);
+  const aliases = {
+    direction: "direction_brico",
+    directory: "direction_brico",
+    directory_brico: "direction_brico",
+    direction_brico: "direction_brico"
+  };
+  return aliases[normalized] || normalized;
 }
 
 function isIntervenantRole(role) {
