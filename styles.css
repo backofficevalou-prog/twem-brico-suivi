@@ -3012,6 +3012,84 @@ button {
 }
 }
 
+@media (max-width: 1280px) {
+  .page-shell {
+    width: min(100%, calc(100% - 16px));
+  }
+
+  .workspace-shell,
+  .twem-layout,
+  .topbar,
+  .store-focus-layout,
+  .editor-grid,
+  .editor-fields,
+  .appointments-split,
+  .sav-split,
+  .store-side-panel-head,
+  .store-side-panel-body {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-sidebar {
+    position: static;
+    max-height: none;
+  }
+
+  .workspace-sidebar-card {
+    max-height: none;
+  }
+
+  .store-list-table,
+  .project-table:not(.extensions-table) {
+    min-width: 0;
+  }
+
+  .store-list-table {
+    table-layout: fixed;
+  }
+
+  .store-list-table th:nth-child(1),
+  .store-list-table td:nth-child(1) {
+    width: 92px;
+    min-width: 92px;
+  }
+
+  .store-list-table th:nth-child(2),
+  .store-list-table td:nth-child(2) {
+    width: 140px;
+    max-width: 140px;
+  }
+
+  .store-list-table td:nth-child(2) .cell-note {
+    max-width: 126px;
+  }
+
+  .store-list-table th:nth-child(5),
+  .store-list-table td:nth-child(5) {
+    width: 112px;
+  }
+
+  .store-list-table th:last-child,
+  .store-list-table td:last-child {
+    width: 96px;
+  }
+
+  .stores-summary-row td {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .details-row > td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .store-editor-nav-action,
+  .store-editor-save-top + .store-editor-nav-action {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 1100px) {
   .automation-overview,
   .automation-grid {
@@ -3060,8 +3138,35 @@ button {
   }
 
   .project-table.tuto-table,
-  .project-table:not(.store-list-table) {
+  .project-table:not(.extensions-table),
+  .store-list-table {
     min-width: 0;
+  }
+
+  .store-list-table th:nth-child(1),
+  .store-list-table td:nth-child(1) {
+    width: 76px;
+    min-width: 76px;
+  }
+
+  .store-list-table th:nth-child(2),
+  .store-list-table td:nth-child(2) {
+    width: 128px;
+    max-width: 128px;
+  }
+
+  .store-list-table td:nth-child(2) .cell-note {
+    max-width: 114px;
+  }
+
+  .store-list-table th:nth-child(5),
+  .store-list-table td:nth-child(5) {
+    width: 98px;
+  }
+
+  .store-list-table th:last-child,
+  .store-list-table td:last-child {
+    width: 88px;
   }
 
   .quantity-grid {
