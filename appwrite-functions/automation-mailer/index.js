@@ -64,15 +64,18 @@ async function appwriteFetch(path, options = {}) {
   const endpoint = env("APPWRITE_ENDPOINT", DEFAULT_ENDPOINT);
   const projectId = requiredEnv("APPWRITE_PROJECT_ID");
   const apiKey = requiredEnv("APPWRITE_API_KEY");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(env("FETCH_TIMEOUT_MS", "15000")));
   const response = await fetch(`${endpoint}${path}`, {
     ...options,
+    signal: controller.signal,
     headers: {
       "Content-Type": "application/json",
       "X-Appwrite-Project": projectId,
       "X-Appwrite-Key": apiKey,
       ...(options.headers || {})
     }
-  });
+  }).finally(() => clearTimeout(timeout));
   const text = await response.text();
   if (!response.ok) {
     throw new Error(`Appwrite ${response.status}: ${text}`);
@@ -80,21 +83,14 @@ async function appwriteFetch(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-async function listDocuments(collectionId) {
+async function listRows(tableId) {
   const databaseId = requiredEnv("APPWRITE_DATABASE_ID");
-  const documents = [];
-  let offset = 0;
-  while (true) {
-    const queries = [
-      `queries[]=${encodeURIComponent('limit(100)')}`,
-      `queries[]=${encodeURIComponent(`offset(${offset})`)}`
-    ].join("&");
-    const page = await appwriteFetch(`/databases/${databaseId}/collections/${collectionId}/documents?${queries}`);
-    documents.push(...(page.documents || []));
-    if (!page.documents || page.documents.length < 100) break;
-    offset += page.documents.length;
+  const page = await appwriteFetch(`/tablesdb/${databaseId}/tables/${tableId}/rows`);
+  const rows = page.rows || [];
+  if (page.total && page.total > rows.length) {
+    console.warn(`Only ${rows.length}/${page.total} rows loaded for ${tableId}.`);
   }
-  return documents;
+  return rows;
 }
 
 function normalizeStore(document) {
@@ -254,8 +250,8 @@ async function main() {
     .filter(Boolean);
   const targetDate = addDays(new Date(), 1);
   const [stores, tickets] = await Promise.all([
-    listDocuments(storesCollection).then((documents) => documents.map(normalizeStore)),
-    listDocuments(ticketsCollection).then((documents) => documents.map(normalizeTicket))
+    listRows(storesCollection).then((rows) => rows.map(normalizeStore)),
+    listRows(ticketsCollection).then((rows) => rows.map(normalizeTicket))
   ]);
   const subject = `Digest quotidien TWEM Brico - ${formatFrDate(targetDate)}`;
   const body = buildDigestBody(stores, tickets, targetDate);
