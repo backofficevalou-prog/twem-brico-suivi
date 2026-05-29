@@ -2633,6 +2633,11 @@ function renderVisibilityEditor() {
   }
   const role = state.visibilityEditorRole;
   const config = ensureRoleVisibilityConfig(role);
+  const modeLabels = {
+    hide: "Cacher",
+    view: "Consulter",
+    edit: "Encoder / modifier"
+  };
 
   visibilityRoleSelect.innerHTML = availableRoles
     .map((entry) => `<option value="${escapeHtml(entry)}" ${entry === role ? "selected" : ""}>${escapeHtml(roleLabel(entry))}</option>`)
@@ -2666,15 +2671,15 @@ function renderVisibilityEditor() {
                 <span>${escapeHtml(block.hint)}</span>
               </div>
               <label>
-                <span>Cacher</span>
+                <span>${modeLabels.hide}</span>
                 <input type="radio" name="visibility-${escapeHtml(role)}-${escapeHtml(tab.key)}-${escapeHtml(block.key)}" value="hide" data-visibility-mode="${escapeHtml(tab.key)}::${escapeHtml(block.key)}" ${currentMode === "hide" ? "checked" : ""}>
               </label>
               <label>
-                <span>Voir</span>
+                <span>${modeLabels.view}</span>
                 <input type="radio" name="visibility-${escapeHtml(role)}-${escapeHtml(tab.key)}-${escapeHtml(block.key)}" value="view" data-visibility-mode="${escapeHtml(tab.key)}::${escapeHtml(block.key)}" ${currentMode === "view" ? "checked" : ""}>
               </label>
               <label>
-                <span>Modifier</span>
+                <span>${modeLabels.edit}</span>
                 <input type="radio" name="visibility-${escapeHtml(role)}-${escapeHtml(tab.key)}-${escapeHtml(block.key)}" value="edit" data-visibility-mode="${escapeHtml(tab.key)}::${escapeHtml(block.key)}" ${currentMode === "edit" ? "checked" : ""}>
               </label>
           </div>
@@ -2739,7 +2744,7 @@ function renderVisibilityEditor() {
       <article class="visibility-role-compact ${entry === role ? "is-active" : ""}">
         <div class="visibility-role-compact-head">
           <strong>${escapeHtml(roleLabel(entry))}</strong>
-          <button type="button" class="mini-button" data-visibility-edit-role="${escapeHtml(entry)}">Modifier</button>
+          <button type="button" class="mini-button" data-visibility-edit-role="${escapeHtml(entry)}">Configurer</button>
         </div>
         <p>${escapeHtml(visibleText)}</p>
         <p class="cell-note">${escapeHtml(editableText)}</p>
@@ -7957,7 +7962,7 @@ function renderVisibilityOverrides() {
         <div class="override-meta">Zone</div>
       </div>
       <div>
-        <strong>${override.level === "edit" ? "Modifier" : "Voir"}</strong>
+        <strong>${override.level === "edit" ? "Encoder / modifier" : "Consulter"}</strong>
         <div class="override-meta">Droit</div>
       </div>
       <div>

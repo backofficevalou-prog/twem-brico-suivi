@@ -407,7 +407,7 @@
             <section class="admin-panel workspace-view" data-admin-panel="visibility">
               <article class="admin-card">
                 <h3>Qui voit quoi</h3>
-                <p>Reglage en cascade: on choisit d abord le role, puis les onglets visibles, puis les droits de lecture et de modification dans chaque onglet.</p>
+                <p>Reglage en cascade: Cacher = invisible. Consulter = visible avec recherche et filtres limites aux magasins autorises. Encoder / modifier = droit d enregistrer dans les blocs cochés.</p>
                 <div class="visibility-editor-shell">
                   <div class="visibility-role-head">
                     <label class="visibility-role-picker">
@@ -433,7 +433,7 @@
                   <article class="visibility-step-card">
                     <div class="visibility-step-head">
                       <h4>2. Droits dans les onglets</h4>
-                      <p>Lecture seule ou modification, onglet par onglet et bloc par bloc.</p>
+                      <p>Consulter permet de lire et filtrer. Encoder / modifier permet d enregistrer dans la zone concernee.</p>
                     </div>
                     <div id="visibilityZonesEditor" class="visibility-zone-stack"></div>
                   </article>
@@ -449,7 +449,7 @@
                   <article class="visibility-step-card">
                     <div class="visibility-step-head">
                       <h4>Roles en resume</h4>
-                      <p>Vue compacte de chaque role avec acces et bouton Modifier.</p>
+                      <p>Vue compacte de chaque role avec acces et bouton Configurer.</p>
                     </div>
                     <div id="visibilityRoleDirectory" class="visibility-summary"></div>
                   </article>
@@ -484,8 +484,8 @@
                   <label>
                     <span>Droit</span>
                     <select id="overrideLevelSelect">
-                      <option value="view">Voir</option>
-                      <option value="edit">Modifier</option>
+                      <option value="view">Consulter</option>
+                      <option value="edit">Encoder / modifier</option>
                     </select>
                   </label>
                   <label>
