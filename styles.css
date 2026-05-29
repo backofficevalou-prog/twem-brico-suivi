@@ -1260,6 +1260,16 @@ button {
   white-space: nowrap;
 }
 
+.store-editor-save-top {
+  background: #c3372e;
+  color: #fff;
+  border-color: #c3372e;
+}
+
+.store-editor-save-top + .store-editor-nav-action {
+  margin-left: 0;
+}
+
 .store-row-actions {
   display: flex;
   flex-wrap: wrap;

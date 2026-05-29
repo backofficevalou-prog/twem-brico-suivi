@@ -3935,6 +3935,7 @@ function buildStoreSectionNav(mode = "stores", store = null) {
   return `
     <nav class="store-editor-nav">
       ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
+      ${store ? '<button type="submit" class="mini-button store-editor-nav-action store-editor-save-top" data-store-submit-top>Enregistrer</button>' : ""}
       ${store ? `<button type="button" class="mini-button store-editor-nav-action" data-store-print="${store.id}">Imprimer la fiche complete</button>` : ""}
     </nav>
   `;
