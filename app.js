@@ -1858,6 +1858,13 @@ function saveState() {
   scheduleRemoteStateSync();
 }
 
+function saveVisibilityState() {
+  window.localStorage.setItem(storageKey, JSON.stringify(localUiState()));
+  if (hasRemoteData()) {
+    void syncSettingsToRemote().catch((error) => console.error("Visibility sync error", error));
+  }
+}
+
 const remoteSyncShadow = {
   stores: new Map(),
   people: new Map(),
@@ -2803,7 +2810,7 @@ function renderVisibilityEditor() {
           config.blocks[tabKey][block.key] ||= "view";
         });
       }
-      saveState();
+      saveVisibilityState();
       renderVisibilityEditor();
     });
   });
@@ -2813,7 +2820,7 @@ function renderVisibilityEditor() {
       const [tabKey, blockKey] = input.getAttribute("data-visibility-mode").split("::");
       config.blocks[tabKey] ||= {};
       config.blocks[tabKey][blockKey] = input.value;
-      saveState();
+      saveVisibilityState();
       renderVisibilityEditor();
     });
   });
