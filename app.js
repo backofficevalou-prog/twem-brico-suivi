@@ -235,10 +235,19 @@ const extraMaterialWorkflowOptions = [
   "Commande passee"
 ];
 
-function savPersonOptions(store = null) {
-  const people = [...(state.people || [])]
-    .filter((person) => normalizeImportCell(person?.name))
+function isOperationalIntervenant(person) {
+  return Boolean(person && normalizeImportCell(person.name) && isIntervenantRole(canonicalRoleKey(person.role)));
+}
+
+function intervenantPeopleForSelection(selectedNames = []) {
+  const selectedSet = new Set((selectedNames || []).map((name) => normalizeImportCell(name).toLowerCase()).filter(Boolean));
+  return [...(state.people || [])]
+    .filter((person) => isOperationalIntervenant(person) || selectedSet.has(normalizeImportCell(person?.name).toLowerCase()))
     .sort((left, right) => normalizeImportCell(left.name).localeCompare(normalizeImportCell(right.name), "fr", { sensitivity: "base" }));
+}
+
+function savPersonOptions(store = null, selectedNames = []) {
+  const people = intervenantPeopleForSelection(selectedNames);
   const seen = new Set();
   return people
     .filter((person) => {
@@ -2879,16 +2888,11 @@ function renderStoreCodeOptions(selectedValue = "") {
 }
 
 function renderStorePeopleOptions(store, selectedValues = []) {
-  const candidates = state.people.filter((person) => {
-    if (person.role === "manager") {
-      return person.storeCode === store.code;
-    }
-    return ["supadmin_twem", "admin_twem", "telephonie_destiny", "it", "infra", "intervenant", "supmanager"].includes(person.role);
-  });
+  const candidates = intervenantPeopleForSelection(selectedValues);
 
   return candidates.map((person) => {
     const selected = selectedValues.includes(person.name) ? "selected" : "";
-    return `<option value="${escapeHtml(person.name)}" ${selected}>${escapeHtml(person.name)} - ${escapeHtml(person.role)}</option>`;
+    return `<option value="${escapeHtml(person.name)}" ${selected}>${escapeHtml(person.name)} - ${escapeHtml(roleLabel(person.role))}</option>`;
   }).join("");
 }
 
