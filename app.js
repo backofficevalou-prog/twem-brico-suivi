@@ -5354,7 +5354,7 @@ function renderTutorialRows() {
         <section class="tuto-shell">
           <div class="tuto-helpdesk">
             <strong>Helpdesk 999</strong>
-            <span>Probleme de telephonie : envoyer un mail a <a href="mailto:Emir@brico.be">Emir@brico.be</a></span>
+            <span>Probleme de telephonie : envoyer un mail a <a href="mailto:emir.massart@brico.be">emir.massart@brico.be</a></span>
             <span>Probleme d'app : envoyer un mail a <a href="mailto:backoffice@twem.be">backoffice@twem.be</a></span>
           </div>
           <div class="tuto-intro">
@@ -6119,8 +6119,10 @@ function renderStores() {
   const stores = getFilteredStores();
   projectTableBody.innerHTML = "";
   const projectTable = document.querySelector(".project-table");
+  projectTable?.classList.remove("compact-rows-table");
   projectTable?.classList.remove("store-list-table");
   projectTable?.classList.remove("dashboard-summary-only");
+  projectTable?.classList.remove("tuto-table");
 
   if (!stores.length) {
     projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
@@ -6145,6 +6147,7 @@ function renderStores() {
       renderInvoiceRows(stores);
       return;
     case "tuto":
+      projectTable?.classList.add("tuto-table");
       renderTutorialRows();
       return;
     case "dashboard":

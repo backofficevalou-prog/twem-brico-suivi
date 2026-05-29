@@ -884,6 +884,11 @@ button {
   min-width: 1280px;
 }
 
+.project-table.tuto-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
 .project-table thead {
   display: none;
 }
@@ -3052,6 +3057,11 @@ button {
   .network-row,
   .store-focus-layout {
     grid-template-columns: 1fr;
+  }
+
+  .project-table.tuto-table,
+  .project-table:not(.store-list-table) {
+    min-width: 0;
   }
 
   .quantity-grid {
