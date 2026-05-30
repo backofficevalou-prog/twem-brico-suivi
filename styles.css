@@ -2386,6 +2386,12 @@ button {
   white-space: nowrap;
 }
 
+.automation-email-note {
+  color: var(--danger);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
 .status-ready {
   background: #fff1a8;
 }

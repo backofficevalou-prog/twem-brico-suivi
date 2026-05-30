@@ -1669,6 +1669,34 @@ function managerPersonForStore(store) {
   ) || null;
 }
 
+function linkedPeopleForStore(store) {
+  if (!store?.code) {
+    return [];
+  }
+  return (state.people || []).filter((person) =>
+    normalizeImportCell(person.email)
+    && (
+      person.storeCode === store.code
+      || (Array.isArray(person.allowedStoreCodes) && person.allowedStoreCodes.includes(store.code))
+    )
+  );
+}
+
+function personHasFirstAppLogin(person = {}) {
+  return Array.isArray(person.loginHistory)
+    && person.loginHistory.some((entry) => normalizeImportCell(entry?.at || entry?.loginAt));
+}
+
+function firstLoginBlockLabel(people = []) {
+  const pendingNames = people
+    .filter((person) => normalizeImportCell(person.email) && !personHasFirstAppLogin(person))
+    .map((person) => normalizeImportCell(person.name) || normalizeImportCell(person.email));
+  if (!pendingNames.length) {
+    return "";
+  }
+  return `Premiere connexion requise: ${pendingNames.join(", ")}`;
+}
+
 function normalizeShopTypeValue(value) {
   const raw = normalizeImportCell(value).toUpperCase().replace(/\s+/g, "");
   const lettersOnly = raw.replace(/[^A-Z]/g, "");
@@ -6588,7 +6616,7 @@ function automationCategoryLabel(category) {
 const automationEmailStatusOptions = [
   { value: "draft", label: "Brouillon" },
   { value: "ready", label: "A valider" },
-  { value: "blocked", label: "Bloque" },
+  { value: "blocked", label: "Bloque premiere connexion" },
   { value: "sent", label: "Envoye" },
   { value: "error", label: "Erreur" }
 ];
@@ -6769,7 +6797,11 @@ function buildInstallReminderEmail(store, automation = {}) {
       ? fillMailTemplate(automation.emailBody, values)
       : body,
     recipient: managerPerson?.email || "",
-    language
+    language,
+    status: managerPerson && !personHasFirstAppLogin(managerPerson) ? "blocked" : "",
+    blockedReason: managerPerson && !personHasFirstAppLogin(managerPerson)
+      ? firstLoginBlockLabel([managerPerson])
+      : ""
   };
 }
 
@@ -6852,7 +6884,11 @@ function buildPrevisitReminderEmail(store, automation = {}) {
       ? fillMailTemplate(automation.emailBody, values)
       : body,
     recipient: managerPerson?.email || "",
-    language
+    language,
+    status: managerPerson && !personHasFirstAppLogin(managerPerson) ? "blocked" : "",
+    blockedReason: managerPerson && !personHasFirstAppLogin(managerPerson)
+      ? firstLoginBlockLabel([managerPerson])
+      : ""
   };
 }
 
@@ -6883,17 +6919,9 @@ function buildStoreUpdateAlertEmail(activity, automation = {}) {
   const appLink = store ? appStoreUpdateLink(store, activity) : appAccessLink();
   const storeName = store?.name || activity?.storeName || "magasin";
   const updateText = activity?.comment || "Nouvelle information a consulter";
-  const recipients = store
-    ? (state.people || [])
-        .filter((person) =>
-          normalizeImportCell(person.email)
-          && (
-            person.storeCode === store.code
-            || (Array.isArray(person.allowedStoreCodes) && person.allowedStoreCodes.includes(store.code))
-          )
-        )
-        .map((person) => person.email)
-    : [];
+  const linkedPeople = store ? linkedPeopleForStore(store) : [];
+  const connectedPeople = linkedPeople.filter(personHasFirstAppLogin);
+  const recipients = connectedPeople.map((person) => person.email);
   const subject = language === "nl"
     ? `Nieuwe update - ${storeName}`
     : `Nouvelle mise a jour - ${storeName}`;
@@ -6939,7 +6967,9 @@ function buildStoreUpdateAlertEmail(activity, automation = {}) {
       ? fillMailTemplate(automation.emailBody, values)
       : body,
     recipient: recipients.join(", "),
-    language
+    language,
+    status: recipients.length ? "" : "blocked",
+    blockedReason: recipients.length ? "" : firstLoginBlockLabel(linkedPeople) || "Aucun contact connecte une premiere fois"
   };
 }
 
@@ -7235,11 +7265,25 @@ function defaultAutomationEmailDraft(automation, context = {}) {
     recipient: template.recipient || automation.recipients || "",
     subject: automation.emailSubject || template.subject,
     body: isManualBody && !context.store && !context.activity ? (automation.emailBody || "") : template.body,
-    status: automation.emailStatus || (automation.active ? "ready" : "draft"),
+    status: template.status || automation.emailStatus || (automation.active ? "ready" : "draft"),
+    blockedReason: template.blockedReason || "",
     plannedAt: automation.emailPlannedAt || (automation.id === "daily_operations_digest" ? nextMorningIso(9) : ""),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function mergedAutomationDraftStatus(baseDraft, current) {
+  if (current?.status === "sent") {
+    return "sent";
+  }
+  if (baseDraft.status === "blocked") {
+    return "blocked";
+  }
+  if (current?.status === "blocked") {
+    return baseDraft.status;
+  }
+  return current?.status || baseDraft.status;
 }
 
 function ensureAutomationEmailDrafts() {
@@ -7261,11 +7305,12 @@ function ensureAutomationEmailDrafts() {
               ...baseDraft,
               ...current,
               automationTitle: baseDraft.automationTitle,
-              recipient: current.recipient || baseDraft.recipient,
+              recipient: baseDraft.recipient || current.recipient,
               subject: baseDraft.subject,
               body: baseDraft.body,
               bodyManual: false,
-              status: current.status || baseDraft.status
+              status: mergedAutomationDraftStatus(baseDraft, current),
+              blockedReason: baseDraft.blockedReason || current.blockedReason || ""
             }
           : baseDraft);
       });
@@ -7284,7 +7329,8 @@ function ensureAutomationEmailDrafts() {
               recipient: current.recipient || automation.recipients || "",
               subject: automation.emailSubject || baseDraft.subject,
               body: automation.emailBodyManual ? (current.body || baseDraft.body) : baseDraft.body,
-              status: current.status || baseDraft.status
+              status: mergedAutomationDraftStatus(baseDraft, current),
+              blockedReason: baseDraft.blockedReason || current.blockedReason || ""
             }
           : baseDraft);
         return;
@@ -7297,11 +7343,12 @@ function ensureAutomationEmailDrafts() {
               ...baseDraft,
               ...current,
               automationTitle: baseDraft.automationTitle,
-              recipient: current.recipient || baseDraft.recipient,
+              recipient: baseDraft.recipient || current.recipient,
               subject: baseDraft.subject,
               body: baseDraft.body,
               bodyManual: false,
-              status: current.status || baseDraft.status
+              status: mergedAutomationDraftStatus(baseDraft, current),
+              blockedReason: baseDraft.blockedReason || current.blockedReason || ""
             }
           : baseDraft);
       });
@@ -7388,6 +7435,7 @@ function renderAutomationEmailQueue() {
           </label>
           <div>
             <span class="${automationEmailStatusClass(email.status)}">${escapeHtml(automationEmailStatusLabel(email.status))}</span>
+            ${email.blockedReason ? `<small class="automation-email-note">${escapeHtml(email.blockedReason)}</small>` : ""}
           </div>
           <details>
             <summary>Apercu</summary>

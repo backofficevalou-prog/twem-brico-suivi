@@ -149,6 +149,34 @@ function normalizeTicket(document) {
   };
 }
 
+function normalizePerson(document) {
+  const payload = parseJsonField(document.payload_json, null);
+  if (payload && typeof payload === "object") {
+    return { ...payload, id: payload.id || document.$id };
+  }
+  return {
+    id: document.$id,
+    name: document.name || "",
+    role: document.role || "",
+    email: document.email || "",
+    storeCode: document.store_code || "",
+    loginHistory: []
+  };
+}
+
+function personHasFirstAppLogin(person = {}) {
+  return Array.isArray(person.loginHistory)
+    && person.loginHistory.some((entry) => String(entry?.at || entry?.loginAt || "").trim());
+}
+
+function peopleByEmail(people = []) {
+  return new Map(
+    people
+      .filter((person) => String(person.email || "").trim())
+      .map((person) => [String(person.email).trim().toLowerCase(), person])
+  );
+}
+
 function storeLabel(store) {
   return [store.code, store.name, store.city].filter(Boolean).join(" - ");
 }
@@ -255,6 +283,17 @@ function shouldSendQueuedEmail(email, automationsById, now = new Date()) {
   return splitRecipients(email.recipient).length > 0;
 }
 
+function firstLoginAllowedRecipients(email, peopleMap) {
+  const recipients = splitRecipients(email.recipient);
+  if (email.automationId === "daily_operations_digest" || email.automationId === "new_person_welcome") {
+    return recipients;
+  }
+  return recipients.filter((recipient) => {
+    const person = peopleMap.get(recipient.toLowerCase());
+    return person && personHasFirstAppLogin(person);
+  });
+}
+
 async function getGlobalSettings(settingsCollection) {
   const settingsRows = await listRows(settingsCollection);
   const row = settingsRows.find((item) => item.$id === "global-state") || settingsRows[0] || null;
@@ -334,6 +373,7 @@ async function sendOutlookMail({ subject, body, recipients }) {
 async function main() {
   const storesCollection = env("APPWRITE_STORES_COLLECTION_ID", "stores");
   const ticketsCollection = env("APPWRITE_TICKETS_COLLECTION_ID", "tickets");
+  const peopleCollection = env("APPWRITE_PEOPLE_COLLECTION_ID", "people");
   const settingsCollection = env("APPWRITE_SETTINGS_COLLECTION_ID", "settings");
   const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,valou@twem.be")
     .split(",")
@@ -350,16 +390,19 @@ async function main() {
   const settings = await getGlobalSettings(settingsCollection);
   const automationsById = automationById(settings.automations);
   const targetDate = addDays(new Date(), 1);
-  const [stores, tickets] = await Promise.all([
+  const [stores, tickets, people] = await Promise.all([
     listRows(storesCollection).then((rows) => rows.map(normalizeStore)),
-    listRows(ticketsCollection).then((rows) => rows.map(normalizeTicket))
+    listRows(ticketsCollection).then((rows) => rows.map(normalizeTicket)),
+    listRows(peopleCollection).then((rows) => rows.map(normalizePerson))
   ]);
+  const connectedPeopleByEmail = peopleByEmail(people);
   const dryRun = env("DRY_RUN", "true").toLowerCase() !== "false";
   const sentQueue = [];
   const skippedQueue = [];
   const now = new Date();
   const queueLimit = Number(env("MAIL_QUEUE_LIMIT", "20"));
   const updatedEmails = [...(settings.automationEmails || [])];
+  let queueChanged = false;
 
   for (const email of updatedEmails) {
     if (sentQueue.length >= queueLimit) break;
@@ -368,7 +411,15 @@ async function main() {
       continue;
     }
     try {
-      const emailRecipients = splitRecipients(email.recipient);
+      const emailRecipients = firstLoginAllowedRecipients(email, connectedPeopleByEmail);
+      if (!emailRecipients.length) {
+        email.status = "blocked";
+        email.error = "Premiere connexion requise avant les autres mails automatiques.";
+        email.updatedAt = new Date().toISOString();
+        queueChanged = true;
+        skippedQueue.push(email.id || email.automationId || "email");
+        continue;
+      }
       let result = { dryRun: true };
       if (!dryRun) {
         result = await sendOutlookMail({
@@ -382,11 +433,13 @@ async function main() {
       email.error = "";
       email.mailResult = result;
       email.updatedAt = new Date().toISOString();
+      queueChanged = true;
       sentQueue.push({ id: email.id, automationId: email.automationId, recipients: emailRecipients, result });
     } catch (error) {
       email.status = "error";
       email.error = error.message;
       email.updatedAt = new Date().toISOString();
+      queueChanged = true;
       sentQueue.push({ id: email.id, automationId: email.automationId, error: error.message });
     }
   }
@@ -415,7 +468,7 @@ async function main() {
     };
   }
 
-  if (settings.row && (sentQueue.length || digestShouldSend)) {
+  if (settings.row && (queueChanged || digestShouldSend)) {
     await updateRow(settingsCollection, settings.row.$id, {
       automation_emails_json: JSON.stringify(updatedEmails),
       mailer_state_json: JSON.stringify(settings.mailerState)
