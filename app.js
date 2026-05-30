@@ -315,7 +315,9 @@ function ticketTargetPeople(ticket = {}) {
 }
 
 function ticketTargetLabel(ticket = {}) {
-  return ticketTargetPeople(ticket).join(", ") || normalizeImportCell(ticket.targetService) || "Personne a definir";
+  return ticketTargetPeople(ticket).join(", ")
+    || normalizeImportCell(ticket.targetService)
+    || (["new", "dispatch"].includes(ticket.status) ? "TWEM a dispatcher" : "Personne a definir");
 }
 
 function renderSavPersonCheckboxes(store) {
@@ -329,6 +331,23 @@ function renderSavPersonCheckboxes(store) {
       <span>${escapeHtml(option.label)}</span>
     </label>
   `).join("");
+}
+
+function renderSavDispatchCheckboxes(store, selectedNames = [], inputName = "sav_dispatch_people") {
+  const selectedSet = new Set((selectedNames || []).map((name) => normalizeImportCell(name).toLowerCase()).filter(Boolean));
+  const options = savPersonOptions(store, selectedNames);
+  if (!options.length) {
+    return '<div class="empty-state sav-empty">Aucune personne disponible dans les contacts.</div>';
+  }
+  return options.map((option) => {
+    const checked = selectedSet.has(normalizeImportCell(option.value).toLowerCase()) ? "checked" : "";
+    return `
+      <label class="sav-person-option">
+        <input type="checkbox" name="${escapeHtml(inputName)}" value="${escapeHtml(option.value)}" ${checked}>
+        <span>${escapeHtml(option.label)}</span>
+      </label>
+    `;
+  }).join("");
 }
 
 const extensionCatalogRows = [
@@ -2471,6 +2490,16 @@ function isSupAdmin(user = currentUser()) {
 
 function isAdminTwem(user = currentUser()) {
   return Boolean(user && (user.role === "admin_twem" || isSupAdmin(user)));
+}
+
+function canDispatchSav(user = currentUser()) {
+  const name = normalizeImportCell(user?.name).toLowerCase();
+  const email = normalizeImportCell(user?.email).toLowerCase();
+  return Boolean(
+    isAdminTwem(user)
+    || ["valou", "emir"].includes(name)
+    || ["backoffice@twem.be", "emir.massart@brico.be", "emir@twem.be"].includes(email)
+  );
 }
 
 function canSeePinLoginJournal(user = currentUser()) {
@@ -5293,6 +5322,10 @@ function attachStoreInteractiveHandlers() {
     button.addEventListener("click", handleSavUpdate);
   });
 
+  projectTableBody.querySelectorAll("[data-sav-dispatch]").forEach((button) => {
+    button.addEventListener("click", handleSavDispatch);
+  });
+
   projectTableBody.querySelectorAll("[data-sav-toggle-close]").forEach((button) => {
     button.addEventListener("click", handleSavToggleClose);
   });
@@ -6120,8 +6153,13 @@ function renderExtensionsRows(stores) {
 }
 
 const ticketStatusOptions = [
+  { value: "new", label: "Nouveau TWEM" },
+  { value: "dispatch", label: "A dispatcher" },
+  { value: "assigned", label: "Assigne" },
   { value: "open", label: "Ouvert" },
   { value: "in_progress", label: "En cours" },
+  { value: "waiting", label: "En attente" },
+  { value: "resolved", label: "Resolu" },
   { value: "closed", label: "Cloture" }
 ];
 
@@ -6129,13 +6167,23 @@ function ticketStatusLabel(status, language = state.language) {
   const isNl = normalizeLanguageCode(language) === "nl";
   const labels = isNl
     ? {
+        new: "Nieuw TWEM",
+        dispatch: "Te dispatchen",
+        assigned: "Toegewezen",
         open: "Open",
         in_progress: "Bezig",
+        waiting: "In afwachting",
+        resolved: "Opgelost",
         closed: "Afgesloten"
       }
     : {
+        new: "Nouveau TWEM",
+        dispatch: "A dispatcher",
+        assigned: "Assigne",
         open: "Ouvert",
         in_progress: "En cours",
+        waiting: "En attente",
+        resolved: "Resolu",
         closed: "Cloture"
       };
   return labels[status] || status;
@@ -6143,8 +6191,13 @@ function ticketStatusLabel(status, language = state.language) {
 
 function ticketBadgeClass(status) {
   const map = {
+    new: "badge badge-planned",
+    dispatch: "badge badge-planned",
+    assigned: "badge badge-progress",
     open: "badge badge-planned",
     in_progress: "badge badge-progress",
+    waiting: "badge badge-warning",
+    resolved: "badge badge-done",
     closed: "badge badge-done"
   };
   return map[status] || "badge badge-planned";
@@ -6299,9 +6352,19 @@ function renderExtensionsRowsV2(stores) {
 function getFilteredTickets() {
   const visibleStoreIds = new Set(getFilteredStores().map((store) => String(store.id)));
   const search = state.filters.search;
+  const user = currentUser();
+  const userName = normalizeImportCell(user?.name || state.activeUserName).toLowerCase();
+  const userRole = canonicalRoleKey(user?.role || "");
   return (state.tickets || [])
     .filter(Boolean)
     .filter((ticket) => visibleStoreIds.has(String(ticket.storeId)))
+    .filter((ticket) => {
+      if (canDispatchSav(user) || ["manager", "magasin", "direction_brico", "supmanager"].includes(userRole)) {
+        return true;
+      }
+      return ticketTargetPeople(ticket).some((name) => normalizeImportCell(name).toLowerCase() === userName)
+        || normalizeImportCell(ticket.requesterName).toLowerCase() === userName;
+    })
     .filter((ticket) => {
       if (!search) {
         return true;
@@ -6327,7 +6390,7 @@ function buildSavCard(store) {
   return `
     <article class="editor-card full-span-card sav-ticket-card" data-access-zone="sav_ticket">
       <h3>Demande SAV / ticket</h3>
-      <p>Tout acteur du magasin peut creer une demande. La demande initiale reste intacte, puis le suivi se fait juste en dessous avec historique date et signe.</p>
+      <p>Les demandes arrivent d'abord chez TWEM. Emir ou Valou dispatchent ensuite vers la bonne personne avant intervention.</p>
       <div class="sav-split">
         <div>
           <div class="three-col sav-request-grid">
@@ -6352,12 +6415,10 @@ function buildSavCard(store) {
                 ${renderOptions(storeRequestTypeOptions, "SAV")}
               </select>
             </label>
-            <fieldset class="sav-people-field">
-              <legend>Personnes a mobiliser</legend>
-              <div class="sav-people-grid">
-                ${renderSavPersonCheckboxes(store)}
-              </div>
-            </fieldset>
+            <div class="sav-twem-routing">
+              <strong>Reception TWEM</strong>
+              <span>La demande sera envoyee a Emir et Valou pour dispatch.</span>
+            </div>
           </div>
 
           <div class="two-col">
@@ -6418,9 +6479,27 @@ function buildSavCard(store) {
 
 function buildTicketThread(store, ticket) {
   const updates = [...(ticket.updates || [])].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const selectedTargets = ticketTargetPeople(ticket);
+  const isDispatcher = canDispatchSav();
+  const currentName = normalizeImportCell(currentUser()?.name || state.activeUserName).toLowerCase();
+  const canWorkOnTicket = isDispatcher
+    || selectedTargets.some((name) => normalizeImportCell(name).toLowerCase() === currentName);
+  const dispatchBlock = isDispatcher ? `
+    <div class="sav-dispatch-box">
+      <div class="sav-thread-label">Dispatch TWEM</div>
+      <div class="sav-people-grid">
+        ${renderSavDispatchCheckboxes(store, selectedTargets, `ticket_dispatch_people_${ticket.id}`)}
+      </div>
+      <label>
+        <span>Message de transfert</span>
+        <textarea name="ticket_dispatch_note_${ticket.id}" rows="3" placeholder="Explique ce qui est attendu avant de transferer le SAV."></textarea>
+      </label>
+      <button type="button" class="mini-button" data-sav-dispatch="${ticket.id}" data-sav-store="${store.id}">Transférer / assigner</button>
+    </div>
+  ` : "";
   const contextRows = [
     ticket.requestKind ? `<div><strong>Type</strong> ${escapeHtml(ticket.requestKind)}</div>` : "",
-    `<div><strong>Personnes</strong> ${escapeHtml(ticketTargetLabel(ticket))}</div>`,
+    `<div><strong>Assignation</strong> ${escapeHtml(ticketTargetLabel(ticket))}</div>`,
     ticket.materialLabel ? `<div><strong>Materiel</strong> ${escapeHtml(ticket.materialLabel)}</div>` : "",
     ticket.extensionLabel ? `<div><strong>Extension</strong> ${escapeHtml(ticket.extensionLabel)}</div>` : "",
     ticket.quantityRequested ? `<div><strong>Quantite</strong> ${escapeHtml(String(ticket.quantityRequested))}</div>` : "",
@@ -6452,25 +6531,29 @@ function buildTicketThread(store, ticket) {
         `).join("") : '<div class="empty-state sav-empty">Aucun suivi ajoute pour le moment.</div>'}
       </div>
 
+      ${dispatchBlock}
+
       <div class="sav-thread-actions">
-        <label class="sav-thread-note">
-          <span>Nouveau suivi</span>
-          <textarea name="ticket_update_note_${ticket.id}" rows="3" placeholder="Ajoute ici le suivi, la reponse, la correction ou l etat d avancement"></textarea>
-        </label>
-        <div class="sav-thread-control">
-          <label>
-            <span>Statut du ticket</span>
-            <select name="ticket_status_${ticket.id}">
-              ${renderOptions(ticketStatusOptions, ticket.status)}
-            </select>
+        ${canWorkOnTicket ? `
+          <label class="sav-thread-note">
+            <span>Nouveau suivi</span>
+            <textarea name="ticket_update_note_${ticket.id}" rows="3" placeholder="Ajoute ici le suivi, la reponse, la correction ou l etat d avancement"></textarea>
           </label>
-          <div class="sav-thread-buttons">
-            <button type="button" class="mini-button" data-sav-update="${ticket.id}" data-sav-store="${store.id}">Ajouter le suivi</button>
-            <button type="button" class="mini-button" data-sav-toggle-close="${ticket.id}" data-sav-store="${store.id}">
-              ${ticket.status === "closed" ? "Reouvrir" : "Cloturer"}
-            </button>
+          <div class="sav-thread-control">
+            <label>
+              <span>Statut du ticket</span>
+              <select name="ticket_status_${ticket.id}">
+                ${renderOptions(ticketStatusOptions, ticket.status)}
+              </select>
+            </label>
+            <div class="sav-thread-buttons">
+              <button type="button" class="mini-button" data-sav-update="${ticket.id}" data-sav-store="${store.id}">Ajouter le suivi</button>
+              <button type="button" class="mini-button" data-sav-toggle-close="${ticket.id}" data-sav-store="${store.id}">
+                ${ticket.status === "closed" ? "Reouvrir" : "Cloturer"}
+              </button>
+            </div>
           </div>
-        </div>
+        ` : '<div class="empty-state sav-empty">En attente du dispatch TWEM avant intervention.</div>'}
       </div>
     </article>
   `;
@@ -11520,10 +11603,8 @@ async function handleSavCreate(event) {
 
   const concern = form.querySelector('[name="new_ticket_concern"]').value.trim();
   const initialNote = form.querySelector('[name="new_ticket_note"]').value.trim();
-  const targetPeople = [...form.querySelectorAll('[name="new_ticket_people"]:checked')]
-    .map((field) => normalizeImportCell(field.value))
-    .filter(Boolean);
-  const targetService = targetPeople.join(", ");
+  const targetPeople = [];
+  const targetService = "TWEM a dispatcher";
   const requestKind = form.querySelector('[name="new_ticket_kind"]')?.value || "SAV";
   const materialLabel = form.querySelector('[name="new_ticket_material"]')?.value || "";
   const extensionLabel = form.querySelector('[name="new_ticket_extension"]')?.value || "";
@@ -11542,13 +11623,6 @@ async function handleSavCreate(event) {
     }
     return;
   }
-  if (!targetPeople.length) {
-    if (feedback) {
-      feedback.textContent = "Selectionne au moins une personne a mobiliser.";
-    }
-    return;
-  }
-
   const now = new Date().toISOString();
   const ticket = {
     id: `SAV-${store.code}-${Date.now()}`,
@@ -11565,7 +11639,9 @@ async function handleSavCreate(event) {
     extensionLabel,
     quantityRequested,
     orderWorkflowStatus,
-    status: "open",
+    status: "dispatch",
+    dispatchStatus: "pending_twem",
+    receivedByTwemAt: now,
     createdAt: now,
     updates: []
   };
@@ -11577,10 +11653,9 @@ async function handleSavCreate(event) {
     storeCode: store.code,
     storeName: store.name,
     result: "issue",
-    comment: `Creation ${requestKind} ${resolvedConcern}`,
+    comment: `Creation ${requestKind} ${resolvedConcern} - a dispatcher par TWEM`,
     confirmedBy: ticket.requesterName,
-    createdAt: now,
-    alertQueuedAt: now
+    createdAt: now
   });
 
   form.querySelector('[name="new_ticket_concern"]').value = "";
@@ -11594,8 +11669,62 @@ async function handleSavCreate(event) {
   form.querySelector('[name="new_ticket_quantity"]').value = "1";
   form.querySelector('[name="new_ticket_order_status"]').value = "Demande creee";
   if (feedback) {
-    feedback.textContent = "Ticket SAV cree.";
+    feedback.textContent = "Ticket SAV cree et transmis a TWEM pour dispatch.";
   }
+  if (hasRemoteData()) {
+    await syncSavStateToRemote();
+  }
+  saveState();
+  render();
+}
+
+async function handleSavDispatch(event) {
+  const button = event.currentTarget;
+  const ticketId = button.getAttribute("data-sav-dispatch");
+  const ticket = state.tickets.find((entry) => entry.id === ticketId);
+  const form = button.closest("[data-store-editor]");
+  if (!ticket || !form || !canDispatchSav()) {
+    return;
+  }
+
+  const selectedPeople = [...form.querySelectorAll(`[name="ticket_dispatch_people_${ticketId}"]:checked`)]
+    .map((field) => normalizeImportCell(field.value))
+    .filter(Boolean);
+  const note = form.querySelector(`[name="ticket_dispatch_note_${ticketId}"]`)?.value.trim() || "";
+  if (!selectedPeople.length) {
+    window.alert("Choisis au moins une personne pour dispatcher le SAV.");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  ticket.targetPeople = [...new Set(selectedPeople)];
+  ticket.targetService = ticket.targetPeople.join(", ");
+  ticket.dispatchStatus = "assigned";
+  ticket.dispatchedAt = now;
+  ticket.dispatchedBy = currentUser()?.name || state.activeUserName || "TWEM";
+  if (["new", "dispatch", "open"].includes(ticket.status)) {
+    ticket.status = "assigned";
+  }
+  ticket.updates = Array.isArray(ticket.updates) ? ticket.updates : [];
+  ticket.updates.push({
+    id: `${ticket.id}-dispatch-${Date.now()}`,
+    authorName: ticket.dispatchedBy,
+    createdAt: now,
+    note: `Dispatch TWEM vers ${ticket.targetService}.${note ? ` ${note}` : ""}`
+  });
+
+  state.activities.unshift({
+    id: `sav-dispatch-${Date.now()}`,
+    storeId: state.stores.find((store) => store.code === ticket.storeCode || store.name === ticket.storeName)?.id || "",
+    storeCode: ticket.storeCode || "",
+    storeName: ticket.storeName,
+    result: "issue",
+    comment: `SAV assigne a ${ticket.targetService} - ${ticket.concern}`,
+    confirmedBy: ticket.dispatchedBy,
+    createdAt: now,
+    alertQueuedAt: now
+  });
+
   if (hasRemoteData()) {
     await syncSavStateToRemote();
   }
