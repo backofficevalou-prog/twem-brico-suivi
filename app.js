@@ -13,11 +13,6 @@ const globalStatusOptions = [
 const appointmentStatusOptions = ["Propose", "Confirme"];
 const extensionReferenceOptions = [
   "250 - compta",
-  "300 - jardin",
-  "320 - accueil",
-  "340 - caisse",
-  "350 - carrelage",
-  "380 - drive-in",
   "900 - zaagmachine",
   "901 - tuin",
   "902 - verf",
@@ -27,9 +22,12 @@ const extensionReferenceOptions = [
   "923 - safe room",
   "924 - drive in till zone"
 ];
+const groupedCallExtensionNumbers = new Set(["300", "310", "320", "330", "340", "350", "360", "370", "380", "390"]);
+const groupedCallExtensionCategoryLabel = "Extension d'appel groupé";
 
 function extensionCategoryKey(category) {
   const normalized = normalizeImportCell(category).toLowerCase();
+  if (normalized.includes("appel groupe") || normalized.includes("group")) return "grouped-call";
   if (normalized.includes("panic") || normalized.includes("panique")) return "panic";
   if (normalized.includes("appel") || normalized.includes("call")) return "call";
   if (normalized.includes("flash")) return "flash";
@@ -38,12 +36,30 @@ function extensionCategoryKey(category) {
   return "other";
 }
 
+function isGroupedCallExtension(row) {
+  return groupedCallExtensionNumbers.has(normalizeExtensionNumber(row?.number));
+}
+
+function extensionDisplayCategoryKey(row) {
+  return isGroupedCallExtension(row) ? "grouped-call" : extensionCategoryKey(row?.category);
+}
+
+function extensionDisplayCategoryLabel(row) {
+  return isGroupedCallExtension(row) ? groupedCallExtensionCategoryLabel : normalizeImportCell(row?.category || "Extension");
+}
+
+function isSelectableExtensionRow(row) {
+  return !isGroupedCallExtension(row);
+}
+
 function extensionRowsForCategory(categoryFilter = "") {
   const targetKey = extensionCategoryKey(categoryFilter);
   return extensionCatalogRows
     .filter((row) => {
+      const rowKey = extensionDisplayCategoryKey(row);
       if (!categoryFilter) return true;
-      const rowKey = extensionCategoryKey(row.category);
+      if (targetKey === "grouped-call") return rowKey === "grouped-call";
+      if (rowKey === "grouped-call") return false;
       if (targetKey === "fixed" || targetKey === "mobile") return rowKey === "fixed" || rowKey === "mobile";
       if (targetKey === "flash") return rowKey === "flash";
       if (targetKey === "call") return rowKey === "call";
@@ -103,6 +119,7 @@ function extensionReferenceText(row, language = "fr") {
 function availableExtensionReferenceOptions(categoryFilter = "", language = "fr") {
   const targetKey = extensionCategoryKey(categoryFilter);
   const importedOptions = extensionRowsForCategory(categoryFilter)
+    .filter(isSelectableExtensionRow)
     .slice()
     .sort((left, right) => {
       const leftLabel = getExtensionPreferredLabel(left, language).toLowerCase();
@@ -3963,7 +3980,7 @@ function buildStorePilotSkeleton(store) {
           <tbody>
             ${summaryRows.map((row) => `
               <tr>
-                <td>${escapeHtml(row.category)}</td>
+                <td>${escapeHtml(extensionDisplayCategoryLabel(row))}</td>
                 <td>${escapeHtml(row.slotLabel)}</td>
                 <td>${escapeHtml(row.extensionLabel || "-")}</td>
                 <td>${escapeHtml(row.note || "-")}</td>
@@ -4025,7 +4042,7 @@ function buildStorePostsSkeleton(store) {
               <tbody>
                 ${rows.map((row) => `
                   <tr>
-                    <td>${escapeHtml(row.category || "-")}</td>
+                    <td>${escapeHtml(extensionDisplayCategoryLabel(row) || "-")}</td>
                     <td>${escapeHtml(row.slotLabel || "-")}</td>
                     <td>${escapeHtml(row.extensionLabel || "-")}</td>
                     <td><span class="${badgeClass(row.extensionLabel ? "ok" : "planned")}">${escapeHtml(row.extensionLabel ? "Configure" : "A confirmer")}</span></td>
@@ -6053,7 +6070,7 @@ function renderExtensionsRows(stores) {
               <tbody>
                 ${filteredExtensions.map((row) => `
                   <tr>
-                    <td>${escapeHtml(row.category || "-")}</td>
+                    <td>${escapeHtml(extensionDisplayCategoryLabel(row) || "-")}</td>
                     <td>${escapeHtml(row.model || "-")}</td>
                     <td><strong>${escapeHtml(row.number || "-")}</strong></td>
                     <td>${escapeHtml(row.label || "-")}</td>
@@ -6171,11 +6188,12 @@ function renderExtensionsRowsV2(stores) {
   }
 
   const groupedExtensions = [
-    ["Boutons d appel", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "call")],
-    ["Panic Button", filteredExtensions.filter((row) => ["panic", "other"].includes(extensionCategoryKey(row.category)))],
-    ["Flash light", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "flash")],
-    ["Fix", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "fixed").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
-    ["Mobile", filteredExtensions.filter((row) => extensionCategoryKey(row.category) === "mobile").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))]
+    ["Boutons d appel", filteredExtensions.filter((row) => extensionDisplayCategoryKey(row) === "call")],
+    ["Panic Button", filteredExtensions.filter((row) => ["panic", "other"].includes(extensionDisplayCategoryKey(row)))],
+    ["Flash light", filteredExtensions.filter((row) => extensionDisplayCategoryKey(row) === "flash")],
+    ["Fix", filteredExtensions.filter((row) => extensionDisplayCategoryKey(row) === "fixed").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
+    ["Mobile", filteredExtensions.filter((row) => extensionDisplayCategoryKey(row) === "mobile").sort((a, b) => getExtensionPreferredLabel(a, "fr").localeCompare(getExtensionPreferredLabel(b, "fr"), "fr", { sensitivity: "base" }) || normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))],
+    [groupedCallExtensionCategoryLabel, filteredExtensions.filter((row) => extensionDisplayCategoryKey(row) === "grouped-call").sort((a, b) => normalizeImportCell(a.number).localeCompare(normalizeImportCell(b.number), "fr", { numeric: true, sensitivity: "base" }))]
   ].filter(([, rows]) => rows.length);
 
   projectTableBody.innerHTML = `
@@ -9575,7 +9593,7 @@ function exportExtensionsXlsx() {
   ];
   extensionCatalogRows.forEach((row) => {
     rows.push([
-      row.category,
+      extensionDisplayCategoryLabel(row),
       row.model,
       row.number,
       row.labelFr || row.label,
@@ -9603,10 +9621,11 @@ function exportExtensionsPdf() {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const groupedRows = [
     ["Boutons d appel", extensionRowsForCategory("Bouton Appel")],
-    ["Panic Button", extensionCatalogRows.filter((row) => ["panic", "other"].includes(extensionCategoryKey(row.category)))],
+    ["Panic Button", extensionCatalogRows.filter((row) => ["panic", "other"].includes(extensionDisplayCategoryKey(row)))],
     ["Flash light", extensionRowsForCategory("Flash light")],
     ["Fix", extensionRowsForCategory("Fixed")],
-    ["Mobile", extensionRowsForCategory("Mobile")]
+    ["Mobile", extensionRowsForCategory("Mobile")],
+    [groupedCallExtensionCategoryLabel, extensionRowsForCategory(groupedCallExtensionCategoryLabel)]
   ].filter(([, rows]) => rows.length);
 
   doc.setFillColor(255, 222, 59);
