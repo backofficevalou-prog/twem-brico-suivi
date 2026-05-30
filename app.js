@@ -1622,6 +1622,7 @@ function buildAppwriteSettingsDocument() {
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
     role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
     automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
+    automation_emails_json: JSON.stringify(state.automationEmails || []),
     extension_catalog_json: JSON.stringify(extensionCatalogRows || [])
   };
 }
@@ -6882,6 +6883,17 @@ function buildStoreUpdateAlertEmail(activity, automation = {}) {
   const appLink = store ? appStoreUpdateLink(store, activity) : appAccessLink();
   const storeName = store?.name || activity?.storeName || "magasin";
   const updateText = activity?.comment || "Nouvelle information a consulter";
+  const recipients = store
+    ? (state.people || [])
+        .filter((person) =>
+          normalizeImportCell(person.email)
+          && (
+            person.storeCode === store.code
+            || (Array.isArray(person.allowedStoreCodes) && person.allowedStoreCodes.includes(store.code))
+          )
+        )
+        .map((person) => person.email)
+    : [];
   const subject = language === "nl"
     ? `Nieuwe update - ${storeName}`
     : `Nouvelle mise a jour - ${storeName}`;
@@ -6926,7 +6938,7 @@ function buildStoreUpdateAlertEmail(activity, automation = {}) {
     body: automation.emailBodyManual && automation.emailBody && hasMailTemplateVariables(automation.emailBody)
       ? fillMailTemplate(automation.emailBody, values)
       : body,
-    recipient: automation.recipients || "Personnes liees au magasin",
+    recipient: recipients.join(", "),
     language
   };
 }
@@ -8644,6 +8656,7 @@ async function loadRemoteState() {
       state.roleVisibilityConfig = normalizedRoleVisibilityConfig(remoteRoleVisibilityConfig);
     }
     state.automations = normalizedAutomations(parseJsonField(settingsDocument.automations_json, state.automations || []));
+    state.automationEmails = parseJsonField(settingsDocument.automation_emails_json, state.automationEmails || []);
     state.tutorialVideos = normalizedTutorialVideos(tutorialVideosItem?.videos || state.tutorialVideos || []);
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {

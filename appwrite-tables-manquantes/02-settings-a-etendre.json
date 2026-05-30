@@ -1,0 +1,34 @@
+{
+  "databaseId": "twem_brico",
+  "collectionId": "settings",
+  "attributesToAdd": [
+    {
+      "key": "role_visibility_config_json",
+      "type": "string",
+      "size": 65535,
+      "required": false,
+      "purpose": "Configuration Qui voit quoi par role"
+    },
+    {
+      "key": "automations_json",
+      "type": "string",
+      "size": 65535,
+      "required": false,
+      "purpose": "Configuration des automatisations de l'onglet Automatisations"
+    },
+    {
+      "key": "automation_emails_json",
+      "type": "string",
+      "size": 65535,
+      "required": false,
+      "purpose": "File des mails automatiques programmes et envoyes"
+    },
+    {
+      "key": "mailer_state_json",
+      "type": "string",
+      "size": 65535,
+      "required": false,
+      "purpose": "Etat technique du mailer pour eviter les doubles envois"
+    }
+  ]
+}

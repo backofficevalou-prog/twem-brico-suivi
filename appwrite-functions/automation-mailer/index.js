@@ -108,6 +108,14 @@ async function listRows(tableId) {
   return rows;
 }
 
+async function updateRow(tableId, rowId, data) {
+  const databaseId = requiredEnv("APPWRITE_DATABASE_ID");
+  return appwriteFetch(`/tablesdb/${databaseId}/tables/${tableId}/rows/${rowId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ data })
+  });
+}
+
 function normalizeStore(document) {
   const payload = parseJsonField(document.payload_json, null);
   if (payload && typeof payload === "object") {
@@ -205,6 +213,69 @@ function htmlFromText(text) {
     .replaceAll(">", "&gt;")}</pre>`;
 }
 
+function brusselsParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Brussels",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    dateKey: `${value.year}-${value.month}-${value.day}`,
+    hour: Number(value.hour || 0),
+    minute: Number(value.minute || 0)
+  };
+}
+
+function splitRecipients(value = "") {
+  return String(value || "")
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter((item) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item));
+}
+
+function automationById(automations = []) {
+  return new Map((automations || []).map((automation) => [automation.id, automation]));
+}
+
+function shouldSendQueuedEmail(email, automationsById, now = new Date()) {
+  const automation = automationsById.get(email.automationId);
+  if (!automation?.active) return false;
+  if (email.automationId === "daily_operations_digest") return false;
+  if (email.automationId === "new_person_welcome" && !automation.active) return false;
+  if (email.status !== "ready") return false;
+  if (email.plannedAt) {
+    const planned = new Date(email.plannedAt);
+    if (!Number.isNaN(planned.getTime()) && planned > now) return false;
+  }
+  return splitRecipients(email.recipient).length > 0;
+}
+
+async function getGlobalSettings(settingsCollection) {
+  const settingsRows = await listRows(settingsCollection);
+  const row = settingsRows.find((item) => item.$id === "global-state") || settingsRows[0] || null;
+  if (!row) {
+    return { row: null, automations: [], automationEmails: [], mailerState: {} };
+  }
+  return {
+    row,
+    automations: parseJsonField(row.automations_json, []),
+    automationEmails: parseJsonField(row.automation_emails_json, []),
+    mailerState: parseJsonField(row.mailer_state_json, {})
+  };
+}
+
+function shouldSendDigestToday(mailerState, now = new Date()) {
+  if (env("FORCE_DIGEST", "").toLowerCase() === "true") return true;
+  const { dateKey: todayKey, hour } = brusselsParts(now);
+  const digestHour = Number(env("DIGEST_HOUR_BRUSSELS", "9"));
+  return hour >= digestHour && mailerState.lastDigestDate !== todayKey;
+}
+
 async function getGraphToken() {
   const tenantId = requiredEnv("GRAPH_TENANT_ID");
   const clientId = requiredEnv("GRAPH_CLIENT_ID");
@@ -263,6 +334,7 @@ async function sendOutlookMail({ subject, body, recipients }) {
 async function main() {
   const storesCollection = env("APPWRITE_STORES_COLLECTION_ID", "stores");
   const ticketsCollection = env("APPWRITE_TICKETS_COLLECTION_ID", "tickets");
+  const settingsCollection = env("APPWRITE_SETTINGS_COLLECTION_ID", "settings");
   const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,valou@twem.be")
     .split(",")
     .map((item) => item.trim())
@@ -275,28 +347,88 @@ async function main() {
   if (!recipients.length) {
     throw new Error("No digest recipients configured.");
   }
+  const settings = await getGlobalSettings(settingsCollection);
+  const automationsById = automationById(settings.automations);
   const targetDate = addDays(new Date(), 1);
   const [stores, tickets] = await Promise.all([
     listRows(storesCollection).then((rows) => rows.map(normalizeStore)),
     listRows(ticketsCollection).then((rows) => rows.map(normalizeTicket))
   ]);
-  const subjectPrefix = testRecipients.length ? "[TEST] " : "";
-  const subject = `${subjectPrefix}Digest quotidien TWEM Brico - ${formatFrDate(targetDate)}`;
-  const body = buildDigestBody(stores, tickets, targetDate);
   const dryRun = env("DRY_RUN", "true").toLowerCase() !== "false";
-  let mailResult = null;
-  if (!dryRun) {
-    mailResult = await sendOutlookMail({ subject, body, recipients });
+  const sentQueue = [];
+  const skippedQueue = [];
+  const now = new Date();
+  const queueLimit = Number(env("MAIL_QUEUE_LIMIT", "20"));
+  const updatedEmails = [...(settings.automationEmails || [])];
+
+  for (const email of updatedEmails) {
+    if (sentQueue.length >= queueLimit) break;
+    if (!shouldSendQueuedEmail(email, automationsById, now)) {
+      skippedQueue.push(email.id || email.automationId || "email");
+      continue;
+    }
+    try {
+      const emailRecipients = splitRecipients(email.recipient);
+      let result = { dryRun: true };
+      if (!dryRun) {
+        result = await sendOutlookMail({
+          subject: email.subject || "Mail automatique TWEM Brico",
+          body: email.body || "",
+          recipients: emailRecipients
+        });
+      }
+      email.status = dryRun ? "ready" : "sent";
+      email.sentAt = dryRun ? "" : new Date().toISOString();
+      email.error = "";
+      email.mailResult = result;
+      email.updatedAt = new Date().toISOString();
+      sentQueue.push({ id: email.id, automationId: email.automationId, recipients: emailRecipients, result });
+    } catch (error) {
+      email.status = "error";
+      email.error = error.message;
+      email.updatedAt = new Date().toISOString();
+      sentQueue.push({ id: email.id, automationId: email.automationId, error: error.message });
+    }
   }
+
+  const digestShouldSend = shouldSendDigestToday(settings.mailerState, now);
+  let digest = null;
+  if (digestShouldSend) {
+    const subjectPrefix = testRecipients.length ? "[TEST] " : "";
+    const subject = `${subjectPrefix}Digest quotidien TWEM Brico - ${formatFrDate(targetDate)}`;
+    const body = buildDigestBody(stores, tickets, targetDate);
+    let mailResult = null;
+    if (!dryRun) {
+      mailResult = await sendOutlookMail({ subject, body, recipients });
+    }
+    settings.mailerState.lastDigestDate = brusselsParts(now).dateKey;
+    settings.mailerState.lastDigestSentAt = new Date().toISOString();
+    digest = {
+      sent: !dryRun,
+      dryRun,
+      testMode: Boolean(testRecipients.length),
+      recipients,
+      configuredRecipients,
+      subject,
+      mailResult,
+      preview: body
+    };
+  }
+
+  if (settings.row && (sentQueue.length || digestShouldSend)) {
+    await updateRow(settingsCollection, settings.row.$id, {
+      automation_emails_json: JSON.stringify(updatedEmails),
+      mailer_state_json: JSON.stringify(settings.mailerState)
+    });
+  }
+
   return {
     ok: true,
     dryRun,
-    testMode: Boolean(testRecipients.length),
-    recipients,
-    configuredRecipients,
-    subject,
-    mailResult,
-    preview: body
+    digest,
+    queuedSent: sentQueue,
+    queuedSkippedCount: skippedQueue.length,
+    queueSize: updatedEmails.length
   };
 }
 
