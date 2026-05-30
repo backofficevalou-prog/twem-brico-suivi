@@ -465,29 +465,29 @@ const defaultIntervenantRoleOptions = ["telephonie_destiny", "pm_dstny", "uc_pm_
 const tutorialVideosSettingsItemId = "__tutorial_videos__";
 const defaultTutorialVideos = [
   {
-    key: "first_login",
-    title: "Premiere connexion",
-    description: "Se connecter avec son PIN, comprendre les onglets visibles et retrouver sa fiche magasin."
-  },
-  {
-    key: "create_sav",
-    title: "Creer un SAV",
-    description: "Ouvrir une demande, choisir les personnes a mobiliser, suivre l'historique et changer le statut."
-  },
-  {
     key: "network_info",
-    title: "Infos reseau",
-    description: "Lire les informations reseau, VLAN, cablage, pre-visite et points de preparation."
-  },
-  {
-    key: "planning",
-    title: "Planning et rendez-vous",
-    description: "Consulter les dates, comprendre les rendez-vous prevus et les prochaines actions."
+    title: "Configuration réseau",
+    description: "Choisissez les extensions souhaitées sur les téléphones fixes, les téléphones mobiles, les flash buttons, les call buttons et les autres équipements, puis enregistrez."
   },
   {
     key: "orders_material",
-    title: "Commandes et materiel",
-    description: "Comprendre les commandes, quantites, remplacements, livraison et elements a facturer."
+    title: "Pré-visite",
+    description: "Indiquez les informations VLAN, switch, réseau présent et câblage, ajoutez la date de constat, choisissez le statut, commentez si utile pour aider l'équipe, puis enregistrez."
+  },
+  {
+    key: "first_login",
+    title: "Quelques onglets",
+    description: "Voici les onglets d'aide et de vue générale disponibles selon votre rôle et vos accès."
+  },
+  {
+    key: "planning",
+    title: "Rendez-vous",
+    description: "Demandez un rendez-vous, mettez-le en proposition et la personne invitée pourra ensuite le confirmer."
+  },
+  {
+    key: "create_sav",
+    title: "SAV",
+    description: "Cette section permet de signaler un SAV, faire une demande d'info, demander un remplacement ou demander du matériel supplémentaire."
   }
 ];
 const defaultAutomations = [
