@@ -6705,9 +6705,9 @@ function automationCategoryLabel(category) {
 
 const automationEmailStatusOptions = [
   { value: "draft", label: "Brouillon" },
-  { value: "ready", label: "A valider" },
+  { value: "ready", label: "A envoyer" },
   { value: "blocked", label: "Bloque premiere connexion" },
-  { value: "sent", label: "Envoye" },
+  { value: "sent", label: "Deja envoye" },
   { value: "error", label: "Erreur" }
 ];
 
@@ -6722,6 +6722,17 @@ function automationEmailStatusClass(status) {
   if (normalized === "blocked") return "automation-email-status status-blocked";
   if (normalized === "error") return "automation-email-status status-error";
   return "automation-email-status status-draft";
+}
+
+function automationEmailStatusHelp(status) {
+  const labels = {
+    ready: "La fonction Appwrite peut envoyer ce mail au prochain passage.",
+    sent: "Journal uniquement: ce statut indique que le mail est deja parti.",
+    draft: "Brouillon: la fonction ne l'envoie pas.",
+    blocked: "Bloque tant que la premiere connexion PIN n'est pas faite.",
+    error: "Erreur d'envoi: repasser a A envoyer apres correction."
+  };
+  return labels[status] || "";
 }
 
 function personRecipientValue(person = {}) {
@@ -7525,6 +7536,7 @@ function renderAutomationEmailQueue() {
           </label>
           <div>
             <span class="${automationEmailStatusClass(email.status)}">${escapeHtml(automationEmailStatusLabel(email.status))}</span>
+            ${automationEmailStatusHelp(email.status) ? `<small class="automation-email-note">${escapeHtml(automationEmailStatusHelp(email.status))}</small>` : ""}
             ${email.blockedReason ? `<small class="automation-email-note">${escapeHtml(email.blockedReason)}</small>` : ""}
           </div>
           <details>
