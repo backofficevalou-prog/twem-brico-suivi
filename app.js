@@ -8394,16 +8394,35 @@ function renderPinAccessList() {
     return;
   }
 
-  const visibleRows = state.people
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  const visibleRows = state.people.slice();
 
   if (!visibleRows.length) {
     pinAccessList.innerHTML = '<div class="empty-state">Aucun acces PIN configure.</div>';
     return;
   }
 
-  pinAccessList.innerHTML = visibleRows.map((person) => {
+  const statusGroups = [
+    {
+      title: "Connectes",
+      people: visibleRows
+        .filter((person) => person.loginHistory?.[0]?.at)
+        .sort((a, b) => new Date(b.loginHistory?.[0]?.at || 0) - new Date(a.loginHistory?.[0]?.at || 0))
+    },
+    {
+      title: "Acces envoye",
+      people: visibleRows
+        .filter((person) => !person.loginHistory?.[0]?.at && person.welcomeEmailSentAt)
+        .sort((a, b) => new Date(b.welcomeEmailSentAt || 0) - new Date(a.welcomeEmailSentAt || 0))
+    },
+    {
+      title: "Acces pas encore envoye",
+      people: visibleRows
+        .filter((person) => !person.loginHistory?.[0]?.at && !person.welcomeEmailSentAt)
+        .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+    }
+  ];
+
+  const renderPersonRow = (person) => {
     const stores = person.allowedStoreCodes?.includes("*")
       ? "Tous les magasins"
       : (person.allowedStoreCodes?.length ? person.allowedStoreCodes.join(", ") : (person.storeCode || "-"));
@@ -8450,7 +8469,19 @@ function renderPinAccessList() {
         </div>
       </div>
     `;
-  }).join("");
+  };
+
+  pinAccessList.innerHTML = statusGroups.map((group) => `
+    <section class="pin-access-group">
+      <div class="pin-access-group-title">
+        <strong>${escapeHtml(group.title)}</strong>
+        <span>${group.people.length}</span>
+      </div>
+      ${group.people.length
+        ? group.people.map(renderPersonRow).join("")
+        : '<div class="empty-state">Aucune personne dans ce groupe.</div>'}
+    </section>
+  `).join("");
 
   pinAccessList.querySelectorAll("[data-pin-edit]").forEach((button) => {
     button.addEventListener("click", () => {

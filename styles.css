@@ -2864,6 +2864,31 @@ button {
   margin-top: 12px;
 }
 
+.pin-access-group {
+  display: grid;
+  gap: 8px;
+}
+
+.pin-access-group + .pin-access-group {
+  margin-top: 14px;
+}
+
+.pin-access-group-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding: 4px 2px 8px;
+}
+
+.pin-access-group-title span {
+  border-radius: 999px;
+  background: #fff1a8;
+  padding: 4px 8px;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
 .person-row-actions {
   display: flex;
   flex-direction: row;
