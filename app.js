@@ -1467,7 +1467,7 @@ function mergePeopleWithPinFallback(people = []) {
   ];
 
   sourcePeople.forEach((person) => {
-    const key = (person.email || person.name || person.id || "").toLowerCase();
+    const key = (person.id || person.email || person.name || "").toLowerCase();
     if (!key) {
       return;
     }
@@ -1591,6 +1591,7 @@ function normalizeAppwritePerson(document) {
   const payload = parseJsonField(document.payload_json, null);
   const base = {
     id: document.$id,
+    remoteDocumentId: document.$id,
     name: document.name || "",
     role: document.role || "manager",
     phone: document.phone || "",
@@ -1600,7 +1601,7 @@ function normalizeAppwritePerson(document) {
   };
   return hydrateAccessProfile(
     payload && typeof payload === "object"
-      ? { ...base, ...payload, id: payload.id || document.$id }
+      ? { ...base, ...payload, id: payload.id || document.$id, remoteDocumentId: document.$id }
       : base
   );
 }
@@ -2027,7 +2028,7 @@ function storeRemoteSyncKey(store) {
 }
 
 function personRemoteSyncKey(person) {
-  return safeDocumentId("person", person.id || person.email || person.name);
+  return person.remoteDocumentId || safeDocumentId("person", person.id || person.email || person.name);
 }
 
 function ticketRemoteSyncKey(ticket) {
@@ -7779,6 +7780,10 @@ function renderPeopleList() {
         return;
       }
 
+      if (!window.confirm(`Supprimer ${target.name || "ce contact"} ?`)) {
+        return;
+      }
+
       state.people = state.people.filter((person) => person.id !== personId);
       state.stores.forEach((store) => {
         if (store.owner === target.name) {
@@ -7797,8 +7802,12 @@ function renderPeopleList() {
       }
 
       if (hasRemoteData()) {
-        await deletePersonFromRemote(personId);
-        await loadRemoteState();
+        try {
+          await deletePersonFromRemote(target);
+        } catch (error) {
+          console.error("Delete person error", error);
+          window.alert(`Suppression distante impossible: ${error.message}`);
+        }
       }
       saveState();
       render();
@@ -8947,16 +8956,18 @@ async function syncPersonToRemote(person) {
     return;
   }
 
-  await upsertAppwriteDocument(
+  const documentId = person.remoteDocumentId || safeDocumentId("person", person.id || person.email || person.name);
+  const savedDocument = await upsertAppwriteDocument(
     appwritePeopleCollectionId,
-    safeDocumentId("person", person.id || person.email || person.name),
+    documentId,
     buildAppwritePersonDocument(person)
   );
+  person.remoteDocumentId = savedDocument?.$id || documentId;
 }
 
-async function deletePersonFromRemote(personId) {
+async function deletePersonFromRemote(personOrId) {
   if (supabaseClient) {
-    const numericId = Number(personId);
+    const numericId = Number(typeof personOrId === "object" ? personOrId.id : personOrId);
     if (Number.isNaN(numericId)) {
       return;
     }
@@ -8969,11 +8980,32 @@ async function deletePersonFromRemote(personId) {
     return;
   }
 
-  await appwriteDatabases.deleteDocument(
-    appwriteDatabaseId,
-    appwritePeopleCollectionId,
-    safeDocumentId("person", personId)
-  );
+  const person = typeof personOrId === "object" ? personOrId : null;
+  const rawId = person?.id || personOrId;
+  const candidateIds = [
+    person?.remoteDocumentId,
+    person?.$id,
+    rawId,
+    safeDocumentId("person", rawId),
+    safeDocumentId("person", person?.email || person?.name || rawId)
+  ].filter(Boolean);
+  const uniqueIds = [...new Set(candidateIds)];
+
+  for (const documentId of uniqueIds) {
+    try {
+      await appwriteDatabases.deleteDocument(
+        appwriteDatabaseId,
+        appwritePeopleCollectionId,
+        documentId
+      );
+      return;
+    } catch (error) {
+      const code = Number(error?.code || error?.response?.code || 0);
+      if (code !== 404) {
+        throw error;
+      }
+    }
+  }
 }
 
 async function syncRoleOptionsToRemote() {
@@ -12362,7 +12394,6 @@ async function handlePersonSubmit(event) {
 
   if (hasRemoteData()) {
     await syncPersonToRemote(createdPerson);
-    await loadRemoteState();
   }
   ensureAutomationEmailDrafts();
   personForm.reset();
@@ -12387,7 +12418,6 @@ async function handleIntervenantSubmit(event) {
   person.role = nextRole;
   if (hasRemoteData()) {
     await syncPersonToRemote(person);
-    await loadRemoteState();
   }
   saveState();
   render();
@@ -12432,7 +12462,6 @@ async function handleIntervenantRemove(event) {
 
   if (hasRemoteData()) {
     await syncPersonToRemote(person);
-    await loadRemoteState();
   }
   saveState();
   render();
