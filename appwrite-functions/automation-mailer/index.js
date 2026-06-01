@@ -415,8 +415,30 @@ function pendingWelcomeEmailPeople(people = []) {
   );
 }
 
-function welcomeEmailDraftsFromPeople(people = []) {
-  return pendingWelcomeEmailPeople(people).map((person) => ({
+function openAccessFallbackWelcomePeople(people = []) {
+  return people.filter((person) => {
+    const role = String(person.role || "").toLowerCase();
+    const status = String(person.pinStatus || "").toLowerCase();
+    return String(person.email || "").trim()
+      && String(person.pin || "").replace(/\D/g, "").length === 6
+      && !person.welcomeEmailSentAt
+      && !personHasFirstAppLogin(person)
+      && status === "active"
+      && !["supadmin_twem", "admin_twem"].includes(role);
+  });
+}
+
+function welcomeEmailDraftsFromPeople(people = [], options = {}) {
+  const queuedPeople = pendingWelcomeEmailPeople(people);
+  const allowFallback = env("WELCOME_OPEN_ACCESS_FALLBACK", "true").toLowerCase() !== "false";
+  const fallbackPeople = allowFallback && !queuedPeople.length
+    ? openAccessFallbackWelcomePeople(people).slice(0, Number(env("WELCOME_FALLBACK_LIMIT", "20")))
+    : [];
+  const selectedPeople = queuedPeople.length ? queuedPeople : fallbackPeople;
+  options.diagnostics.queuedWelcomePeople = queuedPeople.length;
+  options.diagnostics.openAccessFallbackPeople = fallbackPeople.length;
+  options.diagnostics.openAccessFallbackUsed = Boolean(fallbackPeople.length);
+  return selectedPeople.map((person) => ({
     id: `mail-new_person_welcome-${person.id || person.rowId || person.email}`,
     automationId: "new_person_welcome",
     automationTitle: `Creation personne -> envoi lien app + PIN - ${person.name || person.email}`,
@@ -539,8 +561,15 @@ async function main() {
   const now = new Date();
   const queueLimit = Number(env("MAIL_QUEUE_LIMIT", "20"));
   const existingEmailIds = new Set((settings.automationEmails || []).map((email) => email.id));
+  const diagnostics = {
+    people: people.length,
+    activePinPeople: openAccessFallbackWelcomePeople(people).length,
+    queuedWelcomePeople: 0,
+    openAccessFallbackPeople: 0,
+    openAccessFallbackUsed: false
+  };
   const generatedWelcomeEmails = automationActive(settings.automations, "new_person_welcome")
-    ? welcomeEmailDraftsFromPeople(people).filter((email) => !existingEmailIds.has(email.id))
+    ? welcomeEmailDraftsFromPeople(people, { diagnostics }).filter((email) => !existingEmailIds.has(email.id))
     : [];
   const peopleById = new Map(people.map((person) => [String(person.id || person.rowId || ""), person]));
   const updatedEmails = [...(settings.automationEmails || []), ...generatedWelcomeEmails];
@@ -626,7 +655,8 @@ async function main() {
     digest,
     queuedSent: sentQueue,
     queuedSkippedCount: skippedQueue.length,
-    queueSize: updatedEmails.length
+    queueSize: updatedEmails.length,
+    diagnostics
   };
 }
 
