@@ -919,7 +919,7 @@ const translations = {
 
 const initialPeople = [
   { id: "p1", name: "Emir", role: "admin_twem", phone: "0470 00 00 01", email: "emir@twem.be", storeCode: "", language: "fr" },
-  { id: "p2", name: "Valou", role: "supadmin_twem", phone: "0470 00 00 02", email: "valou@twem.be", storeCode: "", language: "fr" },
+  { id: "p2", name: "Valou", role: "supadmin_twem", phone: "0470 00 00 02", email: "backoffice@twem.be", storeCode: "", language: "fr" },
   { id: "p3", name: "M. Dupont", role: "manager", phone: "0470 00 00 03", email: "anderlecht@brico.be", storeCode: "BRI-001", language: "fr" },
   { id: "p4", name: "Mme Martin", role: "manager", phone: "0470 00 00 04", email: "wavre@brico.be", storeCode: "BRI-002", language: "fr" },
   { id: "p5", name: "M. Lambert", role: "manager", phone: "0470 00 00 05", email: "liege@brico.be", storeCode: "BRI-003", language: "fr" },
@@ -1435,6 +1435,12 @@ function normalizeSpecialPeople(people = []) {
         role: "intervenant",
         accessibleTabs: ["dashboard", "timeline", "stores", "sav", "extensions", "reports"],
         accessibleBlocks: ["appointments", "sav_ticket", "problem_notes"]
+      });
+    }
+    if (person.name === "Valou" && email === "valou@twem.be") {
+      return hydrateAccessProfile({
+        ...person,
+        email: "backoffice@twem.be"
       });
     }
     return person;

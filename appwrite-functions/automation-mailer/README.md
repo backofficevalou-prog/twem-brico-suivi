@@ -25,7 +25,7 @@ Optionnelles:
 
 - `APPWRITE_STORES_COLLECTION_ID` = `stores`
 - `APPWRITE_TICKETS_COLLECTION_ID` = `tickets`
-- `DIGEST_RECIPIENTS` = `emir@twem.be,valou@twem.be`
+- `DIGEST_RECIPIENTS` = `emir@twem.be,backoffice@twem.be`
 - `DRY_RUN` = `true`
 
 Mettre `DRY_RUN=false` uniquement quand le test est valide.

@@ -375,7 +375,7 @@ async function main() {
   const ticketsCollection = env("APPWRITE_TICKETS_COLLECTION_ID", "tickets");
   const peopleCollection = env("APPWRITE_PEOPLE_COLLECTION_ID", "people");
   const settingsCollection = env("APPWRITE_SETTINGS_COLLECTION_ID", "settings");
-  const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,valou@twem.be")
+  const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,backoffice@twem.be")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
