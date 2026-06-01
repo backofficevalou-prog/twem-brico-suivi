@@ -8495,9 +8495,29 @@ async function handleManualWelcomeMailClick(event) {
 
   const automation = (state.automations || []).find((entry) => entry.id === "new_person_welcome") || {};
   const welcomeMail = buildNewPersonWelcomeEmail(person, automation);
-  const subject = encodeURIComponent(welcomeMail.subject || "Acces application TWEM Brico");
-  const body = encodeURIComponent(welcomeMail.body || "");
-  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
+  const subjectText = welcomeMail.subject || "Acces application TWEM Brico";
+  const bodyText = welcomeMail.body || "";
+  const clipboardText = [
+    `A: ${email}`,
+    `Objet: ${subjectText}`,
+    "",
+    bodyText
+  ].join("\n");
+  try {
+    await navigator.clipboard?.writeText(clipboardText);
+  } catch {
+    // Clipboard can be blocked by browser permissions; Outlook compose still opens below.
+  }
+  const outlookUrl = new URL("https://outlook.office.com/mail/deeplink/compose");
+  outlookUrl.searchParams.set("to", email);
+  outlookUrl.searchParams.set("subject", subjectText);
+  outlookUrl.searchParams.set("body", bodyText);
+  window.open(outlookUrl.toString(), "_blank", "noopener");
+
+  const markSent = window.confirm("Le mail est ouvert dans Outlook Web et le contenu est copie. Marquer ce mail comme envoye apres ton envoi depuis backoffice@twem.be ?");
+  if (!markSent) {
+    return;
+  }
 
   const sentAt = new Date().toISOString();
   person.welcomeEmailSentAt = sentAt;
