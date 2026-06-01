@@ -8410,6 +8410,9 @@ function renderPinAccessList() {
       ? "Tous les magasins"
       : (person.allowedStoreCodes?.length ? person.allowedStoreCodes.join(", ") : (person.storeCode || "-"));
     const lastSeen = person.loginHistory?.length ? formatDateTime(person.loginHistory[0].at) : "Jamais";
+    const pinReady = normalizePin(person.pin).length === 6;
+    const mailReady = Boolean(normalizeImportCell(person.email));
+    const mailSent = Boolean(person.welcomeEmailSentAt);
     return `
       <div class="simple-item person-row">
         <div>
@@ -8436,7 +8439,14 @@ function renderPinAccessList() {
           <strong>${escapeHtml(lastSeen)}</strong>
           <div class="override-meta">Derniere connexion</div>
         </div>
+        <div>
+          <strong>${mailSent ? "✓" : "-"}</strong>
+          <div class="override-meta">${mailSent ? `Mail envoye ${formatDateTime(person.welcomeEmailSentAt)}` : "Mail acces"}</div>
+        </div>
         <div class="person-row-actions">
+          <button type="button" class="mini-button" data-pin-send-mail="${escapeHtml(person.id)}" ${pinReady && mailReady ? "" : "disabled"}>
+            ${mailSent ? "Renvoyer mail" : "Envoyer mail"}
+          </button>
           <button type="button" class="mini-button" data-pin-edit="${escapeHtml(person.id)}">Modifier</button>
           <button type="button" class="mini-button" data-pin-disable="${escapeHtml(person.id)}">Desactiver</button>
         </div>
@@ -8449,6 +8459,10 @@ function renderPinAccessList() {
       const person = state.people.find((entry) => entry.id === button.getAttribute("data-pin-edit"));
       fillPinAccessForm(person);
     });
+  });
+
+  pinAccessList.querySelectorAll("[data-pin-send-mail]").forEach((button) => {
+    button.addEventListener("click", handleManualWelcomeMailClick);
   });
 
   pinAccessList.querySelectorAll("[data-pin-disable]").forEach((button) => {
@@ -8464,6 +8478,53 @@ function renderPinAccessList() {
       render();
     });
   });
+}
+
+async function handleManualWelcomeMailClick(event) {
+  const personId = event.currentTarget.getAttribute("data-pin-send-mail");
+  const person = state.people.find((entry) => entry.id === personId);
+  if (!person) {
+    return;
+  }
+  const email = normalizeImportCell(person.email);
+  const pin = normalizePin(person.pin);
+  if (!email || pin.length !== 6) {
+    window.alert("Il faut une adresse mail et un PIN a 6 chiffres avant d'envoyer.");
+    return;
+  }
+
+  const automation = (state.automations || []).find((entry) => entry.id === "new_person_welcome") || {};
+  const welcomeMail = buildNewPersonWelcomeEmail(person, automation);
+  const subject = encodeURIComponent(welcomeMail.subject || "Acces application TWEM Brico");
+  const body = encodeURIComponent(welcomeMail.body || "");
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`;
+
+  const sentAt = new Date().toISOString();
+  person.welcomeEmailSentAt = sentAt;
+  person.welcomeEmailQueuedAt = "";
+  person.manualWelcomeEmailSentAt = sentAt;
+  person.manualWelcomeEmailSentBy = currentUser()?.name || state.activeUserName || "";
+
+  const draft = (state.automationEmails || []).find((entry) =>
+    entry.automationId === "new_person_welcome"
+    && (
+      entry.personId === person.id
+      || String(entry.id || "").includes(person.id)
+      || normalizeImportCell(entry.recipient).toLowerCase() === email.toLowerCase()
+    )
+  );
+  if (draft) {
+    draft.status = "sent";
+    draft.sentAt = sentAt;
+    draft.updatedAt = sentAt;
+  }
+
+  if (hasRemoteData()) {
+    await syncPersonToRemote(person);
+    await syncSettingsToRemote();
+  }
+  saveState();
+  render();
 }
 
 function renderPinLoginJournal() {
