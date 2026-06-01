@@ -564,11 +564,13 @@ async function main() {
   const diagnostics = {
     people: people.length,
     activePinPeople: openAccessFallbackWelcomePeople(people).length,
+    welcomeAutomationActive: automationActive(settings.automations, "new_person_welcome"),
     queuedWelcomePeople: 0,
     openAccessFallbackPeople: 0,
     openAccessFallbackUsed: false
   };
-  const generatedWelcomeEmails = automationActive(settings.automations, "new_person_welcome")
+  const welcomeMailsEnabled = env("WELCOME_MAILS_ENABLED", "true").toLowerCase() !== "false";
+  const generatedWelcomeEmails = welcomeMailsEnabled
     ? welcomeEmailDraftsFromPeople(people, { diagnostics }).filter((email) => !existingEmailIds.has(email.id))
     : [];
   const peopleById = new Map(people.map((person) => [String(person.id || person.rowId || ""), person]));
