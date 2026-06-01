@@ -294,17 +294,58 @@ function firstLoginAllowedRecipients(email, peopleMap) {
   });
 }
 
+const automationEmailsSettingsItemId = "__automation_emails__";
+const mailerStateSettingsItemId = "__mailer_state__";
+
+function automationToolItems(row = {}) {
+  return parseJsonField(row.tool_items_json, []);
+}
+
+function settingsToolItem(items = [], id, kind) {
+  return items.find((item) => item?.id === id || item?.kind === kind) || null;
+}
+
+function nextToolItemsWithMailerState(items = [], automationEmails = [], mailerState = {}) {
+  const cleanItems = items.filter((item) =>
+    item?.id !== automationEmailsSettingsItemId
+    && item?.kind !== "automation_emails"
+    && item?.id !== mailerStateSettingsItemId
+    && item?.kind !== "mailer_state"
+  );
+  return [
+    ...cleanItems,
+    {
+      id: automationEmailsSettingsItemId,
+      kind: "automation_emails",
+      emails: automationEmails
+    },
+    {
+      id: mailerStateSettingsItemId,
+      kind: "mailer_state",
+      state: mailerState
+    }
+  ];
+}
+
 async function getGlobalSettings(settingsCollection) {
   const settingsRows = await listRows(settingsCollection);
   const row = settingsRows.find((item) => item.$id === "global-state") || settingsRows[0] || null;
   if (!row) {
-    return { row: null, automations: [], automationEmails: [], mailerState: {} };
+    return { row: null, automations: [], automationEmails: [], mailerState: {}, toolItems: [] };
   }
+  const toolItems = automationToolItems(row);
+  const automationEmailsItem = settingsToolItem(toolItems, automationEmailsSettingsItemId, "automation_emails");
+  const mailerStateItem = settingsToolItem(toolItems, mailerStateSettingsItemId, "mailer_state");
   return {
     row,
     automations: parseJsonField(row.automations_json, []),
-    automationEmails: parseJsonField(row.automation_emails_json, []),
-    mailerState: parseJsonField(row.mailer_state_json, {})
+    automationEmails: Array.isArray(automationEmailsItem?.emails)
+      ? automationEmailsItem.emails
+      : parseJsonField(row.automation_emails_json, []),
+    mailerState: mailerStateItem?.state && typeof mailerStateItem.state === "object"
+      ? mailerStateItem.state
+      : parseJsonField(row.mailer_state_json, {}),
+    toolItems
   };
 }
 
@@ -470,8 +511,7 @@ async function main() {
 
   if (settings.row && (queueChanged || digestShouldSend)) {
     await updateRow(settingsCollection, settings.row.$id, {
-      automation_emails_json: JSON.stringify(updatedEmails),
-      mailer_state_json: JSON.stringify(settings.mailerState)
+      tool_items_json: JSON.stringify(nextToolItemsWithMailerState(settings.toolItems, updatedEmails, settings.mailerState))
     });
   }
 

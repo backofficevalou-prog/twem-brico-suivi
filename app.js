@@ -482,6 +482,8 @@ const defaultRoleOptions = [
 ];
 const defaultIntervenantRoleOptions = ["telephonie_destiny", "pm_dstny", "uc_pm_fr_nl_dstny", "uc_tech_fr_nl_dstny", "logistic_coord_dstny"];
 const tutorialVideosSettingsItemId = "__tutorial_videos__";
+const automationEmailsSettingsItemId = "__automation_emails__";
+const mailerStateSettingsItemId = "__mailer_state__";
 const defaultTutorialVideos = [
   {
     key: "network_info",
@@ -1634,7 +1636,14 @@ function normalizeAppwriteActivity(document) {
 
 function buildAppwriteSettingsDocument() {
   state.roleVisibilityConfig = normalizedRoleVisibilityConfig(state.roleVisibilityConfig || {});
-  const cleanToolItems = (state.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
+  const cleanToolItems = (state.toolItems || []).filter((item) =>
+    item?.id !== tutorialVideosSettingsItemId
+    && item?.kind !== "tutorial_videos"
+    && item?.id !== automationEmailsSettingsItemId
+    && item?.kind !== "automation_emails"
+    && item?.id !== mailerStateSettingsItemId
+    && item?.kind !== "mailer_state"
+  );
   return {
     role_options_json: JSON.stringify(state.roleOptions || []),
     tool_items_json: JSON.stringify([
@@ -1643,12 +1652,16 @@ function buildAppwriteSettingsDocument() {
         id: tutorialVideosSettingsItemId,
         kind: "tutorial_videos",
         videos: normalizedTutorialVideos(state.tutorialVideos || [])
+      },
+      {
+        id: automationEmailsSettingsItemId,
+        kind: "automation_emails",
+        emails: state.automationEmails || []
       }
     ]),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
     role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
     automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
-    automation_emails_json: JSON.stringify(state.automationEmails || []),
     extension_catalog_json: JSON.stringify(extensionCatalogRows || [])
   };
 }
@@ -6715,6 +6728,10 @@ function automationEmailStatusLabel(status) {
   return automationEmailStatusOptions.find((option) => option.value === status)?.label || status || "Brouillon";
 }
 
+function selectableAutomationEmailStatusOptions(email = {}) {
+  return automationEmailStatusOptions.filter((option) => option.value !== "sent" || email.status === "sent");
+}
+
 function automationEmailStatusClass(status) {
   const normalized = status || "draft";
   if (normalized === "ready") return "automation-email-status status-ready";
@@ -7375,7 +7392,7 @@ function defaultAutomationEmailDraft(automation, context = {}) {
 }
 
 function mergedAutomationDraftStatus(baseDraft, current) {
-  if (current?.status === "sent") {
+  if (current?.status === "sent" && current.sentAt) {
     return "sent";
   }
   if (baseDraft.status === "blocked") {
@@ -7385,6 +7402,21 @@ function mergedAutomationDraftStatus(baseDraft, current) {
     return baseDraft.status;
   }
   return current?.status || baseDraft.status;
+}
+
+function mergeAutomationEmailDraft(baseDraft, current, overrides = {}) {
+  if (!current) {
+    return baseDraft;
+  }
+  return {
+    ...baseDraft,
+    ...current,
+    ...overrides,
+    subject: overrides.subject || baseDraft.subject,
+    body: overrides.body || baseDraft.body,
+    status: mergedAutomationDraftStatus(baseDraft, current),
+    blockedReason: baseDraft.blockedReason || current.blockedReason || ""
+  };
 }
 
 function ensureAutomationEmailDrafts() {
@@ -7401,19 +7433,11 @@ function ensureAutomationEmailDrafts() {
       activities.forEach((activity) => {
         const baseDraft = defaultAutomationEmailDraft(automation, { activity });
         const current = existingById.get(baseDraft.id);
-        drafts.push(current
-          ? {
-              ...baseDraft,
-              ...current,
-              automationTitle: baseDraft.automationTitle,
-              recipient: baseDraft.recipient || current.recipient,
-              subject: baseDraft.subject,
-              body: baseDraft.body,
-              bodyManual: false,
-              status: mergedAutomationDraftStatus(baseDraft, current),
-              blockedReason: baseDraft.blockedReason || current.blockedReason || ""
-            }
-          : baseDraft);
+        drafts.push(mergeAutomationEmailDraft(baseDraft, current, {
+          automationTitle: baseDraft.automationTitle,
+          recipient: baseDraft.recipient || current?.recipient,
+          bodyManual: false
+        }));
       });
       return;
     }
@@ -7422,36 +7446,22 @@ function ensureAutomationEmailDrafts() {
       if (!stores.length) {
         const current = existingByAutomation.get(automation.id);
         const baseDraft = defaultAutomationEmailDraft(automation);
-        drafts.push(current
-          ? {
-              ...baseDraft,
-              ...current,
-              automationTitle: automation.title,
-              recipient: current.recipient || automation.recipients || "",
-              subject: automation.emailSubject || baseDraft.subject,
-              body: automation.emailBodyManual ? (current.body || baseDraft.body) : baseDraft.body,
-              status: mergedAutomationDraftStatus(baseDraft, current),
-              blockedReason: baseDraft.blockedReason || current.blockedReason || ""
-            }
-          : baseDraft);
+        drafts.push(mergeAutomationEmailDraft(baseDraft, current, {
+          automationTitle: automation.title,
+          recipient: current?.recipient || automation.recipients || "",
+          subject: automation.emailSubject || baseDraft.subject,
+          body: automation.emailBodyManual ? (current?.body || baseDraft.body) : baseDraft.body
+        }));
         return;
       }
       stores.forEach((store) => {
         const baseDraft = defaultAutomationEmailDraft(automation, { store });
         const current = existingById.get(baseDraft.id);
-        drafts.push(current
-          ? {
-              ...baseDraft,
-              ...current,
-              automationTitle: baseDraft.automationTitle,
-              recipient: baseDraft.recipient || current.recipient,
-              subject: baseDraft.subject,
-              body: baseDraft.body,
-              bodyManual: false,
-              status: mergedAutomationDraftStatus(baseDraft, current),
-              blockedReason: baseDraft.blockedReason || current.blockedReason || ""
-            }
-          : baseDraft);
+        drafts.push(mergeAutomationEmailDraft(baseDraft, current, {
+          automationTitle: baseDraft.automationTitle,
+          recipient: baseDraft.recipient || current?.recipient,
+          bodyManual: false
+        }));
       });
       return;
     }
@@ -7464,18 +7474,11 @@ function ensureAutomationEmailDrafts() {
       queuedPeople.forEach((person) => {
         const baseDraft = defaultAutomationEmailDraft(automation, { person });
         const current = existingById.get(baseDraft.id);
-        drafts.push(current
-          ? {
-              ...baseDraft,
-              ...current,
-              automationTitle: baseDraft.automationTitle,
-              recipient: current.recipient || baseDraft.recipient,
-              subject: baseDraft.subject,
-              body: baseDraft.body,
-              bodyManual: false,
-              status: current.status || baseDraft.status
-            }
-          : baseDraft);
+        drafts.push(mergeAutomationEmailDraft(baseDraft, current, {
+          automationTitle: baseDraft.automationTitle,
+          recipient: current?.recipient || baseDraft.recipient,
+          bodyManual: false
+        }));
       });
       return;
     }
@@ -7531,7 +7534,7 @@ function renderAutomationEmailQueue() {
           <label>
             <span class="automation-email-label">Statut</span>
             <select data-automation-email-id="${escapeHtml(email.id)}" data-automation-email-field="status">
-              ${automationEmailStatusOptions.map((option) => `<option value="${escapeHtml(option.value)}" ${email.status === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+              ${selectableAutomationEmailStatusOptions(email).map((option) => `<option value="${escapeHtml(option.value)}" ${email.status === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
             </select>
           </label>
           <div>
@@ -8508,7 +8511,14 @@ function renderPinLoginJournal() {
 
 function renderToolList() {
   toolList.innerHTML = "";
-  const visibleToolItems = (state.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
+  const visibleToolItems = (state.toolItems || []).filter((item) =>
+    item?.id !== tutorialVideosSettingsItemId
+    && item?.kind !== "tutorial_videos"
+    && item?.id !== automationEmailsSettingsItemId
+    && item?.kind !== "automation_emails"
+    && item?.id !== mailerStateSettingsItemId
+    && item?.kind !== "mailer_state"
+  );
 
   if (!visibleToolItems.length) {
     toolList.innerHTML = '<div class="empty-state">Aucune note pour le moment.</div>';
@@ -8807,14 +8817,24 @@ async function loadRemoteState() {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     const remoteToolItems = parseJsonField(settingsDocument.tool_items_json, []);
     const tutorialVideosItem = remoteToolItems.find((item) => item?.id === tutorialVideosSettingsItemId || item?.kind === "tutorial_videos");
-    state.toolItems = remoteToolItems.filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
+    const automationEmailsItem = remoteToolItems.find((item) => item?.id === automationEmailsSettingsItemId || item?.kind === "automation_emails");
+    state.toolItems = remoteToolItems.filter((item) =>
+      item?.id !== tutorialVideosSettingsItemId
+      && item?.kind !== "tutorial_videos"
+      && item?.id !== automationEmailsSettingsItemId
+      && item?.kind !== "automation_emails"
+      && item?.id !== mailerStateSettingsItemId
+      && item?.kind !== "mailer_state"
+    );
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
     const remoteRoleVisibilityConfig = parseJsonField(settingsDocument.role_visibility_config_json, null);
     if (remoteRoleVisibilityConfig && Object.keys(remoteRoleVisibilityConfig).length) {
       state.roleVisibilityConfig = normalizedRoleVisibilityConfig(remoteRoleVisibilityConfig);
     }
     state.automations = normalizedAutomations(parseJsonField(settingsDocument.automations_json, state.automations || []));
-    state.automationEmails = parseJsonField(settingsDocument.automation_emails_json, state.automationEmails || []);
+    state.automationEmails = Array.isArray(automationEmailsItem?.emails)
+      ? automationEmailsItem.emails
+      : parseJsonField(settingsDocument.automation_emails_json, state.automationEmails || []);
     state.tutorialVideos = normalizedTutorialVideos(tutorialVideosItem?.videos || state.tutorialVideos || []);
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
