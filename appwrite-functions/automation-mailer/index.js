@@ -152,14 +152,17 @@ function normalizeTicket(document) {
 function normalizePerson(document) {
   const payload = parseJsonField(document.payload_json, null);
   if (payload && typeof payload === "object") {
-    return { ...payload, id: payload.id || document.$id };
+    return { ...payload, id: payload.id || document.$id, rowId: document.$id };
   }
   return {
     id: document.$id,
+    rowId: document.$id,
     name: document.name || "",
     role: document.role || "",
     email: document.email || "",
+    phone: document.phone || "",
     storeCode: document.store_code || "",
+    language: document.language || "fr",
     loginHistory: []
   };
 }
@@ -356,6 +359,99 @@ function shouldSendDigestToday(mailerState, now = new Date()) {
   return hour >= digestHour && mailerState.lastDigestDate !== todayKey;
 }
 
+function automationActive(automations = [], id) {
+  const automation = automations.find((item) => item.id === id);
+  return Boolean(automation?.active);
+}
+
+function appAccessLink() {
+  return env("APP_PUBLIC_URL", "https://twem-brico-suivi.appwrite.network/");
+}
+
+function welcomeSubject(person = {}) {
+  const isNl = String(person.language || "").toLowerCase().startsWith("nl");
+  return isNl
+    ? "Toegang opvolgingsapp TWEM Brico + PIN"
+    : "Acces application TWEM Brico + code PIN";
+}
+
+function welcomeBody(person = {}) {
+  const isNl = String(person.language || "").toLowerCase().startsWith("nl");
+  if (isNl) {
+    return [
+      `Hallo ${person.name || ""},`,
+      "",
+      "Uw toegang tot de TWEM Brico opvolgingsapplicatie is aangemaakt.",
+      "",
+      `Link naar de applicatie: ${appAccessLink()}`,
+      `Uw persoonlijke PIN-code: ${person.pin || ""}`,
+      "",
+      "Met deze toegang kunt u de beschikbare informatie voor uw winkel raadplegen.",
+      "",
+      "Met vriendelijke groeten,"
+    ].join("\n");
+  }
+  return [
+    `Bonjour ${person.name || ""},`,
+    "",
+    "Votre acces a l'application de suivi TWEM Brico a ete cree.",
+    "",
+    `Lien vers l'application: ${appAccessLink()}`,
+    `Votre code PIN personnel: ${person.pin || ""}`,
+    "",
+    "Cet acces vous permet de consulter les informations disponibles pour votre magasin.",
+    "",
+    "Bien a vous,"
+  ].join("\n");
+}
+
+function pendingWelcomeEmailPeople(people = []) {
+  return people.filter((person) =>
+    String(person.email || "").trim()
+    && String(person.pin || "").replace(/\D/g, "").length === 6
+    && person.welcomeEmailQueuedAt
+    && !person.welcomeEmailSentAt
+    && !["disabled", "expired"].includes(String(person.pinStatus || "").toLowerCase())
+  );
+}
+
+function welcomeEmailDraftsFromPeople(people = []) {
+  return pendingWelcomeEmailPeople(people).map((person) => ({
+    id: `mail-new_person_welcome-${person.id || person.rowId || person.email}`,
+    automationId: "new_person_welcome",
+    automationTitle: `Creation personne -> envoi lien app + PIN - ${person.name || person.email}`,
+    recipient: person.email,
+    subject: welcomeSubject(person),
+    body: welcomeBody(person),
+    status: "ready",
+    plannedAt: "",
+    personRowId: person.rowId,
+    personId: person.id,
+    createdAt: person.welcomeEmailQueuedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }));
+}
+
+async function markWelcomePersonSent(person, sentAt) {
+  if (!person?.rowId) {
+    return;
+  }
+  const nextPerson = {
+    ...person,
+    welcomeEmailSentAt: sentAt,
+    welcomeEmailQueuedAt: ""
+  };
+  await updateRow(env("APPWRITE_PEOPLE_COLLECTION_ID", "people"), person.rowId, {
+    name: nextPerson.name || "",
+    role: nextPerson.role || "manager",
+    phone: nextPerson.phone || "",
+    email: nextPerson.email || "",
+    store_code: nextPerson.storeCode || "",
+    language: nextPerson.language || "fr",
+    payload_json: JSON.stringify(nextPerson)
+  });
+}
+
 async function getGraphToken() {
   const tenantId = requiredEnv("GRAPH_TENANT_ID");
   const clientId = requiredEnv("GRAPH_CLIENT_ID");
@@ -442,7 +538,12 @@ async function main() {
   const skippedQueue = [];
   const now = new Date();
   const queueLimit = Number(env("MAIL_QUEUE_LIMIT", "20"));
-  const updatedEmails = [...(settings.automationEmails || [])];
+  const existingEmailIds = new Set((settings.automationEmails || []).map((email) => email.id));
+  const generatedWelcomeEmails = automationActive(settings.automations, "new_person_welcome")
+    ? welcomeEmailDraftsFromPeople(people).filter((email) => !existingEmailIds.has(email.id))
+    : [];
+  const peopleById = new Map(people.map((person) => [String(person.id || person.rowId || ""), person]));
+  const updatedEmails = [...(settings.automationEmails || []), ...generatedWelcomeEmails];
   let queueChanged = false;
 
   for (const email of updatedEmails) {
@@ -474,6 +575,10 @@ async function main() {
       email.error = "";
       email.mailResult = result;
       email.updatedAt = new Date().toISOString();
+      if (!dryRun && email.automationId === "new_person_welcome") {
+        const person = peopleById.get(String(email.personId || ""));
+        await markWelcomePersonSent(person, email.sentAt);
+      }
       queueChanged = true;
       sentQueue.push({ id: email.id, automationId: email.automationId, recipients: emailRecipients, result });
     } catch (error) {
