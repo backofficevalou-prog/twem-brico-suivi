@@ -10,5 +10,5 @@ window.APP_CONFIG = {
   appwriteActivitiesCollectionId: "activities",
   appwriteSettingsCollectionId: "settings",
   appwriteTicketsCollectionId: "tickets",
-  appwriteMailerFunctionUrl: "https://6a19571c0007987f082e.fra.appwrite.run/"
+  appwriteMailerFunctionId: "6a19571b00343a1e7c86"
 };

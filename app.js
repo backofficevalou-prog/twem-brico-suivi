@@ -1111,7 +1111,7 @@ const appConfig = window.APP_CONFIG || {
   appwritePeopleCollectionId: "people",
   appwriteActivitiesCollectionId: "activities",
   appwriteSettingsCollectionId: "settings",
-  appwriteMailerFunctionUrl: ""
+  appwriteMailerFunctionId: ""
 };
 const appMode = appConfig.mode || "demo";
 const isSupabaseMode = appMode === "supabase";
@@ -1130,13 +1130,15 @@ const appwriteDatabases = appwriteClient && window.Appwrite?.Databases
   : null;
 const appwriteQuery = window.Appwrite?.Query || null;
 const appwriteIdFactory = window.Appwrite?.ID || null;
+const appwriteEndpoint = appConfig.appwriteEndpoint || "";
+const appwriteProjectId = appConfig.appwriteProjectId || "";
 const appwriteDatabaseId = appConfig.appwriteDatabaseId || "twem_brico";
 const appwriteStoresCollectionId = appConfig.appwriteStoresCollectionId || "stores";
 const appwritePeopleCollectionId = appConfig.appwritePeopleCollectionId || "people";
 const appwriteActivitiesCollectionId = appConfig.appwriteActivitiesCollectionId || "activities";
 const appwriteSettingsCollectionId = appConfig.appwriteSettingsCollectionId || "settings";
 const appwriteTicketsCollectionId = appConfig.appwriteTicketsCollectionId || "tickets";
-const appwriteMailerFunctionUrl = appConfig.appwriteMailerFunctionUrl || "";
+const appwriteMailerFunctionId = appConfig.appwriteMailerFunctionId || "";
 const hasAppwriteDataConfig = Boolean(
   appwriteDatabases
   && appwriteDatabaseId
@@ -8564,19 +8566,12 @@ async function handleManualWelcomeMailClick(event) {
     // Clipboard can be blocked by browser permissions; Outlook compose still opens below.
   }
 
-  if (appwriteMailerFunctionUrl) {
+  if (appwriteMailerFunctionId) {
     button.disabled = true;
     const previousLabel = button.textContent;
     button.textContent = "Envoi...";
     try {
-      const sendUrl = new URL(appwriteMailerFunctionUrl);
-      sendUrl.searchParams.set("action", "send-welcome");
-      sendUrl.searchParams.set("personId", person.id || "");
-      const response = await fetch(sendUrl.toString(), { method: "GET" });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || result?.ok === false) {
-        throw new Error(result?.error || `Erreur envoi ${response.status}`);
-      }
+      const result = await executeWelcomeMailFunction(person);
       if (result?.dryRun) {
         throw new Error("La fonction Appwrite est encore en DRY_RUN=true, donc aucun mail reel n'est parti.");
       }
@@ -8585,8 +8580,12 @@ async function handleManualWelcomeMailClick(event) {
       window.alert(`Mail envoye depuis backoffice@twem.be a ${email}.`);
       return;
     } catch (sendError) {
+      const openFallback = window.confirm(`L'envoi direct depuis l'app n'a pas fonctionne.\n\nDetail: ${sendError.message}\n\nOuvrir Outlook Web en secours ?`);
+      if (!openFallback) {
+        outlookWindow?.close?.();
+        return;
+      }
       openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText);
-      window.alert(`L'envoi direct n'a pas fonctionne, Outlook Web est ouvert avec le mail pret a envoyer.\n\nDetail: ${sendError.message}`);
     } finally {
       button.disabled = false;
       button.textContent = previousLabel;
@@ -8596,6 +8595,37 @@ async function handleManualWelcomeMailClick(event) {
   }
 
   await confirmManualWelcomeMailSent(person, email);
+}
+
+async function executeWelcomeMailFunction(person) {
+  if (!appwriteEndpoint || !appwriteProjectId || !appwriteMailerFunctionId) {
+    throw new Error("Configuration Appwrite mailer incomplete.");
+  }
+  const path = `/?action=send-welcome&personId=${encodeURIComponent(person.id || "")}`;
+  const response = await fetch(`${appwriteEndpoint}/functions/${encodeURIComponent(appwriteMailerFunctionId)}/executions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Appwrite-Project": appwriteProjectId,
+      "X-Appwrite-Response-Format": "1.9.5"
+    },
+    body: JSON.stringify({
+      body: "",
+      async: false,
+      path,
+      method: "GET",
+      headers: {}
+    })
+  });
+  const execution = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(execution?.message || `Execution Appwrite refusee (${response.status}).`);
+  }
+  const body = parseJsonField(execution.responseBody, {});
+  if (execution.status !== "completed" || execution.responseStatusCode >= 400 || body?.ok === false) {
+    throw new Error(body?.error || execution.errors || `Execution Appwrite ${execution.status || "inconnue"}.`);
+  }
+  return body;
 }
 
 function welcomeMailOutlookUrl(email, subjectText, bodyText) {
