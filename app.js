@@ -139,6 +139,17 @@ function availableExtensionReferenceOptions(categoryFilter = "", language = "fr"
   return importedOptions.length ? importedOptions : extensionReferenceOptions;
 }
 
+const notApplicableExtensionOption = "NVT - Non applicable / Niet van toepassing / Not applicable";
+
+function networkExtensionOptionsForCategory(categoryFilter = "", language = "fr", selected = "") {
+  const options = [notApplicableExtensionOption, ...availableExtensionReferenceOptions(categoryFilter, language)];
+  const selectedValue = normalizeImportCell(selected);
+  if (selectedValue && !options.includes(selectedValue)) {
+    options.unshift(selectedValue);
+  }
+  return [...new Set(options)];
+}
+
 function normalizeExtensionCatalogRow(row, index = 0) {
   const fallbackLabel = normalizeImportCell(
     row.label
@@ -4089,7 +4100,7 @@ function buildStorePilotSkeleton(store) {
     const { showConfirmBar = true } = options;
     const workflow = ensureStoreWorkflowData(store);
     const rows = getNetworkConfigRows(store);
-  const extensionOptionsForCategory = (category) => availableExtensionReferenceOptions(category, store.language || "fr");
+  const extensionOptionsForCategory = (category, selected = "") => networkExtensionOptionsForCategory(category, store.language || "fr", selected);
   const groupedRows = rows.reduce((accumulator, row) => {
     accumulator[row.category] ||= [];
     accumulator[row.category].push(row);
@@ -4110,7 +4121,7 @@ function buildStorePilotSkeleton(store) {
               <span>Extension + lieu</span>
               <select name="network_extension_${escapeHtml(row.id)}">
                 <option value="">Choisir une extension / un lieu</option>
-                ${extensionOptionsForCategory(category).map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                ${extensionOptionsForCategory(category, row.extensionLabel).map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
               </select>
             </label>
             <label>
