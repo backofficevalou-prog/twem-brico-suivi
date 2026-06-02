@@ -3408,7 +3408,6 @@ function missingValidationLabels(store) {
   const missing = [];
   if (!isNetworkConfigurationOk(store)) missing.push("Config magasin");
   if (!isVlan22Ok(workflow)) missing.push("VLAN22");
-  if (workflow.charlesRouxStatus !== "OK") missing.push("Infra");
   if (externalPrepStatusLabel(workflow) !== "Termine") missing.push("Pre-visite");
   if (workflow.destinyInstallDone !== "Oui") missing.push("Installation Destiny");
   return missing;
@@ -3441,12 +3440,6 @@ function storeValidationItems(store) {
       okLabel: "VLAN22 OK",
       issueLabel: "VLAN22 a valider",
       ok: isVlan22Ok(workflow)
-    },
-    {
-      label: "Infra",
-      okLabel: "Infra OK",
-      issueLabel: "Infra a valider",
-      ok: workflow.charlesRouxStatus === "OK"
     },
     {
       label: "Pre-visite",
@@ -3589,7 +3582,6 @@ function renderSummary() {
   const fosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOS").length;
   const fosdosCount = visibleStores.filter((store) => normalizeShopTypeValue(store.shopType) === "FOSDOS").length;
   const validationItCount = visibleStores.filter((store) => !isVlan22Ok(ensureStoreWorkflowData(store))).length;
-  const validationInfraCount = visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length;
   const riskCount = visibleStores.filter((store) => {
     const workflow = ensureStoreWorkflowData(store);
     return store.status === "blocked" || externalPrepStatusLabel(workflow) !== "Termine";
@@ -3609,7 +3601,6 @@ function renderSummary() {
     timeline: [
       { label: "Interventions planifiees", value: visibleStores.filter((store) => sortedAppointments(store).length).length, note: "Chronologie magasins", portion: Math.round((visibleStores.filter((store) => sortedAppointments(store).length).length / total) * 100), filter: null },
       { label: "Validation VLAN22", value: validationItCount, note: "VLAN22 a valider", portion: Math.round((validationItCount / total) * 100), filter: { key: "stage", value: "Validation VLAN22", tab: "timeline" } },
-      { label: "Validation infra", value: validationInfraCount, note: "Cablage / alarme", portion: Math.round((validationInfraCount / total) * 100), filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
       { label: "Installations a risque", value: riskCount, note: "Points sensibles a traiter", portion: Math.round((riskCount / total) * 100), filter: { key: "status", value: "blocked", tab: "timeline" } }
     ],
     sav: [
@@ -3698,7 +3689,6 @@ function renderDashboardExtra(mainTab, visibleStores) {
               { label: "A lancer", value: visibleStores.filter((store) => store.status === "planned").length, note: "Dossiers a demarrer", filter: { key: "status", value: "planned", tab: "stores" } },
               { label: "En attente infos", value: visibleStores.filter((store) => !isNetworkConfigurationOk(store)).length, note: "Config magasin attendue", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
               { label: "Validation VLAN22", value: visibleStores.filter((store) => !isVlan22Ok(ensureStoreWorkflowData(store))).length, note: "VLAN22 a valider", filter: { key: "stage", value: "Validation VLAN22", tab: "timeline" } },
-              { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "Cablage / alarme", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
               { label: "En cours", value: visibleStores.filter(hasPlannedIntervention).length, note: "Interventions prevues", filter: { reset: true, key: "search", value: "intervention prevue", tab: "stores" } },
               { label: "RUN", value: visibleStores.filter(hasActiveSav).length, note: "Magasins avec SAV", filter: { reset: true, key: "search", value: "sav actif", tab: "stores" } },
               { label: "PO attente", value: visibleStores.filter((store) => !store.poLicences).length, note: "Commandes a relancer", filter: { key: "status", value: "blocked", tab: "stores" } },
@@ -5686,7 +5676,6 @@ function currentWorkflowStage(store) {
   if (store.status === "blocked") return "Blocage chantier";
   if (!isNetworkConfigurationOk(store)) return "Collecte infos";
   if (!isVlan22Ok(workflow)) return "Validation VLAN22";
-  if (workflow.charlesRouxStatus !== "OK") return "Validation Infra";
   if (externalPrepStatusLabel(workflow) !== "Termine") return "Pre-visite";
   if (workflow.destinyInstallDone !== "Oui") return "Installation";
   if (workflow.ltSwitchStatus === "Basculee") return "RUN";
@@ -5939,7 +5928,7 @@ function renderDeploymentRows(stores) {
   setMainTableHeaders(["Code", "Magasin", "Phase", "Pre-visite", "Install", "Destiny", "Blocage", "GO / NO GO", "Action"]);
   renderCompactStoreRows(stores, (store) => {
     const workflow = ensureStoreWorkflowData(store);
-    const goNoGo = isVlan22Ok(workflow) && workflow.charlesRouxStatus === "OK" && store.status !== "blocked";
+    const goNoGo = isVlan22Ok(workflow) && externalPrepStatusLabel(workflow) === "Termine" && store.status !== "blocked";
     return [
       escapeHtml(store.code),
       `<strong>${escapeHtml(store.name)}</strong>`,
