@@ -140,6 +140,19 @@ function availableExtensionReferenceOptions(categoryFilter = "", language = "fr"
 }
 
 const notApplicableExtensionOption = "NVT - Non applicable / Niet van toepassing / Not applicable";
+const defaultPanicButtonExtensions = {
+  1: "922 - FRONT END EVACUATION",
+  2: "923 - SAFE ROOM"
+};
+
+function defaultNetworkExtensionForRow(row = {}) {
+  if (row.category !== "Panic button") {
+    return "";
+  }
+  const match = String(row.id || row.slotLabel || "").match(/(\d+)$/);
+  const index = match ? Number(match[1]) : 0;
+  return defaultPanicButtonExtensions[index] || "";
+}
 
 function networkExtensionOptionsForCategory(categoryFilter = "", language = "fr", selected = "") {
   const options = [notApplicableExtensionOption, ...availableExtensionReferenceOptions(categoryFilter, language)];
@@ -3935,7 +3948,7 @@ function defaultNetworkRowsForStore(store) {
         id: `${category}-${index}`,
         category,
         slotLabel: `${category} ${index}`,
-        extensionLabel: "",
+        extensionLabel: defaultNetworkExtensionForRow({ id: `${category}-${index}`, category }),
         note: ""
       });
     }
@@ -3969,7 +3982,7 @@ function reconcileNetworkRowsWithQuantities(store) {
     return previous
       ? {
           ...row,
-          extensionLabel: previous.extensionLabel || "",
+          extensionLabel: defaultNetworkExtensionForRow(row) || previous.extensionLabel || row.extensionLabel || "",
           note: previous.note || ""
         }
       : row;
@@ -11793,7 +11806,7 @@ function readAppointments(form, store) {
 function readNetworkRows(form, store) {
   return getNetworkConfigRows(store).map((row) => ({
     ...row,
-    extensionLabel: form.querySelector(`[name="network_extension_${row.id}"]`)?.value ?? row.extensionLabel ?? "",
+    extensionLabel: defaultNetworkExtensionForRow(row) || form.querySelector(`[name="network_extension_${row.id}"]`)?.value || row.extensionLabel || "",
     note: form.querySelector(`[name="network_note_${row.id}"]`)?.value?.trim() ?? row.note ?? ""
   }));
 }
