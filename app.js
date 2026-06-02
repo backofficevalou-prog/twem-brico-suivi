@@ -3393,7 +3393,7 @@ function compareStoresByInterventionDate(left, right) {
 function missingValidationLabels(store) {
   const workflow = ensureStoreWorkflowData(store);
   const missing = [];
-  if (!workflow.networkConfigConfirmed) missing.push("Config magasin");
+  if (!isNetworkConfigurationOk(store)) missing.push("Config magasin");
   if (!isVlan22Ok(workflow)) missing.push("VLAN22");
   if (workflow.charlesRouxStatus !== "OK") missing.push("Infra");
   if (externalPrepStatusLabel(workflow) !== "Termine") missing.push("Pre-visite");
@@ -3407,6 +3407,13 @@ function isVlan22Ok(workflow = {}) {
     || Boolean(normalizeImportCell(workflow.vlan22Date));
 }
 
+function isNetworkConfigurationOk(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const networkRows = getNetworkConfigRows(store);
+  return Boolean(workflow.networkConfigConfirmed)
+    || (networkRows.length > 0 && networkRows.every((row) => normalizeImportCell(row.extensionLabel)));
+}
+
 function storeValidationItems(store) {
   const workflow = ensureStoreWorkflowData(store);
   return [
@@ -3414,7 +3421,7 @@ function storeValidationItems(store) {
       label: "Config",
       okLabel: "Config OK",
       issueLabel: "Config a faire",
-      ok: Boolean(workflow.networkConfigConfirmed)
+      ok: isNetworkConfigurationOk(store)
     },
     {
       label: "VLAN22",
@@ -3460,12 +3467,9 @@ function renderStoreValidationSignals(store, options = {}) {
 
 function configControlStatus(store) {
   const workflow = ensureStoreWorkflowData(store);
-  const networkRows = getNetworkConfigRows(store);
-  const networkConfigOk = Boolean(workflow.networkConfigConfirmed)
-    || (networkRows.length > 0 && networkRows.every((row) => normalizeImportCell(row.extensionLabel)));
   return {
     vlanOk: isVlan22Ok(workflow),
-    networkConfigOk,
+    networkConfigOk: isNetworkConfigurationOk(store),
     previsitOk: externalPrepStatusLabel(workflow) === "Termine",
     cablingOk: workflow.cablingStatus === "OK",
     switchOk: workflow.ltSwitchStatus === "Basculee" || workflow.ltSwitchStatus === "OK"
@@ -3679,7 +3683,7 @@ function renderDashboardExtra(mainTab, visibleStores) {
           <div class="dashboard-chip-grid">
             ${[
               { label: "A lancer", value: visibleStores.filter((store) => store.status === "planned").length, note: "Dossiers a demarrer", filter: { key: "status", value: "planned", tab: "stores" } },
-              { label: "En attente infos", value: visibleStores.filter((store) => !ensureStoreWorkflowData(store).networkConfigConfirmed).length, note: "Config magasin attendue", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
+              { label: "En attente infos", value: visibleStores.filter((store) => !isNetworkConfigurationOk(store)).length, note: "Config magasin attendue", filter: { key: "stage", value: "Validation manager config", tab: "stores" } },
               { label: "Validation VLAN22", value: visibleStores.filter((store) => !isVlan22Ok(ensureStoreWorkflowData(store))).length, note: "VLAN22 a valider", filter: { key: "stage", value: "Validation VLAN22", tab: "timeline" } },
               { label: "Validation infra", value: visibleStores.filter((store) => ensureStoreWorkflowData(store).charlesRouxStatus !== "OK").length, note: "Cablage / alarme", filter: { key: "stage", value: "Validation Infra", tab: "timeline" } },
               { label: "En cours", value: visibleStores.filter(hasPlannedIntervention).length, note: "Interventions prevues", filter: { reset: true, key: "search", value: "intervention prevue", tab: "stores" } },
@@ -4414,7 +4418,7 @@ function externalPrepStatusLabel(workflow) {
       ["Preparation externe", externalPrepStatusLabel(workflow)],
       ["VLAN22 active", workflow.vlan22Date ? "Oui" : (workflow.vlan22Activated || "A faire")],
       ["Configuration magasin", workflow.extensionConfigStatus === "Recue" ? "Confirmee" : "En attente"],
-      ["Choix telephonie", workflow.networkConfigConfirmed ? "Confirmes" : "A confirmer"],
+      ["Choix telephonie", isNetworkConfigurationOk(store) ? "Confirmes" : "A confirmer"],
       ["Configuration reseau", networkRows.length ? `${configuredRows}/${networkRows.length} configures${missingRows ? ` - ${missingRows} manquant(s)` : ""}` : "A definir"]
     ];
 
@@ -5658,7 +5662,7 @@ function storeQuickActions() {
 function nextActionForStore(store) {
   const workflow = ensureStoreWorkflowData(store);
   if (store.status === "blocked") return "Deblocage projet";
-  if (!workflow.networkConfigConfirmed) return "Validation manager config";
+  if (!isNetworkConfigurationOk(store)) return "Validation manager config";
   if (!isVlan22Ok(workflow)) return "Validation VLAN22";
   if (workflow.destinyInstallDone !== "Oui") return "Installation Destiny";
   return workflow.ltSwitchStatus === "Basculee" ? "RUN / SAV" : "Bascule plateforme";
@@ -5667,7 +5671,7 @@ function nextActionForStore(store) {
 function currentWorkflowStage(store) {
   const workflow = ensureStoreWorkflowData(store);
   if (store.status === "blocked") return "Blocage chantier";
-  if (!workflow.networkConfigConfirmed) return "Collecte infos";
+  if (!isNetworkConfigurationOk(store)) return "Collecte infos";
   if (!isVlan22Ok(workflow)) return "Validation VLAN22";
   if (workflow.charlesRouxStatus !== "OK") return "Validation Infra";
   if (externalPrepStatusLabel(workflow) !== "Termine") return "Pre-visite";
