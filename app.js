@@ -8556,6 +8556,8 @@ async function handleManualWelcomeMailClick(event) {
     "",
     bodyText
   ].join("\n");
+  const outlookWindow = window.open("", "_blank");
+  writeMailFallbackWindow(outlookWindow, email, subjectText, bodyText);
   try {
     await navigator.clipboard?.writeText(clipboardText);
   } catch {
@@ -8579,26 +8581,71 @@ async function handleManualWelcomeMailClick(event) {
         throw new Error("La fonction Appwrite est encore en DRY_RUN=true, donc aucun mail reel n'est parti.");
       }
       await markManualWelcomeMailSent(person, result.sentAt || new Date().toISOString(), email);
+      outlookWindow?.close?.();
       window.alert(`Mail envoye depuis backoffice@twem.be a ${email}.`);
       return;
     } catch (sendError) {
-      window.alert(`L'envoi direct n'a pas fonctionne, j'ouvre Outlook Web avec le mail pret a envoyer.\n\nDetail: ${sendError.message}`);
+      openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText);
+      window.alert(`L'envoi direct n'a pas fonctionne, Outlook Web est ouvert avec le mail pret a envoyer.\n\nDetail: ${sendError.message}`);
     } finally {
       button.disabled = false;
       button.textContent = previousLabel;
     }
+  } else {
+    openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText);
   }
 
-  await openWelcomeMailInOutlook(email, subjectText, bodyText);
+  await confirmManualWelcomeMailSent(email);
 }
 
-async function openWelcomeMailInOutlook(email, subjectText, bodyText) {
+function welcomeMailOutlookUrl(email, subjectText, bodyText) {
   const outlookUrl = new URL("https://outlook.office.com/mail/deeplink/compose");
   outlookUrl.searchParams.set("to", email);
   outlookUrl.searchParams.set("subject", subjectText);
   outlookUrl.searchParams.set("body", bodyText);
-  window.open(outlookUrl.toString(), "_blank", "noopener");
+  return outlookUrl.toString();
+}
 
+function openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText) {
+  const outlookUrl = welcomeMailOutlookUrl(email, subjectText, bodyText);
+  if (outlookWindow && !outlookWindow.closed) {
+    outlookWindow.location.href = outlookUrl;
+    return;
+  }
+  window.open(outlookUrl, "_blank");
+}
+
+function writeMailFallbackWindow(targetWindow, email, subjectText, bodyText) {
+  if (!targetWindow) {
+    return;
+  }
+  const outlookUrl = welcomeMailOutlookUrl(email, subjectText, bodyText);
+  targetWindow.document.open();
+  targetWindow.document.write(`
+    <!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>Mail acces TWEM Brico</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; color: #201b10; line-height: 1.45; }
+          a, button { display: inline-block; margin: 8px 8px 16px 0; padding: 10px 14px; border-radius: 999px; background: #c43b2f; color: #fff; text-decoration: none; border: 0; font-weight: 700; }
+          pre { white-space: pre-wrap; border: 1px solid #e0d6bd; background: #fff9e8; padding: 14px; border-radius: 8px; }
+        </style>
+      </head>
+      <body>
+        <h1>Mail pret</h1>
+        <p>Si Outlook ne s'ouvre pas automatiquement, clique sur le bouton ci-dessous. Le contenu a aussi ete copie dans le presse-papiers.</p>
+        <a href="${escapeHtml(outlookUrl)}">Ouvrir dans Outlook Web</a>
+        <p><strong>A:</strong> ${escapeHtml(email)}<br><strong>Objet:</strong> ${escapeHtml(subjectText)}</p>
+        <pre>${escapeHtml(bodyText)}</pre>
+      </body>
+    </html>
+  `);
+  targetWindow.document.close();
+}
+
+async function confirmManualWelcomeMailSent(email) {
   const markSent = window.confirm("Le mail est ouvert dans Outlook Web et le contenu est copie. Marquer ce mail comme envoye apres ton envoi depuis backoffice@twem.be ?");
   if (!markSent) {
     return;
