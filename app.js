@@ -1110,7 +1110,8 @@ const appConfig = window.APP_CONFIG || {
   appwriteStoresCollectionId: "stores",
   appwritePeopleCollectionId: "people",
   appwriteActivitiesCollectionId: "activities",
-  appwriteSettingsCollectionId: "settings"
+  appwriteSettingsCollectionId: "settings",
+  appwriteMailerFunctionUrl: ""
 };
 const appMode = appConfig.mode || "demo";
 const isSupabaseMode = appMode === "supabase";
@@ -1135,6 +1136,7 @@ const appwritePeopleCollectionId = appConfig.appwritePeopleCollectionId || "peop
 const appwriteActivitiesCollectionId = appConfig.appwriteActivitiesCollectionId || "activities";
 const appwriteSettingsCollectionId = appConfig.appwriteSettingsCollectionId || "settings";
 const appwriteTicketsCollectionId = appConfig.appwriteTicketsCollectionId || "tickets";
+const appwriteMailerFunctionUrl = appConfig.appwriteMailerFunctionUrl || "";
 const hasAppwriteDataConfig = Boolean(
   appwriteDatabases
   && appwriteDatabaseId
@@ -8531,6 +8533,7 @@ function renderPinAccessList() {
 }
 
 async function handleManualWelcomeMailClick(event) {
+  const button = event.currentTarget;
   const personId = event.currentTarget.getAttribute("data-pin-send-mail");
   const person = state.people.find((entry) => entry.id === personId);
   if (!person) {
@@ -8558,6 +8561,38 @@ async function handleManualWelcomeMailClick(event) {
   } catch {
     // Clipboard can be blocked by browser permissions; Outlook compose still opens below.
   }
+
+  if (appwriteMailerFunctionUrl) {
+    button.disabled = true;
+    const previousLabel = button.textContent;
+    button.textContent = "Envoi...";
+    try {
+      const sendUrl = new URL(appwriteMailerFunctionUrl);
+      sendUrl.searchParams.set("action", "send-welcome");
+      sendUrl.searchParams.set("personId", person.id || "");
+      const response = await fetch(sendUrl.toString(), { method: "GET" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || `Erreur envoi ${response.status}`);
+      }
+      if (result?.dryRun) {
+        throw new Error("La fonction Appwrite est encore en DRY_RUN=true, donc aucun mail reel n'est parti.");
+      }
+      await markManualWelcomeMailSent(person, result.sentAt || new Date().toISOString(), email);
+      window.alert(`Mail envoye depuis backoffice@twem.be a ${email}.`);
+      return;
+    } catch (sendError) {
+      window.alert(`L'envoi direct n'a pas fonctionne, j'ouvre Outlook Web avec le mail pret a envoyer.\n\nDetail: ${sendError.message}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = previousLabel;
+    }
+  }
+
+  await openWelcomeMailInOutlook(email, subjectText, bodyText);
+}
+
+async function openWelcomeMailInOutlook(email, subjectText, bodyText) {
   const outlookUrl = new URL("https://outlook.office.com/mail/deeplink/compose");
   outlookUrl.searchParams.set("to", email);
   outlookUrl.searchParams.set("subject", subjectText);
@@ -8568,8 +8603,14 @@ async function handleManualWelcomeMailClick(event) {
   if (!markSent) {
     return;
   }
+  const person = state.people.find((entry) => normalizeImportCell(entry.email).toLowerCase() === email.toLowerCase());
+  if (!person) {
+    return;
+  }
+  await markManualWelcomeMailSent(person, new Date().toISOString(), email);
+}
 
-  const sentAt = new Date().toISOString();
+async function markManualWelcomeMailSent(person, sentAt, email) {
   person.welcomeEmailSentAt = sentAt;
   person.welcomeEmailQueuedAt = "";
   person.manualWelcomeEmailSentAt = sentAt;

@@ -269,6 +269,33 @@ function splitRecipients(value = "") {
     .filter((item) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item));
 }
 
+function requestParam(req = {}, name) {
+  if (req.query && typeof req.query === "object" && req.query[name] !== undefined) {
+    return String(req.query[name] || "");
+  }
+  if (req.queryString) {
+    const params = new URLSearchParams(String(req.queryString).replace(/^\?/, ""));
+    return params.get(name) || "";
+  }
+  if (req.url) {
+    try {
+      const url = new URL(req.url, "https://function.local");
+      return url.searchParams.get(name) || "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function jsonResponse(res, data, status = 200) {
+  return res.json(data, status, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  });
+}
+
 function automationById(automations = []) {
   return new Map((automations || []).map((automation) => [automation.id, automation]));
 }
@@ -474,6 +501,55 @@ async function markWelcomePersonSent(person, sentAt) {
   });
 }
 
+async function sendManualWelcomeEmail(req) {
+  const peopleCollection = env("APPWRITE_PEOPLE_COLLECTION_ID", "people");
+  const personId = requestParam(req, "personId");
+  const emailParam = requestParam(req, "email").toLowerCase();
+  if (!personId && !emailParam) {
+    throw new Error("Missing personId or email.");
+  }
+  const people = await listRows(peopleCollection).then((rows) => rows.map(normalizePerson));
+  const person = people.find((entry) =>
+    String(entry.id || "") === personId
+    || String(entry.rowId || "") === personId
+    || String(entry.$id || "") === personId
+    || (emailParam && String(entry.email || "").trim().toLowerCase() === emailParam)
+  );
+  if (!person) {
+    throw new Error("Person not found.");
+  }
+  const email = String(person.email || "").trim();
+  const pin = String(person.pin || "").replace(/\D/g, "");
+  if (!email || pin.length !== 6) {
+    throw new Error("Person must have an email and a 6 digit PIN.");
+  }
+  const subject = welcomeSubject(person);
+  const body = welcomeBody(person);
+  const dryRun = env("DRY_RUN", "true").toLowerCase() !== "false";
+  let mailResult = { dryRun: true };
+  if (!dryRun) {
+    mailResult = await sendOutlookMail({
+      subject,
+      body,
+      recipients: [email]
+    });
+  }
+  const sentAt = new Date().toISOString();
+  if (!dryRun) {
+    await markWelcomePersonSent(person, sentAt);
+  }
+  return {
+    ok: true,
+    action: "send-welcome",
+    dryRun,
+    personId: person.id || person.rowId || "",
+    recipient: email,
+    subject,
+    sentAt: dryRun ? "" : sentAt,
+    mailResult
+  };
+}
+
 async function getGraphToken() {
   const tenantId = requiredEnv("GRAPH_TENANT_ID");
   const clientId = requiredEnv("GRAPH_CLIENT_ID");
@@ -662,14 +738,22 @@ async function main() {
   };
 }
 
-export default async ({ res, log, error }) => {
+export default async ({ req, res, log, error }) => {
   try {
+    if (String(req?.method || "").toUpperCase() === "OPTIONS") {
+      return jsonResponse(res, { ok: true });
+    }
+    if (requestParam(req, "action") === "send-welcome") {
+      const result = await sendManualWelcomeEmail(req);
+      log(JSON.stringify(result, null, 2));
+      return jsonResponse(res, result);
+    }
     const result = await main();
     log(JSON.stringify(result, null, 2));
-    return res.json(result);
+    return jsonResponse(res, result);
   } catch (err) {
     error(err.stack || err.message);
-    return res.json({ ok: false, error: err.message }, 500);
+    return jsonResponse(res, { ok: false, error: err.message }, 500);
   }
 };
 
