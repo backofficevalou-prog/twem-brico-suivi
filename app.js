@@ -1706,6 +1706,15 @@ function managerPersonForStore(store) {
   ) || null;
 }
 
+function managerContactForStore(store) {
+  const managerPerson = managerPersonForStore(store);
+  return {
+    name: normalizeImportCell(managerPerson?.name || store?.manager || ""),
+    phone: normalizeImportCell(managerPerson?.phone || store?.phone || ""),
+    email: normalizeImportCell(managerPerson?.email || store?.email || "")
+  };
+}
+
 function linkedPeopleForStore(store) {
   if (!store?.code) {
     return [];
@@ -5114,6 +5123,7 @@ function buildClosureWorkflowCard(store) {
 }
 
 function buildStoreIdentityMeta(store) {
+  const managerContact = managerContactForStore(store);
   return `
     <div class="store-meta-grid">
       <div class="store-meta-card">
@@ -5124,6 +5134,12 @@ function buildStoreIdentityMeta(store) {
       <div class="store-meta-card">
         <span class="mini-label">Adresse</span>
         <strong>${escapeHtml(store.address || `${store.city} - ${store.code}`)}</strong>
+      </div>
+      <div class="store-meta-card">
+        <span class="mini-label">Responsable</span>
+        <strong>${escapeHtml(managerContact.name || "-")}</strong>
+        <span class="cell-note">${escapeHtml(managerContact.phone || "-")}</span>
+        <span class="cell-note">${escapeHtml(managerContact.email || "-")}</span>
       </div>
       <div class="store-meta-card">
         <span class="mini-label">PO / Commandes</span>
@@ -5433,6 +5449,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
   stores.forEach((store) => {
     const isExpanded = state.expandedStoreIds.has(store.id);
     const row = document.createElement("tr");
+    const managerContact = managerContactForStore(store);
     if (mode === "stores") {
       const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || "-";
       const typeAndLicence = [
@@ -5459,8 +5476,9 @@ function renderStoreOverviewRows(stores, mode = "stores") {
           ${poBits.split("\n").map((line, index) => index === 0 ? escapeHtml(line) : `<div class="cell-note">${escapeHtml(line)}</div>`).join("")}
         </td>
         <td>
-          <strong>${escapeHtml(store.manager || "-")}</strong>
-          <div class="cell-note">${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</div>
+          <strong>${escapeHtml(managerContact.name || "-")}</strong>
+          <div class="cell-note">${escapeHtml(managerContact.phone || "-")}</div>
+          <div class="cell-note">${escapeHtml(managerContact.email || "-")}</div>
         </td>
         <td>${plannedInterventionView ? escapeHtml(interventionDateLabel(store) || "-") : "&nbsp;"}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
@@ -5478,8 +5496,11 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td><strong>${escapeHtml(store.name)}</strong></td>
         <td>${escapeHtml(store.city || "-")}</td>
         <td>${escapeHtml(store.shopType || "-")}</td>
-        <td>${escapeHtml(store.manager || "-")}</td>
-        <td>${escapeHtml(state.people.find((person) => person.name === store.manager)?.phone || store.phone || "-")}</td>
+        <td>
+          <strong>${escapeHtml(managerContact.name || "-")}</strong>
+          <div class="cell-note">${escapeHtml(managerContact.email || "-")}</div>
+        </td>
+        <td>${escapeHtml(managerContact.phone || "-")}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
         <td>${escapeHtml(nextActionForStore(store))}</td>
         <td>
@@ -11002,6 +11023,7 @@ function buildPrintableStoreHtml(store) {
   const gsmRows = getGsmRows(store);
   const planName = workflow.planPdfName || "";
   const storeLanguage = storeLanguageForPrint(store);
+  const managerContact = managerContactForStore(store);
   const isNl = storeLanguage === "nl";
   const labels = isNl
     ? {
@@ -11013,6 +11035,8 @@ function buildPrintableStoreHtml(store) {
         type: "Type",
         size: "Grootte",
         manager: "Manager",
+        managerPhone: "Telefoon manager",
+        managerEmail: "Mail manager",
         twemOwner: "TWEM verantwoordelijke",
         provenance: "Herkomst",
         currentPhoneDate: "Datum huidige telefonie",
@@ -11111,6 +11135,8 @@ function buildPrintableStoreHtml(store) {
         type: "Type",
         size: "Taille",
         manager: "Manager",
+        managerPhone: "Telephone manager",
+        managerEmail: "Mail manager",
         twemOwner: "Responsable TWEM",
         provenance: "Provenance",
         currentPhoneDate: "Date telephonie actuelle",
@@ -11307,7 +11333,9 @@ function buildPrintableStoreHtml(store) {
           <h3>${escapeHtml(labels.identity)}</h3>
           <div><strong>${escapeHtml(labels.type)}</strong> ${escapeHtml(printableValue(store.shopType))}</div>
           <div><strong>${escapeHtml(labels.size)}</strong> ${escapeHtml(printableValue(store.shopSize))}</div>
-          <div><strong>${escapeHtml(labels.manager)}</strong> ${escapeHtml(printableValue(store.manager))}</div>
+          <div><strong>${escapeHtml(labels.manager)}</strong> ${escapeHtml(printableValue(managerContact.name || store.manager))}</div>
+          <div><strong>${escapeHtml(labels.managerPhone)}</strong> ${escapeHtml(printableValue(managerContact.phone))}</div>
+          <div><strong>${escapeHtml(labels.managerEmail)}</strong> ${escapeHtml(printableValue(managerContact.email))}</div>
           <div><strong>${escapeHtml(labels.twemOwner)}</strong> ${escapeHtml(printableValue(store.owner))}</div>
           <div><strong>${escapeHtml(labels.provenance)}</strong> ${escapeHtml(storeProvenance(store))}</div>
           <div><strong>${escapeHtml(labels.currentPhoneDate)}</strong> ${escapeHtml(printableValue(workflow.currentPhoneDate))}</div>
