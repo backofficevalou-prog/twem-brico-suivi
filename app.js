@@ -8599,11 +8599,13 @@ async function handleManualWelcomeMailClick(event) {
 }
 
 function welcomeMailOutlookUrl(email, subjectText, bodyText) {
-  const outlookUrl = new URL("https://outlook.office.com/mail/deeplink/compose");
-  outlookUrl.searchParams.set("to", email);
-  outlookUrl.searchParams.set("subject", subjectText);
-  outlookUrl.searchParams.set("body", bodyText);
-  return outlookUrl.toString();
+  const encodeOutlookParam = (value) => encodeURIComponent(String(value || "")).replace(/%20/g, "%20");
+  return [
+    "https://outlook.office.com/mail/deeplink/compose",
+    `?to=${encodeOutlookParam(email)}`,
+    `&subject=${encodeOutlookParam(subjectText)}`,
+    `&body=${encodeOutlookParam(bodyText)}`
+  ].join("");
 }
 
 function openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText) {
