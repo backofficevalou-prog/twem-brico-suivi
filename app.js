@@ -3388,6 +3388,60 @@ function missingValidationLabels(store) {
   return missing;
 }
 
+function storeValidationItems(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  return [
+    {
+      label: "Config",
+      okLabel: "Config OK",
+      issueLabel: "Config a faire",
+      ok: Boolean(workflow.networkConfigConfirmed)
+    },
+    {
+      label: "VLAN22",
+      okLabel: "VLAN22 OK",
+      issueLabel: "VLAN22 a valider",
+      ok: workflow.vlan22Activated === "Oui"
+    },
+    {
+      label: "Infra",
+      okLabel: "Infra OK",
+      issueLabel: "Infra a valider",
+      ok: workflow.charlesRouxStatus === "OK"
+    },
+    {
+      label: "Pre-visite",
+      okLabel: "Pre-visite OK",
+      issueLabel: "Pre-visite a faire",
+      ok: externalPrepStatusLabel(workflow) === "Termine"
+    },
+    {
+      label: "Installation",
+      okLabel: "Installation OK",
+      issueLabel: "Installation a faire",
+      ok: workflow.destinyInstallDone === "Oui"
+    }
+  ];
+}
+
+function renderStoreValidationSignals(store, options = {}) {
+  const items = storeValidationItems(store);
+  const hasIssue = store.status === "blocked" || items.some((item) => !item.ok);
+  const visibleItems = options.showAll
+    ? items
+    : (hasIssue ? items.filter((item) => !item.ok) : items.slice(0, 3));
+  return `
+    <div class="store-validation-signals">
+      ${store.status === "blocked" ? '<span class="validation-signal signal-issue">Blocage</span>' : ""}
+      ${visibleItems.map((item) => `
+        <span class="validation-signal ${item.ok ? "signal-ok" : "signal-issue"}">
+          ${escapeHtml(item.ok ? item.okLabel : item.issueLabel)}
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
 function configControlStatus(store) {
   const workflow = ensureStoreWorkflowData(store);
   const networkRows = getNetworkConfigRows(store);
@@ -5486,7 +5540,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         </td>
         <td>${plannedInterventionView ? escapeHtml(interventionDateLabel(store) || "-") : "&nbsp;"}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
-        <td>${plannedInterventionView ? escapeHtml(missingValidationLabels(store).join(", ") || "OK") : escapeHtml(nextActionForStore(store))}</td>
+        <td>${renderStoreValidationSignals(store, { showAll: plannedInterventionView })}</td>
         <td>
           <div class="store-row-actions">
             <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>
@@ -5506,7 +5560,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         </td>
         <td>${escapeHtml(managerContact.phone || "-")}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
-        <td>${escapeHtml(nextActionForStore(store))}</td>
+        <td>${renderStoreValidationSignals(store)}</td>
         <td>
           <div class="store-row-actions">
             <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>

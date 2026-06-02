@@ -981,6 +981,37 @@ button {
   gap: 6px;
 }
 
+.store-validation-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 180px;
+}
+
+.validation-signal {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.15;
+  border: 1px solid transparent;
+  white-space: normal;
+}
+
+.validation-signal.signal-ok {
+  color: #116b36;
+  background: #e7f7dc;
+  border-color: #9fd07c;
+}
+
+.validation-signal.signal-issue {
+  color: #9f241e;
+  background: #ffe1dc;
+  border-color: #e59a91;
+}
+
 .store-meta-grid {
   display: grid;
   gap: 8px;
