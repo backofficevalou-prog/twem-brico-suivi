@@ -1191,7 +1191,8 @@ const state = {
     type: "all",
     city: "all",
     date: "all",
-    invoice: "all"
+    invoice: "all",
+    configStatus: "all"
   },
   expandedStoreIds: new Set()
 };
@@ -2308,7 +2309,7 @@ function updateFocusFromQuery() {
     createdAt: activity?.createdAt || ""
   };
   state.activeAdminTab = canAccessTab("stores") ? "stores" : "dashboard";
-  state.filters = { search: "", status: "all", owner: "all", stage: "all", type: "all", city: "all", date: "all" };
+  state.filters = { search: "", status: "all", owner: "all", stage: "all", type: "all", city: "all", date: "all", invoice: "all", configStatus: "all" };
   state.expandedStoreIds = new Set([store.id]);
   return true;
 }
@@ -2632,7 +2633,8 @@ function resetWorkspaceFilters() {
     type: "all",
     city: "all",
     date: "all",
-    invoice: "all"
+    invoice: "all",
+    configStatus: "all"
   };
 }
 
@@ -3458,21 +3460,34 @@ function configControlStatus(store) {
 
 function configStatusCards(visibleStores, total) {
   const countOk = (key) => visibleStores.filter((store) => configControlStatus(store)[key]).length;
-  const cardPair = (label, key, okNote = "OK", koNote = "A traiter") => {
+  const cardPair = (label, key, okNote = "OK", koNote = "A traiter", filterKey = key) => {
     const okCount = countOk(key);
     const koCount = visibleStores.length - okCount;
     return [
-      { label: `${label} OK`, value: okCount, note: okNote, portion: Math.round((okCount / total) * 100), filter: null },
-      { label: `${label} pas OK`, value: koCount, note: koNote, portion: Math.round((koCount / total) * 100), filter: null }
+      { label: `${label} OK`, value: okCount, note: okNote, portion: Math.round((okCount / total) * 100), filter: { reset: true, key: "configStatus", value: `${filterKey}:ok`, tab: "configuration" } },
+      { label: `${label} pas OK`, value: koCount, note: koNote, portion: Math.round((koCount / total) * 100), filter: { reset: true, key: "configStatus", value: `${filterKey}:ko`, tab: "configuration" } }
     ];
   };
   return [
-    ...cardPair("VLAN22", "vlanOk", "VLAN valide", "VLAN a valider"),
-    ...cardPair("Config reseau", "networkConfigOk", "Configuration complete", "Configuration incomplete"),
-    ...cardPair("Previsite", "previsitOk", "Previsite OK", "Previsite a suivre"),
-    ...cardPair("Cablage", "cablingOk", "Cablage OK", "Cablage a suivre"),
-    ...cardPair("Switch", "switchOk", "Switch effectue", "Switch a faire")
+    ...cardPair("VLAN22", "vlanOk", "VLAN valide", "VLAN a valider", "vlanOk"),
+    ...cardPair("Config reseau", "networkConfigOk", "Configuration complete", "Configuration incomplete", "networkConfigOk"),
+    ...cardPair("Previsite", "previsitOk", "Previsite OK", "Previsite a suivre", "previsitOk"),
+    ...cardPair("Cablage", "cablingOk", "Cablage OK", "Cablage a suivre", "cablingOk"),
+    ...cardPair("Switch", "switchOk", "Switch effectue", "Switch a faire", "switchOk")
   ];
+}
+
+function matchesConfigStatusScope(store) {
+  const scope = state.filters.configStatus || "all";
+  if (scope === "all") {
+    return true;
+  }
+  const [key, expected] = scope.split(":");
+  const status = configControlStatus(store);
+  if (!(key in status)) {
+    return true;
+  }
+  return expected === "ok" ? Boolean(status[key]) : !status[key];
 }
 
 function getFilteredStores() {
@@ -3521,7 +3536,8 @@ function getFilteredStores() {
     const matchesCity = state.filters.city === "all" || store.city === state.filters.city;
     const matchesDate = matchesDateScope(store);
     const matchesInvoice = matchesInvoiceScope(store);
-    return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate && matchesInvoice;
+    const matchesConfigStatus = matchesConfigStatusScope(store);
+    return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate && matchesInvoice && matchesConfigStatus;
   });
 
   if (isPlannedInterventionListView()) {
