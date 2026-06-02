@@ -8595,7 +8595,7 @@ async function handleManualWelcomeMailClick(event) {
     openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText);
   }
 
-  await confirmManualWelcomeMailSent(email);
+  await confirmManualWelcomeMailSent(person, email);
 }
 
 function welcomeMailOutlookUrl(email, subjectText, bodyText) {
@@ -8647,12 +8647,11 @@ function writeMailFallbackWindow(targetWindow, email, subjectText, bodyText) {
   targetWindow.document.close();
 }
 
-async function confirmManualWelcomeMailSent(email) {
+async function confirmManualWelcomeMailSent(person, email) {
   const markSent = window.confirm("Le mail est ouvert dans Outlook Web et le contenu est copie. Marquer ce mail comme envoye apres ton envoi depuis backoffice@twem.be ?");
   if (!markSent) {
     return;
   }
-  const person = state.people.find((entry) => normalizeImportCell(entry.email).toLowerCase() === email.toLowerCase());
   if (!person) {
     return;
   }
@@ -8679,12 +8678,18 @@ async function markManualWelcomeMailSent(person, sentAt, email) {
     draft.updatedAt = sentAt;
   }
 
-  if (hasRemoteData()) {
-    await syncPersonToRemote(person);
-    await syncSettingsToRemote();
-  }
   saveState();
   render();
+
+  if (hasRemoteData()) {
+    try {
+      await syncPersonToRemote(person);
+      await syncSettingsToRemote();
+    } catch (syncError) {
+      console.warn("Impossible de synchroniser le marquage mail envoye pour le moment.", syncError);
+      window.alert("Le mail est marque envoye dans l'app. La synchronisation Appwrite n'a pas repondu tout de suite, recharge dans quelques secondes pour verifier.");
+    }
+  }
 }
 
 function renderToolList() {
