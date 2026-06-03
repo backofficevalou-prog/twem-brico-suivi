@@ -144,14 +144,23 @@ const defaultPanicButtonExtensions = {
   1: "922 - FRONT END EVACUATION",
   2: "923 - SAFE ROOM"
 };
+const defaultFlashLightExtensions = {
+  1: "932 - SAFE ROOM DRIVE IN(coffre/koffer drive in )",
+  2: "933 - MERCHANDISE RECEPTION",
+  3: "931 - SAFE ROOM(Coffre/ koffer safe room)",
+  4: "930 - BRICO SERVICE"
+};
 
 function defaultNetworkExtensionForRow(row = {}) {
-  if (row.category !== "Panic button") {
-    return "";
-  }
   const match = String(row.id || row.slotLabel || "").match(/(\d+)$/);
   const index = match ? Number(match[1]) : 0;
-  return defaultPanicButtonExtensions[index] || "";
+  if (row.category === "Panic button") {
+    return defaultPanicButtonExtensions[index] || "";
+  }
+  if (row.category === "Flash light") {
+    return defaultFlashLightExtensions[index] || "";
+  }
+  return "";
 }
 
 function networkExtensionOptionsForCategory(categoryFilter = "", language = "fr", selected = "") {
