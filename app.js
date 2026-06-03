@@ -5555,7 +5555,10 @@ function renderStoreCards(stores, mode = "stores") {
 function renderStoreOverviewRows(stores, mode = "stores") {
   projectTableBody.innerHTML = "";
   const plannedInterventionView = isPlannedInterventionListView();
-  stores.forEach((store) => {
+  const displayStores = mode === "configuration"
+    ? stores.slice().sort(compareStoresByInterventionDate)
+    : stores;
+  displayStores.forEach((store) => {
     const isExpanded = state.expandedStoreIds.has(store.id);
     const row = document.createElement("tr");
     const managerContact = managerContactForStore(store);
@@ -5607,9 +5610,10 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td>${escapeHtml(store.shopType || "-")}</td>
         <td>
           <strong>${escapeHtml(managerContact.name || "-")}</strong>
+          <div class="cell-note">${escapeHtml(managerContact.phone || "-")}</div>
           <div class="cell-note">${escapeHtml(managerContact.email || "-")}</div>
         </td>
-        <td>${escapeHtml(managerContact.phone || "-")}</td>
+        <td>${escapeHtml(interventionDateLabel(store) || "-")}</td>
         <td><span class="${badgeClass(store.status)}">${escapeHtml(statusLabel(store.status))}</span></td>
         <td>${renderStoreValidationSignals(store)}</td>
         <td>
@@ -6747,7 +6751,7 @@ function renderStores() {
       return;
     case "configuration":
       projectTable?.classList.add("compact-rows-table");
-      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Telephone", "Statut", "Prochaine action", "Actions"]);
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"]);
       renderStoreOverviewRows(stores, "configuration");
       return;
       case "stores":
