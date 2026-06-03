@@ -3516,6 +3516,17 @@ function matchesConfigStatusScope(store) {
 
 function getFilteredStores() {
   const filteredStores = getRoleScopedStores().filter((store) => {
+    const searchTerm = normalizeImportCell(state.filters.search).toLowerCase();
+    const normalizedSearch = normalizeImportStoreCode(searchTerm);
+    const normalizedCode = normalizeImportStoreCode(store.code);
+    const normalizedShopNumber = normalizeImportStoreCode(store.shopNumber);
+    const exactCodeSearch = Boolean(searchTerm)
+      && (
+        normalizedSearch === normalizedCode
+        || normalizedSearch === normalizedShopNumber
+        || searchTerm === normalizeImportCell(store.code).toLowerCase()
+        || searchTerm === normalizeImportCell(store.shopNumber).toLowerCase()
+      );
     const appointments = sortedAppointments(store);
     const nextAction = appointments[0]?.note || store.health || "";
     const stage = currentWorkflowStage(store);
@@ -3552,7 +3563,7 @@ function getFilteredStores() {
       ].join(" "))
     ].join(" ");
     const haystack = `${store.code} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords} ${interventionKeywords} ${savKeywords} ${invoiceHaystack}`.toLowerCase();
-    const matchesSearch = haystack.includes(state.filters.search);
+    const matchesSearch = haystack.includes(searchTerm);
     const matchesStatus = state.filters.status === "all" || store.status === state.filters.status;
     const matchesOwner = state.filters.owner === "all" || storeProvenance(store) === state.filters.owner;
     const matchesStage = state.filters.stage === "all" || stage === state.filters.stage;
@@ -3561,6 +3572,9 @@ function getFilteredStores() {
     const matchesDate = matchesDateScope(store);
     const matchesInvoice = matchesInvoiceScope(store);
     const matchesConfigStatus = matchesConfigStatusScope(store);
+    if (exactCodeSearch) {
+      return matchesSearch;
+    }
     return matchesSearch && matchesStatus && matchesOwner && matchesStage && matchesType && matchesCity && matchesDate && matchesInvoice && matchesConfigStatus;
   });
 
