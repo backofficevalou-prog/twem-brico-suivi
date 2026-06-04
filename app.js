@@ -1,4 +1,18 @@
 const twemOptions = ["Emir", "Valou"];
+const forcedDigestRecipientNames = [
+  "Emir",
+  "Valou",
+  "Anton",
+  "Nicolas",
+  "Diana",
+  "Charles",
+  "Fabien",
+  "Jean-Yves",
+  "Marc",
+  "Medhi",
+  "Rob",
+  "Ronald"
+];
 const interventionOptions = [
   { value: "planned", label: "A commencer" },
   { value: "in_progress", label: "En cours" },
@@ -622,11 +636,11 @@ const defaultAutomations = [
   {
     id: "daily_operations_digest",
     category: "notifications",
-    title: "Digest quotidien Emir + Valou",
-    description: "Envoyer chaque matin a Emir et Valou le recap des installations du lendemain, des blocages et des SAV ouverts/en cours.",
+    title: "Digest quotidien groupe pilotage",
+    description: "Envoyer chaque matin le rapport de pilotage aux contacts TWEM, DSTNY et Brico designes.",
     active: true,
     trigger: "Tous les matins a partir du 2026-05-22",
-    recipients: "Emir + Valou",
+    recipients: "Groupe pilotage force",
     digestAdditionalRecipientIds: [],
     channels: "Mail quotidien",
     responseDelayHours: 9,
@@ -7586,9 +7600,28 @@ function launchMailRecipientsFromForm(form) {
     .sort((left, right) => String(left.name || "").localeCompare(String(right.name || ""), "fr", { sensitivity: "base" }));
 }
 
+function digestNameKey(value = "") {
+  return normalizeImportCell(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, "")
+    .toLowerCase();
+}
+
+function digestPersonMatchesName(person = {}, expectedName = "") {
+  const haystack = digestNameKey([person.name, person.email, person.role].filter(Boolean).join(" "));
+  const expectedKeys = expectedName === "Medhi"
+    ? ["medhi", "mehdi"]
+    : [digestNameKey(expectedName)];
+  return Boolean(haystack && expectedKeys.some((key) => haystack.includes(key)));
+}
+
 function digestBasePeople() {
-  return ["Emir", "Valou"]
-    .map((name) => (state.people || []).find((person) => person.name === name) || { id: name, name })
+  return forcedDigestRecipientNames
+    .map((name) =>
+      (state.people || []).find((person) => digestPersonMatchesName(person, name))
+      || { id: name, name }
+    )
     .filter(Boolean);
 }
 
@@ -7619,13 +7652,13 @@ function digestRecipientLabel(automation = {}) {
   const recipients = digestRecipientPeople(automation)
     .map((person) => personRecipientValue(person) || person.name)
     .filter(Boolean);
-  return recipients.join(", ") || "Emir + Valou";
+  return recipients.join(", ") || "Groupe pilotage force";
 }
 
 function digestRecipientSummaryHtml(automation = {}) {
   const people = digestRecipientPeople(automation);
   if (!people.length) {
-    return '<span class="digest-recipient-chip">Emir + Valou</span>';
+    return '<span class="digest-recipient-chip">Groupe pilotage force</span>';
   }
   return people.map((person) => `
     <span class="digest-recipient-chip">
@@ -7637,9 +7670,11 @@ function digestRecipientSummaryHtml(automation = {}) {
 
 function renderDigestRecipientChoices(automation = {}) {
   const selectedIds = new Set(Array.isArray(automation.digestAdditionalRecipientIds) ? automation.digestAdditionalRecipientIds.map(String) : []);
-  const baseNames = new Set(["emir", "valou"]);
   return (state.people || [])
-    .filter((person) => normalizeImportCell(person.name) && !baseNames.has(normalizeImportCell(person.name).toLowerCase()))
+    .filter((person) =>
+      normalizeImportCell(person.name)
+      && !forcedDigestRecipientNames.some((name) => digestPersonMatchesName(person, name))
+    )
     .sort((left, right) => normalizeImportCell(left.name).localeCompare(normalizeImportCell(right.name), "fr", { sensitivity: "base" }))
     .map((person) => {
       const id = String(person.id || person.email || person.name);
@@ -8459,6 +8494,9 @@ function normalizeAutomationTemplateState(automation) {
   if (automation?.id !== "daily_operations_digest") {
     return;
   }
+  automation.title = "Digest quotidien groupe pilotage";
+  automation.description = "Envoyer chaque matin le rapport de pilotage aux contacts TWEM, DSTNY et Brico designes.";
+  automation.recipients = digestRecipientLabel(automation);
   automation.emailSubject = "";
   automation.emailBody = "";
   automation.emailBodyManual = false;

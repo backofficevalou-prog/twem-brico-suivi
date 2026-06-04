@@ -1,4 +1,18 @@
 const DEFAULT_ENDPOINT = "https://fra.cloud.appwrite.io/v1";
+const FORCED_DIGEST_RECIPIENT_NAMES = [
+  "Emir",
+  "Valou",
+  "Anton",
+  "Nicolas",
+  "Diana",
+  "Charles",
+  "Fabien",
+  "Jean-Yves",
+  "Marc",
+  "Medhi",
+  "Rob",
+  "Ronald"
+];
 
 function env(name, fallback = "") {
   return process.env[name] || fallback;
@@ -194,6 +208,43 @@ function peopleByEmail(people = []) {
       .filter((person) => String(person.email || "").trim())
       .map((person) => [String(person.email).trim().toLowerCase(), person])
   );
+}
+
+function digestNameKey(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, "")
+    .toLowerCase();
+}
+
+function personMatchesDigestName(person = {}, expectedName = "") {
+  const haystack = digestNameKey([person.name, person.email, person.role].filter(Boolean).join(" "));
+  const expectedKeys = expectedName === "Medhi"
+    ? ["medhi", "mehdi"]
+    : [digestNameKey(expectedName)];
+  return Boolean(haystack && expectedKeys.some((key) => haystack.includes(key)));
+}
+
+function forcedDigestRecipientsFromPeople(people = []) {
+  const recipients = FORCED_DIGEST_RECIPIENT_NAMES
+    .map((name) => people.find((person) => personMatchesDigestName(person, name)))
+    .map((person) => String(person?.email || "").trim())
+    .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  return uniqueEmailList(recipients);
+}
+
+function uniqueEmailList(items = []) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const email = String(item || "").trim();
+    const key = email.toLowerCase();
+    if (!email || seen.has(key) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function storeLabel(store) {
@@ -883,18 +934,11 @@ async function main() {
   const peopleCollection = env("APPWRITE_PEOPLE_COLLECTION_ID", "people");
   const activitiesCollection = env("APPWRITE_ACTIVITIES_COLLECTION_ID", "activities");
   const settingsCollection = env("APPWRITE_SETTINGS_COLLECTION_ID", "settings");
-  const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,backoffice@twem.be")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const configuredRecipients = splitRecipients(env("DIGEST_RECIPIENTS", "emir.massart@brico.be,emir@twem.be,backoffice@twem.be"));
   const testRecipients = env("TEST_RECIPIENTS", "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const recipients = testRecipients.length ? testRecipients : configuredRecipients;
-  if (!recipients.length) {
-    throw new Error("No digest recipients configured.");
-  }
   const settings = await getGlobalSettings(settingsCollection);
   const automationsById = automationById(settings.automations);
   const [stores, tickets, people, activities] = await Promise.all([
@@ -903,6 +947,13 @@ async function main() {
     listRows(peopleCollection).then((rows) => rows.map(normalizePerson)),
     listRows(activitiesCollection).then((rows) => rows.map(normalizeActivity))
   ]);
+  const forcedDigestRecipients = forcedDigestRecipientsFromPeople(people);
+  const recipients = testRecipients.length
+    ? uniqueEmailList(testRecipients)
+    : uniqueEmailList([...configuredRecipients, ...forcedDigestRecipients]);
+  if (!recipients.length) {
+    throw new Error("No digest recipients configured.");
+  }
   const connectedPeopleByEmail = peopleByEmail(people);
   const dryRun = env("DRY_RUN", "true").toLowerCase() !== "false";
   const sentQueue = [];
@@ -990,6 +1041,7 @@ async function main() {
       testMode: Boolean(testRecipients.length),
       recipients,
       configuredRecipients,
+      forcedDigestRecipients,
       subject,
       mailResult,
       preview: body
