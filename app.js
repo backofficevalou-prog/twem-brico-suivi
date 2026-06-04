@@ -8185,13 +8185,13 @@ async function handleLaunchMailCopy(event) {
   }
   const text = [
     `A: ${payload.to}`,
-    `BCC FR: ${payload.groups.fr.map((person) => normalizeImportCell(person.email)).join(";")}`,
+    `CCI FR: ${launchMailAddressList(payload.groups.fr)}`,
     `Objet FR: ${payload.subjectFr}`,
     "",
     payload.bodyFr,
     "",
     "-----",
-    `BCC NL: ${payload.groups.nl.map((person) => normalizeImportCell(person.email)).join(";")}`,
+    `CCI NL: ${launchMailAddressList(payload.groups.nl)}`,
     `Objet NL: ${payload.subjectNl}`,
     "",
     payload.bodyNl
@@ -8224,18 +8224,31 @@ function handleLaunchMailSubmit(event) {
       });
     }
   });
+  const copyText = mailJobs.map((job, index) => [
+    `Mail ${index + 1} - ${job.language}`,
+    `CCI: ${launchMailAddressList(job.people)}`,
+    `Objet: ${job.subject}`,
+    "",
+    job.body
+  ].join("\n")).join("\n\n-----\n\n");
+  navigator.clipboard?.writeText(copyText).catch(() => {});
+  const openedWindows = mailJobs.map(() => window.open("", "_blank"));
   mailJobs.forEach((job, index) => {
     const url = outlookComposeUrl({
       to: payload.to,
-      bcc: job.people.map((person) => normalizeImportCell(person.email)).join(";"),
+      bcc: launchMailAddressList(job.people),
       subject: job.subject,
       body: job.body
     });
-    window.setTimeout(() => window.open(url, "_blank"), index * 350);
+    window.setTimeout(() => {
+      if (openedWindows[index] && !openedWindows[index].closed) {
+        openedWindows[index].location.href = url;
+      } else {
+        window.open(url, "_blank");
+      }
+    }, index * 350);
   });
-  if (mailJobs.length > 1) {
-    window.alert(`${payload.recipients.length} destinataires repartis en ${mailJobs.length} mails Outlook par langue et par limite technique.`);
-  }
+  window.alert(`${payload.recipients.length} destinataires repartis en ${mailJobs.length} mail(s) Outlook.\n\nFR: ${payload.groups.fr.length} - NL: ${payload.groups.nl.length}\n\nLes listes CCI ont aussi ete copiees dans le presse-papiers au cas ou Outlook ne les remplit pas automatiquement.`);
 }
 
 function renderAutomationEmailQueue() {
@@ -9416,6 +9429,10 @@ function outlookComposeUrl({ to = "", bcc = "", subject = "", body = "" } = {}) 
     `&subject=${encodeOutlookParam(subject)}`,
     `&body=${encodeOutlookParam(body)}`
   ].join("");
+}
+
+function launchMailAddressList(people = []) {
+  return people.map((person) => normalizeImportCell(person.email)).filter(Boolean).join(",");
 }
 
 function openWelcomeMailInOutlookWindow(outlookWindow, email, subjectText, bodyText) {
