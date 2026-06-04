@@ -149,6 +149,22 @@ function normalizeTicket(document) {
   };
 }
 
+function normalizeActivity(document) {
+  const payload = parseJsonField(document.payload_json, null);
+  if (payload && typeof payload === "object") {
+    return { ...payload, id: payload.id || document.$id };
+  }
+  return {
+    id: document.$id,
+    storeCode: document.store_code || "",
+    storeName: document.store_name || "",
+    result: document.result || "ok",
+    comment: document.comment || "",
+    confirmedBy: document.confirmed_by || "",
+    createdAt: document.created_at || ""
+  };
+}
+
 function normalizePerson(document) {
   const payload = parseJsonField(document.payload_json, null);
   if (payload && typeof payload === "object") {
@@ -234,6 +250,189 @@ function buildDigestBody(stores, tickets, targetDate) {
     lineList(inProgressTickets, "Aucun SAV en cours."),
     "",
     "Objectif: verifier que les installations de demain sont bien dans le planning et que les points bloquants sont suivis."
+  ].join("\n");
+}
+
+function digestStoreCode(store = {}) {
+  return String(store.shopNumber || store.shop_number || store.code || store.name || "-").replace(/^BRI-?/i, "");
+}
+
+function digestStoreLine(store = {}, detail = "") {
+  const base = [digestStoreCode(store), store.name].filter(Boolean).join(" ");
+  return detail ? `${base} : ${detail}` : base;
+}
+
+function normalizeKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function sameDateKey(value, targetKey) {
+  return normalizeDateOnly(value) === targetKey;
+}
+
+function reportDayFromNow(now = new Date()) {
+  const day = addDays(now, -1);
+  return { date: day, key: dateKey(day) };
+}
+
+function workflowOf(store = {}) {
+  return store.workflow || {};
+}
+
+function isVlanOk(workflow = {}) {
+  return ["oui", "ok"].includes(normalizeKey(workflow.vlan22Activated)) || Boolean(String(workflow.vlan22Date || "").trim());
+}
+
+function isNetworkConfigOk(store = {}) {
+  const workflow = workflowOf(store);
+  if (workflow.networkConfigConfirmed === true) return true;
+  const rows = Array.isArray(workflow.networkRows) ? workflow.networkRows : [];
+  return Boolean(rows.length) && rows.every((row) => String(row.extensionLabel || "").trim());
+}
+
+function networkConfigSummary(store = {}) {
+  const rows = Array.isArray(workflowOf(store).networkRows) ? workflowOf(store).networkRows : [];
+  return {
+    configured: rows.filter((row) => String(row.extensionLabel || "").trim()).length,
+    total: rows.length
+  };
+}
+
+function isBlockedStatus(value) {
+  return ["bloque", "bloquee", "probleme"].includes(normalizeKey(value));
+}
+
+function ticketTargetLabel(ticket = {}) {
+  if (Array.isArray(ticket.targetPeople) && ticket.targetPeople.length) return ticket.targetPeople.join(", ");
+  return ticket.targetService || "TWEM";
+}
+
+function digestTicketLine(ticket = {}) {
+  return `${ticket.storeCode || "-"} | ${ticket.id || "-"} | ${ticket.concern || ticket.requestKind || "SAV"} | ${ticketTargetLabel(ticket)}`;
+}
+
+function activityDayItems(activities = [], dayKey) {
+  return activities.filter((activity) => sameDateKey(activity.createdAt, dayKey));
+}
+
+function changedStoresForDay(stores = [], activities = [], dayKey) {
+  const activityKeys = new Set(activityDayItems(activities, dayKey).flatMap((activity) => [
+    String(activity.storeCode || "").trim(),
+    String(activity.storeName || "").trim()
+  ].filter(Boolean)));
+  return stores.filter((store) =>
+    sameDateKey(store.updatedAt || store.updated_at, dayKey)
+    || sameDateKey(workflowOf(store).planPdfUpdatedAt, dayKey)
+    || activityKeys.has(String(store.code || "").trim())
+    || activityKeys.has(String(store.name || "").trim())
+  );
+}
+
+function buildActivityDigestBody(stores, tickets, activities, now = new Date()) {
+  const { date: reportDate, key: reportKey } = reportDayFromNow(now);
+  const todayKey = dateKey(now);
+  const tomorrowKey = dateKey(addDays(now, 1));
+  const dayActivities = activityDayItems(activities, reportKey);
+  const changedStores = changedStoresForDay(stores, activities, reportKey);
+  const activityForStore = (store, matcher) => dayActivities.some((activity) => {
+    const storeKey = `${activity.storeCode || ""} ${activity.storeName || ""}`;
+    return (storeKey.includes(store.code || "") || storeKey.includes(store.name || ""))
+      && matcher(String(activity.comment || "").toLowerCase());
+  });
+
+  const preparationStores = changedStores.filter((store) => {
+    const workflow = workflowOf(store);
+    return workflow.vlan22Activated || workflow.vlan22Date || workflow.cablingStatus || workflow.cablingDate
+      || workflow.ltSwitchStatus || workflow.ltSwitchDate || workflow.mobileCoverage
+      || activityForStore(store, (comment) => /(vlan|cabl|switch|pre.?visite|preparation|reseau|couverture)/i.test(comment));
+  });
+  const vlanOk = preparationStores.filter((store) => isVlanOk(workflowOf(store))).map(digestStoreCode);
+  const vlanBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).vlan22Activated) || isBlockedStatus(workflowOf(store).vlan22Status)).map((store) => digestStoreLine(store, workflowOf(store).vlan22Status || workflowOf(store).vlan22Activated));
+  const cablingOk = preparationStores.filter((store) => normalizeKey(workflowOf(store).cablingStatus) === "ok").map(digestStoreCode);
+  const cablingBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).cablingStatus)).map((store) => digestStoreLine(store, workflowOf(store).cablingStatus));
+  const switchOk = preparationStores.filter((store) => ["ok", "basculee"].includes(normalizeKey(workflowOf(store).ltSwitchStatus))).map(digestStoreCode);
+  const switchBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).ltSwitchStatus)).map((store) => digestStoreLine(store, workflowOf(store).ltSwitchStatus));
+  const mobileCoverage = preparationStores.filter((store) => {
+    const value = normalizeKey(workflowOf(store).mobileCoverage);
+    return value && value !== "a_verifier";
+  }).map((store) => digestStoreLine(store, workflowOf(store).mobileCoverage));
+  const mobileBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).mobileCoverage)).map((store) => digestStoreLine(store, workflowOf(store).mobileCoverage));
+
+  const installToday = stores.filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, todayKey)).map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
+  const installTomorrow = stores.filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, tomorrowKey)).map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
+  const installCancelled = dayActivities.filter((activity) => /annul|cancel|reporte|deplace|deplac/i.test(String(activity.comment || ""))).map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`);
+
+  const configComplete = changedStores.filter(isNetworkConfigOk).map((store) => {
+    const summary = networkConfigSummary(store);
+    return digestStoreLine(store, `${summary.configured}/${summary.total || 0}`);
+  });
+  const configPartial = changedStores.filter((store) => {
+    const summary = networkConfigSummary(store);
+    return summary.configured > 0 && !isNetworkConfigOk(store);
+  }).map((store) => {
+    const summary = networkConfigSummary(store);
+    return digestStoreLine(store, `${summary.configured}/${summary.total || 0}`);
+  });
+
+  const savNew = tickets.filter((ticket) => sameDateKey(ticket.createdAt, reportKey)).map(digestTicketLine);
+  const savClosed = tickets.filter((ticket) =>
+    ticket.status === "closed"
+    && (sameDateKey(ticket.updatedAt, reportKey) || (ticket.updates || []).some((update) => sameDateKey(update.createdAt, reportKey) && /clot|closed/i.test(update.note || "")))
+  ).map(digestTicketLine);
+  const savInProgress = tickets.filter((ticket) =>
+    ["open", "in_progress", "assigned", "dispatch"].includes(ticket.status)
+    && (sameDateKey(ticket.updatedAt, reportKey) || (ticket.updates || []).some((update) => sameDateKey(update.createdAt, reportKey)))
+  ).map(digestTicketLine);
+
+  const addedPlans = stores
+    .filter((store) => sameDateKey(workflowOf(store).planPdfUpdatedAt, reportKey))
+    .map((store) => digestStoreLine(store, workflowOf(store).planPdfName || "document ajoute"));
+  const generalActivities = dayActivities
+    .filter((activity) => !/sav|document|plan|vlan|cabl|switch|pre.?visite|configuration|install/i.test(String(activity.comment || "")))
+    .map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`);
+
+  return [
+    "Digest du jour :",
+    "",
+    `Rapport activite de la journee d'hier : ${formatFrDate(reportDate)}`,
+    "",
+    "Preparation chantier",
+    `VLAN22 OK : ${vlanOk.join(" - ") || "-"}`,
+    `Blocage VLAN22 : ${vlanBlocked.join(" / ") || "-"}`,
+    `Cablage OK : ${cablingOk.join(" - ") || "-"}`,
+    `Blocage cablage : ${cablingBlocked.join(" / ") || "-"}`,
+    `Switch OK : ${switchOk.join(" - ") || "-"}`,
+    `Blocage switch : ${switchBlocked.join(" / ") || "-"}`,
+    `Couverture mobile : ${mobileCoverage.join(" / ") || "-"}`,
+    `Blocage couverture mobile : ${mobileBlocked.join(" / ") || "-"}`,
+    "",
+    "Installations",
+    `Prevues aujourd'hui : ${installToday.join(" / ") || "-"}`,
+    `Prevues demain : ${installTomorrow.join(" / ") || "-"}`,
+    `Annulees / deplacees hier : ${installCancelled.join(" / ") || "-"}`,
+    "",
+    "Configuration reseau",
+    `Complete : ${configComplete.join(" / ") || "-"}`,
+    `Partielle : ${configPartial.join(" / ") || "-"}`,
+    "",
+    "SAV",
+    "Nouveaux :",
+    lineList(savNew, "Aucun nouveau SAV hier."),
+    "En cours / mis a jour :",
+    lineList(savInProgress, "Aucun SAV en cours mis a jour hier."),
+    "Clotures :",
+    lineList(savClosed, "Aucun SAV cloture hier."),
+    "",
+    "Plans / documents ajoutes",
+    lineList(addedPlans, "Aucun plan ou document ajoute hier."),
+    "",
+    "Autres modifications de fiche",
+    lineList(generalActivities, "Aucune autre modification journalisee hier.")
   ].join("\n");
 }
 
@@ -613,6 +812,7 @@ async function main() {
   const storesCollection = env("APPWRITE_STORES_COLLECTION_ID", "stores");
   const ticketsCollection = env("APPWRITE_TICKETS_COLLECTION_ID", "tickets");
   const peopleCollection = env("APPWRITE_PEOPLE_COLLECTION_ID", "people");
+  const activitiesCollection = env("APPWRITE_ACTIVITIES_COLLECTION_ID", "activities");
   const settingsCollection = env("APPWRITE_SETTINGS_COLLECTION_ID", "settings");
   const configuredRecipients = env("DIGEST_RECIPIENTS", "emir@twem.be,backoffice@twem.be")
     .split(",")
@@ -628,11 +828,11 @@ async function main() {
   }
   const settings = await getGlobalSettings(settingsCollection);
   const automationsById = automationById(settings.automations);
-  const targetDate = addDays(new Date(), 1);
-  const [stores, tickets, people] = await Promise.all([
+  const [stores, tickets, people, activities] = await Promise.all([
     listRows(storesCollection).then((rows) => rows.map(normalizeStore)),
     listRows(ticketsCollection).then((rows) => rows.map(normalizeTicket)),
-    listRows(peopleCollection).then((rows) => rows.map(normalizePerson))
+    listRows(peopleCollection).then((rows) => rows.map(normalizePerson)),
+    listRows(activitiesCollection).then((rows) => rows.map(normalizeActivity))
   ]);
   const connectedPeopleByEmail = peopleByEmail(people);
   const dryRun = env("DRY_RUN", "true").toLowerCase() !== "false";
@@ -643,6 +843,7 @@ async function main() {
   const existingEmailIds = new Set((settings.automationEmails || []).map((email) => email.id));
   const diagnostics = {
     people: people.length,
+    activities: activities.length,
     activePinPeople: openAccessFallbackWelcomePeople(people).length,
     welcomeAutomationActive: automationActive(settings.automations, "new_person_welcome"),
     queuedWelcomePeople: 0,
@@ -705,8 +906,9 @@ async function main() {
   let digest = null;
   if (digestShouldSend) {
     const subjectPrefix = testRecipients.length ? "[TEST] " : "";
-    const subject = `${subjectPrefix}Digest quotidien TWEM Brico - ${formatFrDate(targetDate)}`;
-    const body = buildDigestBody(stores, tickets, targetDate);
+    const reportDate = addDays(now, -1);
+    const subject = `${subjectPrefix}Rapport activite TWEM Brico - ${formatFrDate(reportDate)}`;
+    const body = buildActivityDigestBody(stores, tickets, activities, now);
     let mailResult = null;
     if (!dryRun) {
       mailResult = await sendOutlookMail({ subject, body, recipients });
