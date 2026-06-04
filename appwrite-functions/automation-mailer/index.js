@@ -262,6 +262,15 @@ function digestStoreLine(store = {}, detail = "") {
   return detail ? `${base} : ${detail}` : base;
 }
 
+function digestStoreCompactLine(store = {}, detail = "") {
+  const base = digestStoreCode(store);
+  return detail ? `${base} : ${detail}` : base;
+}
+
+function uniqueDigestList(items = []) {
+  return Array.from(new Set(items.map((item) => String(item || "").trim()).filter(Boolean)));
+}
+
 function normalizeKey(value) {
   return String(value || "")
     .normalize("NFD")
@@ -313,7 +322,7 @@ function ticketTargetLabel(ticket = {}) {
 }
 
 function digestTicketLine(ticket = {}) {
-  return `${ticket.storeCode || "-"} | ${ticket.id || "-"} | ${ticket.concern || ticket.requestKind || "SAV"} | ${ticketTargetLabel(ticket)}`;
+  return `${ticket.storeCode || "-"} | ${ticket.id || "-"} | ${ticket.concern || ticket.requestKind || "SAV"}`;
 }
 
 function activityDayItems(activities = [], dayKey) {
@@ -351,33 +360,33 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
       || workflow.ltSwitchStatus || workflow.ltSwitchDate || workflow.mobileCoverage
       || activityForStore(store, (comment) => /(vlan|cabl|switch|pre.?visite|preparation|reseau|couverture)/i.test(comment));
   });
-  const vlanOk = preparationStores.filter((store) => isVlanOk(workflowOf(store))).map(digestStoreCode);
-  const vlanBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).vlan22Activated) || isBlockedStatus(workflowOf(store).vlan22Status)).map((store) => digestStoreLine(store, workflowOf(store).vlan22Status || workflowOf(store).vlan22Activated));
-  const cablingOk = preparationStores.filter((store) => normalizeKey(workflowOf(store).cablingStatus) === "ok").map(digestStoreCode);
-  const cablingBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).cablingStatus)).map((store) => digestStoreLine(store, workflowOf(store).cablingStatus));
-  const switchOk = preparationStores.filter((store) => ["ok", "basculee"].includes(normalizeKey(workflowOf(store).ltSwitchStatus))).map(digestStoreCode);
-  const switchBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).ltSwitchStatus)).map((store) => digestStoreLine(store, workflowOf(store).ltSwitchStatus));
+  const vlanOk = uniqueDigestList(preparationStores.filter((store) => isVlanOk(workflowOf(store))).map(digestStoreCode));
+  const vlanBlocked = uniqueDigestList(preparationStores.filter((store) => isBlockedStatus(workflowOf(store).vlan22Activated) || isBlockedStatus(workflowOf(store).vlan22Status)).map((store) => digestStoreCompactLine(store, workflowOf(store).vlan22Status || workflowOf(store).vlan22Activated)));
+  const cablingOk = uniqueDigestList(preparationStores.filter((store) => normalizeKey(workflowOf(store).cablingStatus) === "ok").map(digestStoreCode));
+  const cablingBlocked = uniqueDigestList(preparationStores.filter((store) => isBlockedStatus(workflowOf(store).cablingStatus)).map((store) => digestStoreCompactLine(store, workflowOf(store).cablingStatus)));
+  const switchOk = uniqueDigestList(preparationStores.filter((store) => ["ok", "basculee"].includes(normalizeKey(workflowOf(store).ltSwitchStatus))).map(digestStoreCode));
+  const switchBlocked = uniqueDigestList(preparationStores.filter((store) => isBlockedStatus(workflowOf(store).ltSwitchStatus)).map((store) => digestStoreCompactLine(store, workflowOf(store).ltSwitchStatus)));
   const mobileCoverage = preparationStores.filter((store) => {
     const value = normalizeKey(workflowOf(store).mobileCoverage);
     return value && value !== "a_verifier";
-  }).map((store) => digestStoreLine(store, workflowOf(store).mobileCoverage));
-  const mobileBlocked = preparationStores.filter((store) => isBlockedStatus(workflowOf(store).mobileCoverage)).map((store) => digestStoreLine(store, workflowOf(store).mobileCoverage));
+  }).map((store) => digestStoreCompactLine(store, workflowOf(store).mobileCoverage));
+  const mobileBlocked = uniqueDigestList(preparationStores.filter((store) => isBlockedStatus(workflowOf(store).mobileCoverage)).map((store) => digestStoreCompactLine(store, workflowOf(store).mobileCoverage)));
 
   const installToday = stores.filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, todayKey)).map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
   const installTomorrow = stores.filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, tomorrowKey)).map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
   const installCancelled = dayActivities.filter((activity) => /annul|cancel|reporte|deplace|deplac/i.test(String(activity.comment || ""))).map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`);
 
-  const configComplete = changedStores.filter(isNetworkConfigOk).map((store) => {
+  const configComplete = uniqueDigestList(changedStores.filter(isNetworkConfigOk).map((store) => {
     const summary = networkConfigSummary(store);
-    return digestStoreLine(store, `${summary.configured}/${summary.total || 0}`);
-  });
-  const configPartial = changedStores.filter((store) => {
+    return digestStoreCompactLine(store, `${summary.configured}/${summary.total || 0}`);
+  }));
+  const configPartial = uniqueDigestList(changedStores.filter((store) => {
     const summary = networkConfigSummary(store);
     return summary.configured > 0 && !isNetworkConfigOk(store);
   }).map((store) => {
     const summary = networkConfigSummary(store);
-    return digestStoreLine(store, `${summary.configured}/${summary.total || 0}`);
-  });
+    return digestStoreCompactLine(store, `${summary.configured}/${summary.total || 0}`);
+  }));
 
   const savNew = tickets.filter((ticket) => sameDateKey(ticket.createdAt, reportKey)).map(digestTicketLine);
   const savClosed = tickets.filter((ticket) =>
@@ -392,9 +401,9 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
   const addedPlans = stores
     .filter((store) => sameDateKey(workflowOf(store).planPdfUpdatedAt, reportKey))
     .map((store) => digestStoreLine(store, workflowOf(store).planPdfName || "document ajoute"));
-  const generalActivities = dayActivities
+  const generalActivities = uniqueDigestList(dayActivities
     .filter((activity) => !/sav|document|plan|vlan|cabl|switch|pre.?visite|configuration|install/i.test(String(activity.comment || "")))
-    .map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`);
+    .map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`));
 
   return [
     "Digest du jour :",
@@ -408,7 +417,7 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
     `Blocage cablage : ${cablingBlocked.join(" / ") || "-"}`,
     `Switch OK : ${switchOk.join(" - ") || "-"}`,
     `Blocage switch : ${switchBlocked.join(" / ") || "-"}`,
-    `Couverture mobile : ${mobileCoverage.join(" / ") || "-"}`,
+    `Couverture mobile : ${uniqueDigestList(mobileCoverage).join(" / ") || "-"}`,
     `Blocage couverture mobile : ${mobileBlocked.join(" / ") || "-"}`,
     "",
     "Installations",
