@@ -954,6 +954,180 @@ const translations = {
   }
 };
 
+const nlUiTextMap = {
+  "Navigation": "Navigatie",
+  "Dashboard": "Dashboard",
+  "Timeline / Planning": "Tijdlijn / Planning",
+  "Magasins": "Winkels",
+  "Configuration magasin": "Winkelconfiguratie",
+  "SAV / Tickets": "SAV / Tickets",
+  "Extensions": "Extensies",
+  "Invoice": "Facturatie",
+  "TUTO": "TUTO",
+  "Contacts": "Contacten",
+  "Rapports": "Rapporten",
+  "Automatisations": "Automatiseringen",
+  "Tools TWEM": "Tools TWEM",
+  "PIN / Acces": "PIN / Toegang",
+  "Import / Export": "Import / Export",
+  "Qui voit quoi": "Wie ziet wat",
+  "Recherche": "Zoeken",
+  "Statut": "Status",
+  "Etape": "Stap",
+  "Type magasin": "Winkeltype",
+  "Ville / region": "Stad / regio",
+  "Provenance": "Herkomst",
+  "Date": "Datum",
+  "Langue": "Taal",
+  "Tous": "Alle",
+  "Toutes": "Alle",
+  "A commencer": "Te starten",
+  "En cours": "Bezig",
+  "Termine": "Voltooid",
+  "Termines": "Voltooid",
+  "Bloque": "Geblokkeerd",
+  "Bloques": "Geblokkeerd",
+  "Sans rendez-vous": "Zonder afspraak",
+  "Aujourd hui": "Vandaag",
+  "Cette semaine": "Deze week",
+  "En retard": "Te laat",
+  "Futur": "Toekomst",
+  "Import fichier": "Bestand importeren",
+  "Creation / impression rapport": "Rapport maken / afdrukken",
+  "Imprimer la liste affichee": "Getoonde lijst afdrukken",
+  "Imprimer la fiche complete": "Volledige fiche afdrukken",
+  "Imprimer": "Afdrukken",
+  "Voir fiche": "Fiche bekijken",
+  "Voir la fiche": "Fiche bekijken",
+  "Fermer fiche": "Fiche sluiten",
+  "Ouvrir la configuration": "Configuratie openen",
+  "Enregistrer ce magasin": "Winkel opslaan",
+  "Sauvegarder ce bloc": "Blok opslaan",
+  "Sauvegarder la preparation": "Voorbereiding opslaan",
+  "Confirmer / envoyer": "Bevestigen / verzenden",
+  "Modifier": "Wijzigen",
+  "Supprimer": "Verwijderen",
+  "Desactiver": "Deactiveren",
+  "Activer": "Activeren",
+  "Envoyer mail": "Mail verzenden",
+  "Mail envoye": "Mail verzonden",
+  "Jamais": "Nooit",
+  "Derniere connexion": "Laatste verbinding",
+  "Expiration": "Vervaldatum",
+  "Mail acces": "Toegangsmail",
+  "Acces envoye": "Toegang verzonden",
+  "Acces pas encore envoye": "Toegang nog niet verzonden",
+  "Diffusion progressive": "Gefaseerde verspreiding",
+  "Historique des acces PIN": "Historiek PIN-toegang",
+  "Nom": "Naam",
+  "Telephone": "Telefoon",
+  "Mail": "Mail",
+  "Role": "Rol",
+  "Magasin lie": "Gekoppelde winkel",
+  "Nouveau contact": "Nieuw contact",
+  "Liste des contacts": "Contactenlijst",
+  "Ajouter une personne": "Persoon toevoegen",
+  "Ajouter le role": "Rol toevoegen",
+  "Ajouter un magasin": "Winkel toevoegen",
+  "Nom magasin": "Winkelnaam",
+  "Nom du magasin": "Winkelnaam",
+  "N du magasin": "Winkelnummer",
+  "Responsable magasin": "Winkelverantwoordelijke",
+  "Responsable": "Verantwoordelijke",
+  "Demandeur": "Aanvrager",
+  "Materiel concerne / commande": "Betrokken materiaal / bestelling",
+  "Ce que ca concerne": "Waarover gaat het",
+  "Type de demande": "Type aanvraag",
+  "Quantite demandee": "Gevraagde hoeveelheid",
+  "Note explicative libre": "Vrije toelichting",
+  "Aucun ticket SAV pour ce magasin pour le moment.": "Nog geen SAV-ticket voor deze winkel.",
+  "Documents / Plan magasin": "Documenten / winkelplan",
+  "Aucun plan PDF importe": "Geen PDF-plan geimporteerd",
+  "Importer le plan PDF": "PDF-plan importeren",
+  "Remplacer le document": "Document vervangen",
+  "Ouvrir le PDF": "PDF openen",
+  "Telecharger le ZIP": "ZIP downloaden",
+  "Statut global": "Globale status",
+  "Probleme / notes": "Probleem / notities",
+  "Quantites magasin": "Winkelhoeveelheden",
+  "Licences": "Licenties",
+  "Postes fixes": "Vaste toestellen",
+  "Mobiles": "Mobiele toestellen",
+  "Mobile smartphone": "Mobiele smartphone",
+  "Flash light": "Flashlight",
+  "Call buttons": "Call buttons",
+  "Panic buttons": "Panic buttons",
+  "Preparation chantier": "Werfvoorbereiding",
+  "Preparation externe": "Externe voorbereiding",
+  "Installation": "Installatie",
+  "Couverture mobile": "Mobiele dekking",
+  "Cablage": "Bekabeling",
+  "Date cablage": "Datum bekabeling",
+  "Date switch": "Datum switch",
+  "Nouvelle remarque preparation externe": "Nieuwe opmerking externe voorbereiding",
+  "Nouvelle remarque installation": "Nieuwe opmerking installatie",
+  "Aucune remarque enregistree.": "Geen opmerking opgeslagen.",
+  "Elements confirmes": "Bevestigde elementen",
+  "Coordination Destiny": "Coordination Destiny",
+  "Pre-visite": "Pre-visit",
+  "Previsite OK": "Pre-visit OK",
+  "Previsite a suivre": "Pre-visit op te volgen",
+  "Configuration reseau": "Netwerkconfiguratie",
+  "Configuration complete": "Configuratie volledig",
+  "Configuration incomplete": "Configuratie onvolledig",
+  "Choix telephonie": "Telefoniekeuze",
+  "Config OK": "Config OK",
+  "Config a faire": "Config te doen",
+  "VLAN22 OK": "VLAN22 OK",
+  "VLAN22 a valider": "VLAN22 te valideren",
+  "Infra a valider": "Infra te valideren",
+  "Pre-visite OK": "Pre-visit OK",
+  "Pre-visite a faire": "Pre-visit te doen",
+  "Installation a faire": "Installatie te doen",
+  "Winkelopvolging telefonie": "Winkelopvolging telefonie",
+  "Base de suivi globale": "Globale opvolgbasis",
+  "Type magasin DOS": "Winkeltype DOS",
+  "Type magasin FOS": "Winkeltype FOS",
+  "Type magasin FOSDOS": "Winkeltype FOSDOS",
+  "Interventions prevues": "Geplande interventies",
+  "Magasins avec SAV": "Winkels met SAV",
+  "Chantiers clotures": "Afgesloten werven",
+  "Dossiers a debloquer": "Dossiers te deblokkeren",
+  "Statut projets": "Projectstatus",
+  "A lancer": "Op te starten",
+  "En attente infos": "Wachten op info",
+  "Validation VLAN22": "Validatie VLAN22",
+  "Validation Infra": "Validatie Infra",
+  "PO attente": "PO in afwachting",
+  "Tickets urgents": "Dringende tickets",
+  "Dossiers a demarrer": "Dossiers op te starten",
+  "Config magasin attendue": "Winkelconfig verwacht",
+  "VLAN22 a valider": "VLAN22 te valideren",
+  "Cablage / alarme": "Bekabeling / alarm",
+  "Commandes a relancer": "Bestellingen op te volgen",
+  "SAV prioritaire": "Prioritaire SAV",
+  "Mail libre / lancement app": "Vrije mail / lancering app",
+  "Destinataires": "Ontvangers",
+  "Objet FR": "Onderwerp FR",
+  "Texte FR": "Tekst FR",
+  "Objet NL": "Onderwerp NL",
+  "Texte NL": "Tekst NL",
+  "Ouvrir Outlook": "Outlook openen",
+  "Copier destinataires + texte": "Ontvangers + tekst kopieren",
+  "Reinitialiser le brouillon": "Concept resetten"
+};
+
+const nlUiPlaceholderMap = {
+  "Ex: Anderlecht": "Bv: Anderlecht",
+  "Choisir une extension / un lieu": "Kies een extensie / locatie",
+  "Choisir une extension": "Kies een extensie",
+  "Choisir un materiel": "Kies materiaal",
+  "Decris le probleme, le besoin ou le contexte de la demande SAV": "Beschrijf het probleem, de behoefte of de context van de SAV-aanvraag",
+  "Decris le probleme a traiter": "Beschrijf het te behandelen probleem",
+  "Ex: personnaliser la touche / commentaire": "Bv: toets personaliseren / opmerking",
+  "La remarque sera horodatee avec ton nom lors de la sauvegarde.": "De opmerking krijgt datum, uur en jouw naam bij het opslaan."
+};
+
 const initialPeople = [
   { id: "p1", name: "Emir", role: "admin_twem", phone: "0470 00 00 01", email: "emir@twem.be", storeCode: "", language: "fr" },
   { id: "p2", name: "Valou", role: "supadmin_twem", phone: "0470 00 00 02", email: "backoffice@twem.be", storeCode: "", language: "fr" },
@@ -2745,14 +2919,14 @@ function tabTitle(tab) {
     stores: isNl ? "Winkels" : "Magasins",
     configuration: isNl ? "Configuratie winkel" : "Configuration magasin",
     sav: "SAV / Tickets",
-    extensions: "Extensions",
-    invoice: "Invoice",
+    extensions: isNl ? "Extensies" : "Extensions",
+    invoice: isNl ? "Facturatie" : "Invoice",
     tuto: "TUTO",
     contacts: isNl ? "Contacten" : "Contacts",
     reports: isNl ? "Rapporten" : "Rapports",
     automations: isNl ? "Automatiseringen" : "Automatisations",
     tools: "Tools TWEM",
-    "pin-access": "PIN / Acces",
+    "pin-access": isNl ? "PIN / Toegang" : "PIN / Acces",
     "import-export": isNl ? "Import / Export" : "Import / Export",
     visibility: isNl ? "Wie ziet wat" : "Qui voit quoi"
   };
@@ -13712,6 +13886,75 @@ function applyStaticTranslations() {
     <option value="done">${t("done")}</option>
   `;
   statusFilter.value = state.filters.status;
+  schedulePostRenderLanguagePass();
+}
+
+function schedulePostRenderLanguagePass() {
+  if (state.language !== "nl" || typeof window === "undefined") {
+    return;
+  }
+  window.requestAnimationFrame(applyPostRenderLanguagePass);
+}
+
+function translateExactText(value, map) {
+  if (!value) {
+    return value;
+  }
+  const leading = value.match(/^\s*/)?.[0] || "";
+  const trailing = value.match(/\s*$/)?.[0] || "";
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  return Object.prototype.hasOwnProperty.call(map, trimmed) ? `${leading}${map[trimmed]}${trailing}` : value;
+}
+
+function applyPostRenderLanguagePass() {
+  if (state.language !== "nl") {
+    return;
+  }
+  const root = document.body;
+  if (!root) {
+    return;
+  }
+  const ignoredTags = new Set(["SCRIPT", "STYLE", "TEXTAREA", "INPUT"]);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || ignoredTags.has(parent.tagName)) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      if (!node.nodeValue || !node.nodeValue.trim()) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const nodes = [];
+  while (walker.nextNode()) {
+    nodes.push(walker.currentNode);
+  }
+  nodes.forEach((node) => {
+    const next = translateExactText(node.nodeValue, nlUiTextMap);
+    if (next !== node.nodeValue) {
+      node.nodeValue = next;
+    }
+  });
+  document.querySelectorAll("[placeholder]").forEach((node) => {
+    const next = translateExactText(node.getAttribute("placeholder"), nlUiPlaceholderMap);
+    if (next !== node.getAttribute("placeholder")) {
+      node.setAttribute("placeholder", next);
+    }
+  });
+  document.querySelectorAll("[title]").forEach((node) => {
+    const next = translateExactText(node.getAttribute("title"), nlUiTextMap);
+    if (next !== node.getAttribute("title")) {
+      node.setAttribute("title", next);
+    }
+  });
+  document.querySelectorAll("[aria-label]").forEach((node) => {
+    const next = translateExactText(node.getAttribute("aria-label"), nlUiTextMap);
+    if (next !== node.getAttribute("aria-label")) {
+      node.setAttribute("aria-label", next);
+    }
+  });
 }
 
 async function handlePersonSubmit(event) {
