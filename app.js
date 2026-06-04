@@ -8224,31 +8224,101 @@ function handleLaunchMailSubmit(event) {
       });
     }
   });
-  const copyText = mailJobs.map((job, index) => [
-    `Mail ${index + 1} - ${job.language}`,
-    `CCI: ${launchMailAddressList(job.people)}`,
-    `Objet: ${job.subject}`,
-    "",
-    job.body
-  ].join("\n")).join("\n\n-----\n\n");
-  navigator.clipboard?.writeText(copyText).catch(() => {});
-  const openedWindows = mailJobs.map(() => window.open("", "_blank"));
-  mailJobs.forEach((job, index) => {
-    const url = outlookComposeUrl({
+  const dispatchWindow = window.open("", "_blank");
+  if (!dispatchWindow) {
+    window.alert("La fenetre d'envoi a ete bloquee par le navigateur.");
+    return;
+  }
+  writeLaunchMailDispatcherWindow(dispatchWindow, mailJobs, payload);
+}
+
+function writeLaunchMailDispatcherWindow(targetWindow, mailJobs, payload) {
+  const jobs = mailJobs.map((job, index) => ({
+    index: index + 1,
+    language: job.language,
+    count: job.people.length,
+    cci: launchMailAddressList(job.people),
+    subject: job.subject,
+    body: job.body,
+    url: outlookComposeUrl({
       to: payload.to,
       bcc: launchMailAddressList(job.people),
       subject: job.subject,
       body: job.body
-    });
-    window.setTimeout(() => {
-      if (openedWindows[index] && !openedWindows[index].closed) {
-        openedWindows[index].location.href = url;
-      } else {
-        window.open(url, "_blank");
-      }
-    }, index * 350);
-  });
-  window.alert(`${payload.recipients.length} destinataires repartis en ${mailJobs.length} mail(s) Outlook.\n\nFR: ${payload.groups.fr.length} - NL: ${payload.groups.nl.length}\n\nLes listes CCI ont aussi ete copiees dans le presse-papiers au cas ou Outlook ne les remplit pas automatiquement.`);
+    })
+  }));
+  const jobsJson = JSON.stringify(jobs).replace(/<\/script/gi, "<\\/script");
+  targetWindow.document.open();
+  targetWindow.document.write(`
+    <!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8">
+        <title>Envoi mails lancement app</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 22px; color: #201b10; background: #f7f3e8; }
+          h1 { margin: 0 0 6px; font-size: 22px; }
+          p { margin: 0 0 16px; color: #675f52; }
+          .mail-card { display: grid; gap: 10px; margin: 14px 0; padding: 14px; border: 1px solid #dfd2b8; border-radius: 10px; background: #fffdf8; }
+          .head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+          .badge { padding: 6px 10px; border-radius: 999px; background: #ffec74; font-weight: 700; }
+          label { display: grid; gap: 5px; font-weight: 700; }
+          textarea, input { width: 100%; box-sizing: border-box; border: 1px solid #dfd2b8; border-radius: 8px; padding: 8px; font: inherit; background: #fff; }
+          textarea { min-height: 74px; resize: vertical; }
+          .body-text { min-height: 150px; }
+          .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+          a, button { border: 0; border-radius: 999px; padding: 10px 14px; background: #c43b2f; color: #fff; font-weight: 700; text-decoration: none; cursor: pointer; }
+          button.secondary { background: #ffdd4a; color: #201b10; }
+          .hint { padding: 10px 12px; border-radius: 8px; background: #fff8d1; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <h1>Mails lancement app</h1>
+        <p>FR: ${payload.groups.fr.length} destinataire(s) - NL: ${payload.groups.nl.length} destinataire(s). Ouvre les mails un par un. Si Outlook ne remplit pas le CCI, copie uniquement le CCI du bloc concerne.</p>
+        <div class="hint">Chaque bloc correspond a un seul mail Outlook. Les destinataires sont separes par langue.</div>
+        <div id="mailJobs"></div>
+        <script>
+          const jobs = ${jobsJson};
+          const container = document.getElementById("mailJobs");
+          function escapeHtml(value) {
+            return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+          }
+          function copyText(value, label) {
+            navigator.clipboard?.writeText(value).then(
+              () => alert(label + " copie."),
+              () => {
+                const area = document.createElement("textarea");
+                area.value = value;
+                document.body.append(area);
+                area.select();
+                document.execCommand("copy");
+                area.remove();
+                alert(label + " copie.");
+              }
+            );
+          }
+          container.innerHTML = jobs.map((job, idx) => \`
+            <article class="mail-card">
+              <div class="head">
+                <strong>Mail \${job.index} - \${escapeHtml(job.language)}</strong>
+                <span class="badge">\${job.count} destinataire(s)</span>
+              </div>
+              <label>CCI<textarea readonly id="cci-\${idx}">\${escapeHtml(job.cci)}</textarea></label>
+              <label>Objet<input readonly value="\${escapeHtml(job.subject)}"></label>
+              <label>Texte<textarea readonly class="body-text">\${escapeHtml(job.body)}</textarea></label>
+              <div class="actions">
+                <button type="button" class="secondary" onclick="copyText(jobs[\${idx}].cci, 'CCI')">Copier CCI</button>
+                <button type="button" class="secondary" onclick="copyText(jobs[\${idx}].subject + '\\\\n\\\\n' + jobs[\${idx}].body, 'Objet + texte')">Copier objet + texte</button>
+                <a href="\${escapeHtml(job.url)}" target="_blank" rel="noreferrer">Ouvrir Outlook</a>
+              </div>
+            </article>
+          \`).join("");
+        </script>
+      </body>
+    </html>
+  `);
+  targetWindow.document.close();
+  targetWindow.focus();
 }
 
 function renderAutomationEmailQueue() {
