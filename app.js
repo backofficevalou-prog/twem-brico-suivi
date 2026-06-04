@@ -1117,6 +1117,99 @@ const nlUiTextMap = {
   "Reinitialiser le brouillon": "Concept resetten"
 };
 
+const nlUiPhraseMap = {
+  "Vue d ensemble": "Overzicht",
+  "Vue de pilotage rapide des besoins reseau et materiel du magasin.": "Snelle opvolging van netwerk- en materiaalbehoeften van de winkel.",
+  "Recap configuration et preparation": "Samenvatting configuratie en voorbereiding",
+  "Vue synthetique des demandes transmises et des elements deja confirmes.": "Synthetisch overzicht van verzonden aanvragen en reeds bevestigde elementen.",
+  "Demandes transmises": "Verzonden aanvragen",
+  "Elements confirmes": "Bevestigde elementen",
+  "Demande configuration": "Configuratieaanvraag",
+  "Commande articles": "Bestelling artikelen",
+  "Mail configuration": "Configuratiemail",
+  "Ticket Destiny": "Destiny-ticket",
+  "Date telephonie actuelle": "Huidige telefoniedatum",
+  "Configuration VLAN22": "VLAN22-configuratie",
+  "Reference recue": "Referentie ontvangen",
+  "A envoyer": "Te verzenden",
+  "A confirmer": "Te bevestigen",
+  "A renseigner": "In te vullen",
+  "En attente": "In afwachting",
+  "Confirmee": "Bevestigd",
+  "Confirmes": "Bevestigd",
+  "Oui": "Ja",
+  "Non": "Nee",
+  "Fait": "Gedaan",
+  "Termine": "Voltooid",
+  "Configure": "Geconfigureerd",
+  "Postes magasin": "Winkeltoestellen",
+  "ligne(s) configuree(s)": "lijn(en) geconfigureerd",
+  "ligne(s) configure(s)": "lijn(en) geconfigureerd",
+  "Les choix enregistres dans Configuration magasin remonteront ici des qu ils seront completes.": "De keuzes die in Winkelconfiguratie worden opgeslagen, verschijnen hier zodra ze volledig zijn.",
+  "Les choix enregistres dans Configuration magasin remonteront ici des qu'ils seront completes.": "De keuzes die in Winkelconfiguratie worden opgeslagen, verschijnen hier zodra ze volledig zijn.",
+  "Choix telephonie confirmes et visibles ici sans devoir ouvrir l onglet configuration.": "Bevestigde telefoniekeuzes zijn hier zichtbaar zonder de configuratietab te openen.",
+  "Configuration detaillee": "Gedetailleerde configuratie",
+  "Lecture directe de toute la configuration sans devoir repasser par l onglet Configuration magasin.": "Directe lezing van de volledige configuratie zonder terug te gaan naar de tab Winkelconfiguratie.",
+  "Type d alarme": "Type alarm",
+  "Type d'alarme": "Type alarm",
+  "Societe": "Bedrijf",
+  "Tel centrale alarme": "Telefoon alarmcentrale",
+  "Autres": "Andere",
+  "Groupes d appel et cascades": "Oproepgroepen en cascades",
+  "Groupes d appel": "Oproepgroepen",
+  "Groupes d'appel": "Oproepgroepen",
+  "Cascades": "Cascades",
+  "Cloture installation Destiny": "Afsluiting installatie Destiny",
+  "Validation de fin d intervention et remarques de chantier apres installation.": "Validatie einde interventie en werfopmerkingen na installatie.",
+  "Installation Destiny terminee": "Installatie Destiny voltooid",
+  "Mail de fin equipe Brico": "Eindmail team Brico",
+  "Retour Brico / bascule": "Feedback Brico / omschakeling",
+  "Remarques finales du magasin et eventuelle bascule vers la plateforme": "Eindopmerkingen van de winkel en eventuele omschakeling naar het platform",
+  "Remarques finales": "Eindopmerkingen",
+  "Ligne du temps": "Tijdlijn",
+  "Chronologie des rendez-vous programmes pour ce magasin.": "Chronologie van de geplande afspraken voor deze winkel.",
+  "Aucun rendez-vous programme.": "Geen afspraak gepland.",
+  "Rendez-vous pris": "Gemaakte afspraken",
+  "Plusieurs rendez-vous et plusieurs jours d installation possibles par magasin.": "Meerdere afspraken en installatiedagen mogelijk per winkel.",
+  "Aucun rendez-vous pour ce magasin.": "Geen afspraak voor deze winkel.",
+  "Nouveau rendez-vous": "Nieuwe afspraak",
+  "Personnes concernees": "Betrokken personen",
+  "Note rendez-vous": "Opmerking afspraak",
+  "Confirmer / envoyer": "Bevestigen / verzenden",
+  "Demande SAV / ticket": "SAV-aanvraag / ticket",
+  "Les demandes arrivent d abord chez TWEM. Emir ou Valou dispatchent ensuite vers la bonne personne avant intervention.": "Aanvragen komen eerst bij TWEM terecht. Emir of Valou sturen ze daarna door naar de juiste persoon voor interventie.",
+  "La demande sera envoyee a Emir et Valou pour dispatch.": "De aanvraag wordt naar Emir en Valou gestuurd voor dispatch.",
+  "Reception TWEM": "Ontvangst TWEM",
+  "N de magasin": "Winkelnummer",
+  "Nom du magasin": "Winkelnaam",
+  "Type de demande": "Type aanvraag",
+  "Ce que ca concerne": "Waarover gaat het",
+  "Materiel concerne / commande": "Betrokken materiaal / bestelling",
+  "Extension liee": "Gekoppelde extensie",
+  "Quantite demandee": "Gevraagde hoeveelheid",
+  "Workflow materiel supplementaire": "Workflow extra materiaal",
+  "Note explicative libre": "Vrije toelichting",
+  "Choisir un materiel": "Kies materiaal",
+  "Choisir une extension": "Kies een extensie",
+  "Demande creee": "Aanvraag aangemaakt",
+  "Poste fixe": "Vast toestel",
+  "Mobile": "Mobiel",
+  "Quantites magasin": "Winkelhoeveelheden",
+  "Licences": "Licenties",
+  "Postes fixes": "Vaste toestellen",
+  "Fix big": "Fix big",
+  "Mobiles": "Mobiele toestellen",
+  "Mobile smartphone": "Mobiele smartphone",
+  "Date telephonie actuelle": "Huidige telefoniedatum",
+  "IP range": "IP-range",
+  "Recap configuration": "Samenvatting configuratie",
+  "Equipements": "Uitrusting",
+  "Documents": "Documenten",
+  "Cloture": "Afsluiting",
+  "Enregistrer": "Opslaan",
+  "Ouvrir la configuration detaillee": "Gedetailleerde configuratie openen"
+};
+
 const nlUiPlaceholderMap = {
   "Ex: Anderlecht": "Bv: Anderlecht",
   "Choisir une extension / un lieu": "Kies een extensie / locatie",
@@ -10733,42 +10826,56 @@ function render() {
     renderStores();
     renderActivities();
     applyReadOnlyRules();
+    finalizeRender();
     return;
   }
   if (activePanel === "contacts") {
     renderPeopleList();
     renderIntervenantList();
     renderRoleList();
+    finalizeRender();
     return;
   }
   if (activePanel === "reports") {
     renderStores();
     renderActivities();
+    finalizeRender();
     return;
   }
   if (activePanel === "automations") {
     renderAutomations();
+    finalizeRender();
     return;
   }
   if (activePanel === "import-export") {
     renderImportExportHistory();
+    finalizeRender();
     return;
   }
   if (activePanel === "pin-access") {
     renderPinRolloutList();
     renderPinAccessList();
+    finalizeRender();
     return;
   }
   if (activePanel === "tools") {
     renderToolList();
+    finalizeRender();
     return;
   }
   if (activePanel === "visibility") {
     renderVisibilityEditor();
     renderVisibilityOverrides();
+    finalizeRender();
     return;
   }
   applyReadOnlyRules();
+  finalizeRender();
+}
+
+function finalizeRender() {
+  applyReadOnlyRules();
+  schedulePostRenderLanguagePass();
 }
 
 async function importJsonData(payload) {
@@ -13638,6 +13745,8 @@ async function handlePinSubmit(event) {
   }];
 
   state.activeUserName = matchedPerson.name;
+  state.language = normalizeLanguageCode(matchedPerson.language) === "nl" ? "nl" : "fr";
+  document.documentElement.lang = state.language;
   state.pinValidated = true;
   if (shouldOpenTutorialOnLogin(matchedPerson)) {
     state.activeAdminTab = "tuto";
@@ -13732,6 +13841,11 @@ async function handlePinAccessSubmit(event) {
 
 function handleActiveUserChange(event) {
   state.activeUserName = event.target.value;
+  const selectedPerson = state.people.find((person) => person.name === state.activeUserName);
+  if (selectedPerson) {
+    state.language = normalizeLanguageCode(selectedPerson.language) === "nl" ? "nl" : "fr";
+    document.documentElement.lang = state.language;
+  }
   state.roleViewUnlocked = true;
   state.pinValidated = true;
   ensureValidActiveTab();
@@ -13906,6 +14020,18 @@ function translateExactText(value, map) {
   return Object.prototype.hasOwnProperty.call(map, trimmed) ? `${leading}${map[trimmed]}${trailing}` : value;
 }
 
+function translateUiTextValue(value) {
+  let next = translateExactText(value, nlUiTextMap);
+  Object.entries(nlUiPhraseMap)
+    .sort((a, b) => b[0].length - a[0].length)
+    .forEach(([from, to]) => {
+      if (next.includes(from)) {
+        next = next.split(from).join(to);
+      }
+    });
+  return next;
+}
+
 function applyPostRenderLanguagePass() {
   if (state.language !== "nl") {
     return;
@@ -13918,7 +14044,7 @@ function applyPostRenderLanguagePass() {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
-      if (!parent || ignoredTags.has(parent.tagName)) {
+      if (!parent || ignoredTags.has(parent.tagName) || parent.isContentEditable) {
         return NodeFilter.FILTER_REJECT;
       }
       if (!node.nodeValue || !node.nodeValue.trim()) {
@@ -13932,7 +14058,7 @@ function applyPostRenderLanguagePass() {
     nodes.push(walker.currentNode);
   }
   nodes.forEach((node) => {
-    const next = translateExactText(node.nodeValue, nlUiTextMap);
+    const next = translateUiTextValue(node.nodeValue);
     if (next !== node.nodeValue) {
       node.nodeValue = next;
     }
