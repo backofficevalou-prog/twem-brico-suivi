@@ -253,6 +253,12 @@ function buildDigestBody(stores, tickets, targetDate) {
   ].join("\n");
 }
 
+const PENDING_INSTALLATION_CANCELLATIONS = [
+  { codes: ["BRI-3597", "3597"], label: "3597 Brico Fleron" },
+  { codes: ["BRI-5430", "5430"], label: "5430 Briko Depot Fontaine-l'Eveque" },
+  { codes: ["BRI-3621", "3621"], label: "3621 Brico Middelkerke" }
+];
+
 function digestStoreCode(store = {}) {
   return String(store.shopNumber || store.shop_number || store.code || store.name || "-").replace(/^BRI-?/i, "");
 }
@@ -269,6 +275,53 @@ function digestStoreCompactLine(store = {}, detail = "") {
 
 function uniqueDigestList(items = []) {
   return Array.from(new Set(items.map((item) => String(item || "").trim()).filter(Boolean)));
+}
+
+function digestStoreKeySet(store = {}) {
+  return new Set([
+    String(store.code || "").trim().toUpperCase(),
+    String(store.shopNumber || store.shop_number || "").trim().toUpperCase(),
+    String(store.name || "").trim().toUpperCase()
+  ].filter(Boolean));
+}
+
+function pendingInstallationCancellationForStore(store = {}) {
+  const keys = digestStoreKeySet(store);
+  return PENDING_INSTALLATION_CANCELLATIONS.find((entry) =>
+    entry.codes.some((code) => keys.has(String(code || "").trim().toUpperCase()))
+  );
+}
+
+function isPendingInstallationCancellation(store = {}) {
+  return Boolean(pendingInstallationCancellationForStore(store));
+}
+
+function pendingInstallationCancellationLines(stores = []) {
+  const storeLines = stores
+    .filter(isPendingInstallationCancellation)
+    .map((store) => `${digestStoreCode(store)} ${store.name || ""}`.trim());
+  const knownStoreCodes = new Set(stores.filter(isPendingInstallationCancellation).map((store) => digestStoreCode(store)));
+  const fallbackLines = PENDING_INSTALLATION_CANCELLATIONS
+    .filter((entry) => !entry.codes.some((code) => knownStoreCodes.has(String(code || "").replace(/^BRI-?/i, "").trim())))
+    .map((entry) => entry.label);
+  return uniqueDigestList([...storeLines, ...fallbackLines].map((line) => `${line} : date a transmettre ulterieurement`));
+}
+
+function upcomingInstallationLines(stores = [], now = new Date(), days = 5) {
+  const startKey = dateKey(now);
+  const endKey = dateKey(addDays(now, Math.max(days - 1, 0)));
+  const byDate = new Map();
+  stores.forEach((store) => {
+    if (isPendingInstallationCancellation(store)) return;
+    const installKey = normalizeDateOnly(workflowOf(store).destinyInstallDate);
+    if (!installKey || installKey < startKey || installKey > endKey) return;
+    const rows = byDate.get(installKey) || [];
+    rows.push(`${digestStoreCode(store)} ${store.name || ""}`.trim());
+    byDate.set(installKey, rows);
+  });
+  return Array.from(byDate.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, rows]) => `${date} : ${uniqueDigestList(rows).join(" / ")}`);
 }
 
 function normalizeKey(value) {
@@ -372,9 +425,21 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
   }).map((store) => digestStoreCompactLine(store, workflowOf(store).mobileCoverage));
   const mobileBlocked = uniqueDigestList(preparationStores.filter((store) => isBlockedStatus(workflowOf(store).mobileCoverage)).map((store) => digestStoreCompactLine(store, workflowOf(store).mobileCoverage)));
 
-  const installToday = stores.filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, todayKey)).map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
-  const installTomorrow = stores.filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, tomorrowKey)).map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
-  const installCancelled = dayActivities.filter((activity) => /annul|cancel|reporte|deplace|deplac/i.test(String(activity.comment || ""))).map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`);
+  const installToday = stores
+    .filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, todayKey))
+    .filter((store) => !isPendingInstallationCancellation(store))
+    .map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
+  const installTomorrow = stores
+    .filter((store) => sameDateKey(workflowOf(store).destinyInstallDate, tomorrowKey))
+    .filter((store) => !isPendingInstallationCancellation(store))
+    .map((store) => digestStoreLine(store, workflowOf(store).destinyInstallDate));
+  const installUpcoming = upcomingInstallationLines(stores, addDays(now, 1), 5);
+  const installCancelled = uniqueDigestList([
+    ...pendingInstallationCancellationLines(stores),
+    ...dayActivities
+      .filter((activity) => /annul|cancel|reporte|deplace|deplac/i.test(String(activity.comment || "")))
+      .map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`)
+  ]);
 
   const configComplete = uniqueDigestList(changedStores.filter(isNetworkConfigOk).map((store) => {
     const summary = networkConfigSummary(store);
@@ -423,7 +488,9 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
     "Installations",
     `Prevues aujourd'hui : ${installToday.join(" / ") || "-"}`,
     `Prevues demain : ${installTomorrow.join(" / ") || "-"}`,
-    `Annulees / deplacees hier : ${installCancelled.join(" / ") || "-"}`,
+    "Prevues dans les 5 prochains jours :",
+    lineList(installUpcoming, "Aucune installation prevue dans les 5 prochains jours."),
+    `Annulees / a replanifier : ${installCancelled.join(" / ") || "-"}`,
     "",
     "Configuration reseau",
     `Complete : ${configComplete.join(" / ") || "-"}`,
