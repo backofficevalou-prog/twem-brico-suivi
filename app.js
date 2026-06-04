@@ -8582,7 +8582,7 @@ function handleLaunchMailSubmit(event) {
       });
     }
   });
-  const dispatchWindow = window.open("", "_blank");
+  const dispatchWindow = window.open("about:blank", `twem_launch_mail_${Date.now()}`);
   if (!dispatchWindow) {
     window.alert("La fenetre d'envoi a ete bloquee par le navigateur.");
     return;
@@ -8591,6 +8591,9 @@ function handleLaunchMailSubmit(event) {
 }
 
 function writeLaunchMailDispatcherWindow(targetWindow, mailJobs, payload) {
+  targetWindow.document.open();
+  targetWindow.document.write("<!doctype html><title>Preparation envoi mails</title><body>Preparation de la page d'envoi...</body>");
+  targetWindow.document.close();
   const jobs = mailJobs.map((job, index) => ({
     index: index + 1,
     language: job.language,
@@ -8606,6 +8609,7 @@ function writeLaunchMailDispatcherWindow(targetWindow, mailJobs, payload) {
     })
   }));
   const jobsJson = JSON.stringify(jobs).replace(/<\/script/gi, "<\\/script");
+  const generatedAt = formatDateTime(new Date().toISOString());
   targetWindow.document.open();
   targetWindow.document.write(`
     <!doctype html>
@@ -8627,13 +8631,21 @@ function writeLaunchMailDispatcherWindow(targetWindow, mailJobs, payload) {
           .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
           a, button { border: 0; border-radius: 999px; padding: 10px 14px; background: #c43b2f; color: #fff; font-weight: 700; text-decoration: none; cursor: pointer; }
           button.secondary { background: #ffdd4a; color: #201b10; }
+          button.clean { background: #201b10; }
           .hint { padding: 10px 12px; border-radius: 8px; background: #fff8d1; font-weight: 700; }
+          .top-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin: 0 0 14px; }
+          .mail-card.is-opened { opacity: .45; background: #f0ece2; }
+          .mail-card.is-opened .head::after { content: "Ouvert dans Outlook"; color: #266a35; font-weight: 700; }
         </style>
       </head>
       <body>
         <h1>Mails lancement app</h1>
-        <p>FR: ${payload.groups.fr.length} destinataire(s) - NL: ${payload.groups.nl.length} destinataire(s). Ouvre les mails un par un. Si Outlook ne remplit pas le CCI, copie uniquement le CCI du bloc concerne.</p>
-        <div class="hint">Chaque bloc correspond a un seul mail Outlook. Les destinataires sont separes par langue.</div>
+        <p>Page generee le ${escapeHtml(generatedAt)}. FR: ${payload.groups.fr.length} destinataire(s) - NL: ${payload.groups.nl.length} destinataire(s). Ouvre les mails un par un. Si Outlook ne remplit pas le CCI, copie uniquement le CCI du bloc concerne.</p>
+        <div class="top-actions">
+          <button type="button" class="clean" onclick="clearOpenedCards()">Masquer les blocs ouverts</button>
+          <button type="button" class="clean" onclick="clearAllCards()">Vider cette page</button>
+        </div>
+        <div class="hint">Cette page est temporaire: elle ne garde pas l'historique. L'historique reste dans l'application.</div>
         <div id="mailJobs"></div>
         <script>
           const jobs = ${jobsJson};
@@ -8655,8 +8667,19 @@ function writeLaunchMailDispatcherWindow(targetWindow, mailJobs, payload) {
               }
             );
           }
+          function markOpened(index) {
+            document.querySelector('[data-mail-card="' + index + '"]')?.classList.add("is-opened");
+          }
+          function clearOpenedCards() {
+            document.querySelectorAll(".mail-card.is-opened").forEach((node) => node.remove());
+          }
+          function clearAllCards() {
+            if (confirm("Vider cette page d'envoi ? L'historique dans l'application ne sera pas modifie.")) {
+              container.innerHTML = '<div class="hint">Page videe. Tu peux fermer cet onglet.</div>';
+            }
+          }
           container.innerHTML = jobs.map((job, idx) => \`
-            <article class="mail-card">
+            <article class="mail-card" data-mail-card="\${idx}">
               <div class="head">
                 <strong>Mail \${job.index} - \${escapeHtml(job.language)}</strong>
                 <span class="badge">\${job.count} destinataire(s)</span>
@@ -8667,7 +8690,7 @@ function writeLaunchMailDispatcherWindow(targetWindow, mailJobs, payload) {
               <div class="actions">
                 <button type="button" class="secondary" onclick="copyText(jobs[\${idx}].cci, 'CCI')">Copier CCI</button>
                 <button type="button" class="secondary" onclick="copyText(jobs[\${idx}].subject + '\\\\n\\\\n' + jobs[\${idx}].body, 'Objet + texte')">Copier objet + texte</button>
-                <a href="\${escapeHtml(job.url)}" target="_blank" rel="noreferrer">Ouvrir Outlook</a>
+                <a href="\${escapeHtml(job.url)}" target="_blank" rel="noreferrer" onclick="markOpened(\${idx})">Ouvrir Outlook</a>
               </div>
             </article>
           \`).join("");
