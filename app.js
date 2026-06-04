@@ -1210,6 +1210,97 @@ const nlUiPhraseMap = {
   "Ouvrir la configuration detaillee": "Gedetailleerde configuratie openen"
 };
 
+const nlUiExtraPhraseMap = {
+  "Vue d'ensemble": "Overzicht",
+  "Quantités magasin": "Winkelhoeveelheden",
+  "Vue de pilotage rapide des besoins réseau et matériel du magasin.": "Snelle opvolging van netwerk- en materiaalbehoeften van de winkel.",
+  "Récap configuration et préparation": "Samenvatting configuratie en voorbereiding",
+  "Vue synthétique des demandes transmises et des éléments déjà confirmés.": "Synthetisch overzicht van verzonden aanvragen en reeds bevestigde elementen.",
+  "Éléments confirmés": "Bevestigde elementen",
+  "Eléments confirmés": "Bevestigde elementen",
+  "À envoyer": "Te verzenden",
+  "À confirmer": "Te bevestigen",
+  "À renseigner": "In te vullen",
+  "Pas envoye": "Niet verzonden",
+  "Pas envoyé": "Niet verzonden",
+  "Envoye": "Verzonden",
+  "Envoyé": "Verzonden",
+  "Recue": "Ontvangen",
+  "Reçue": "Ontvangen",
+  "Relancee": "Herinnerd",
+  "Relancée": "Herinnerd",
+  "Confirmée": "Bevestigd",
+  "Confirmés": "Bevestigd",
+  "Configuré": "Geconfigureerd",
+  "Aucune ligne configuree": "Geen lijn geconfigureerd",
+  "Aucune ligne configurée": "Geen lijn geconfigureerd",
+  "ligne(s) configurée(s)": "lijn(en) geconfigureerd",
+  "Les choix enregistrés dans Configuration magasin remonteront ici dès qu'ils seront complétés.": "De keuzes die in Winkelconfiguratie worden opgeslagen, verschijnen hier zodra ze volledig zijn.",
+  "Choix téléphonie confirmés et visibles ici sans devoir ouvrir l'onglet configuration.": "Bevestigde telefoniekeuzes zijn hier zichtbaar zonder de configuratietab te openen.",
+  "Configuration détaillée": "Gedetailleerde configuratie",
+  "Lecture directe de toute la configuration sans devoir repasser par l'onglet Configuration magasin.": "Directe lezing van de volledige configuratie zonder terug te gaan naar de tab Winkelconfiguratie.",
+  "Société": "Bedrijf",
+  "Modele": "Model",
+  "Modèle": "Model",
+  "Utilisateur": "Gebruiker",
+  "Numero": "Nummer",
+  "Numéro": "Nummer",
+  "Reseau": "Netwerk",
+  "Réseau": "Netwerk",
+  "Aucun GSM renseigne.": "Geen GSM ingevuld.",
+  "Aucun GSM renseigné.": "Geen GSM ingevuld.",
+  "Clôture installation Destiny": "Afsluiting installatie Destiny",
+  "Validation de fin d'intervention et remarques de chantier après installation.": "Validatie einde interventie en werfopmerkingen na installatie.",
+  "Installation Destiny terminée": "Installatie Destiny voltooid",
+  "Mail de fin équipe Brico": "Eindmail team Brico",
+  "Remarques finales du magasin et éventuelle bascule vers la plateforme": "Eindopmerkingen van de winkel en eventuele omschakeling naar het platform",
+  "Chronologie des rendez-vous programmés pour ce magasin.": "Chronologie van de geplande afspraken voor deze winkel.",
+  "Aucun rendez-vous programmé.": "Geen afspraak gepland.",
+  "Plusieurs rendez-vous et plusieurs jours d'installation possibles par magasin.": "Meerdere afspraken en installatiedagen mogelijk per winkel.",
+  "Personnes concernées": "Betrokken personen",
+  "Réception TWEM": "Ontvangst TWEM",
+  "Extension liée": "Gekoppelde extensie",
+  "Quantité demandée": "Gevraagde hoeveelheid",
+  "Workflow matériel supplémentaire": "Workflow extra materiaal",
+  "Choisir un matériel": "Kies materiaal",
+  "Demande créée": "Aanvraag aangemaakt",
+  "Demande d'info": "Informatieaanvraag",
+  "Commande materiel casse": "Bestelling defect materiaal",
+  "Commande matériel cassé": "Bestelling defect materiaal",
+  "Commande materiel supplementaire": "Bestelling extra materiaal",
+  "Commande matériel supplémentaire": "Bestelling extra materiaal",
+  "Date téléphonie actuelle": "Huidige telefoniedatum",
+  "Récap configuration": "Samenvatting configuratie",
+  "Équipements": "Uitrusting",
+  "Clôture": "Afsluiting",
+  "Ouvrir la configuration détaillée": "Gedetailleerde configuratie openen",
+  "Configuration": "Configuratie",
+  "Suivi de la demande de configuration magasin.": "Opvolging van de winkelconfiguratieaanvraag.",
+  "Suivi de la commande et de la reception magasin.": "Opvolging van de bestelling en ontvangst in de winkel.",
+  "Suivi de la commande et de la réception magasin.": "Opvolging van de bestelling en ontvangst in de winkel.",
+  "Date et heure": "Datum en uur",
+  "Aucun choix extension confirme pour le moment.": "Nog geen extensiekeuze bevestigd.",
+  "Aucun choix extension confirmé pour le moment.": "Nog geen extensiekeuze bevestigd.",
+  "Configuration du reseau": "Netwerkconfiguratie",
+  "Configuration du réseau": "Netwerkconfiguratie",
+  "Lignes generees automatiquement par quantite magasin": "Lijnen automatisch gegenereerd op basis van winkelhoeveelheden",
+  "Lignes générées automatiquement par quantité magasin": "Lijnen automatisch gegenereerd op basis van winkelhoeveelheden",
+  "Le responsable magasin remplit cette partie pour permettre a l IT de programmer les appareils avant installation.": "De winkelverantwoordelijke vult dit deel in zodat IT de toestellen voor de installatie kan programmeren.",
+  "Le responsable magasin remplit cette partie pour permettre à l'IT de programmer les appareils avant installation.": "De winkelverantwoordelijke vult dit deel in zodat IT de toestellen voor de installatie kan programmeren.",
+  "Choix magasin confirmes. Modifications ensuite via Probleme / notes.": "Winkelkeuzes bevestigd. Wijzigingen daarna via Probleem / notities.",
+  "Choix magasin confirmés. Modifications ensuite via Problème / notes.": "Winkelkeuzes bevestigd. Wijzigingen daarna via Probleem / notities.",
+  "Le magasin remplit ses choix puis confirme en bas du module.": "De winkel vult de keuzes in en bevestigt onderaan de module.",
+  "Choix confirmes": "Keuzes bevestigd",
+  "Choix confirmés": "Keuzes bevestigd",
+  "Confirmer vos choix": "Uw keuzes bevestigen",
+  "Extension + lieu": "Extensie + locatie",
+  "Etat": "Status",
+  "État": "Status",
+  "Aucun choix telephonie enregistre pour le moment.": "Nog geen telefoniekeuze opgeslagen.",
+  "Aucun choix téléphonie enregistré pour le moment.": "Nog geen telefoniekeuze opgeslagen.",
+  "Poste": "Toestel"
+};
+
 const nlUiPlaceholderMap = {
   "Ex: Anderlecht": "Bv: Anderlecht",
   "Choisir une extension / un lieu": "Kies een extensie / locatie",
@@ -14010,6 +14101,26 @@ function schedulePostRenderLanguagePass() {
   window.requestAnimationFrame(applyPostRenderLanguagePass);
 }
 
+function normalizeUiTranslationKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, " ")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function normalizedTranslationFromMap(value, map) {
+  const targetKey = normalizeUiTranslationKey(value);
+  if (!targetKey) {
+    return "";
+  }
+  const found = Object.entries(map).find(([key]) => normalizeUiTranslationKey(key) === targetKey);
+  return found?.[1] || "";
+}
+
 function translateExactText(value, map) {
   if (!value) {
     return value;
@@ -14017,12 +14128,16 @@ function translateExactText(value, map) {
   const leading = value.match(/^\s*/)?.[0] || "";
   const trailing = value.match(/\s*$/)?.[0] || "";
   const trimmed = value.trim().replace(/\s+/g, " ");
-  return Object.prototype.hasOwnProperty.call(map, trimmed) ? `${leading}${map[trimmed]}${trailing}` : value;
+  if (Object.prototype.hasOwnProperty.call(map, trimmed)) {
+    return `${leading}${map[trimmed]}${trailing}`;
+  }
+  const normalized = normalizedTranslationFromMap(trimmed, map);
+  return normalized ? `${leading}${normalized}${trailing}` : value;
 }
 
 function translateUiTextValue(value) {
-  let next = translateExactText(value, nlUiTextMap);
-  Object.entries(nlUiPhraseMap)
+  let next = translateExactText(translateExactText(value, nlUiTextMap), nlUiPhraseMap);
+  Object.entries({ ...nlUiPhraseMap, ...nlUiExtraPhraseMap })
     .sort((a, b) => b[0].length - a[0].length)
     .forEach(([from, to]) => {
       if (next.includes(from)) {
