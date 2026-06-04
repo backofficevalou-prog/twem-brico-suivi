@@ -1739,6 +1739,7 @@ const pinRolloutOpenButton = document.querySelector("#pinRolloutOpenButton");
 const pinRolloutOpenAllButton = document.querySelector("#pinRolloutOpenAllButton");
 const pinMarkAllMailSentButton = document.querySelector("#pinMarkAllMailSentButton");
 const pinRolloutCloseButton = document.querySelector("#pinRolloutCloseButton");
+const pinAccessSearchInput = document.querySelector("#pinAccessSearchInput");
 const storeForm = document.querySelector("#storeForm");
 const storeEditSelect = document.querySelector("#storeEditSelect");
 const storeNameInput = document.querySelector("#storeNameInput");
@@ -9652,10 +9653,47 @@ function renderPinAccessList() {
     return;
   }
 
-  const visibleRows = state.people.slice();
+  const search = normalizeImportCell(pinAccessSearchInput?.value).toLowerCase();
+  const matchesSearch = (person) => {
+    if (!search) {
+      return true;
+    }
+    const stores = person.allowedStoreCodes?.includes("*")
+      ? "Tous les magasins"
+      : (person.allowedStoreCodes?.length ? person.allowedStoreCodes.join(", ") : (person.storeCode || "-"));
+    const storeLabels = stores === "Tous les magasins"
+      ? stores
+      : String(stores || "")
+        .split(",")
+        .map((code) => {
+          const trimmed = code.trim();
+          const store = state.stores.find((entry) => entry.code === trimmed);
+          return store ? `${store.code} ${store.name} ${store.city || ""}` : trimmed;
+        })
+        .join(" ");
+    const lastSeen = person.loginHistory?.length ? formatDateTime(person.loginHistory[0].at) : "Jamais";
+    const haystack = [
+      person.name,
+      person.email,
+      roleLabel(person.role),
+      person.role,
+      person.pin,
+      person.pinStatus,
+      person.pinExpiresAt,
+      stores,
+      storeLabels,
+      lastSeen,
+      person.welcomeEmailSentAt ? formatDateTime(person.welcomeEmailSentAt) : ""
+    ].join(" ").toLowerCase();
+    return haystack.includes(search);
+  };
+
+  const visibleRows = state.people.filter(matchesSearch);
 
   if (!visibleRows.length) {
-    pinAccessList.innerHTML = '<div class="empty-state">Aucun acces PIN configure.</div>';
+    pinAccessList.innerHTML = search
+      ? '<div class="empty-state">Aucune personne ne correspond a cette recherche.</div>'
+      : '<div class="empty-state">Aucun acces PIN configure.</div>';
     return;
   }
 
@@ -14555,6 +14593,7 @@ pinRolloutOpenButton?.addEventListener("click", () => applyPinRollout("open"));
 pinRolloutOpenAllButton?.addEventListener("click", () => applyPinRollout("open", "all-closed"));
 pinMarkAllMailSentButton?.addEventListener("click", markAllPinMailsReceived);
 pinRolloutCloseButton?.addEventListener("click", () => applyPinRollout("close"));
+pinAccessSearchInput?.addEventListener("input", renderPinAccessList);
 personForm.addEventListener("submit", handlePersonSubmit);
 intervenantForm?.addEventListener("submit", handleIntervenantSubmit);
 intervenantRoleForm?.addEventListener("submit", handleIntervenantRoleSubmit);
