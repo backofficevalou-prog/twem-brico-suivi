@@ -10,5 +10,6 @@ window.APP_CONFIG = {
   appwriteActivitiesCollectionId: "activities",
   appwriteSettingsCollectionId: "settings",
   appwriteTicketsCollectionId: "tickets",
+  appwritePlansBucketId: "6a20f91b003b4a66d57d",
   appwriteMailerFunctionId: "6a19571b00343a1e7c86"
 };

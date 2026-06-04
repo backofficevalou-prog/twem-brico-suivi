@@ -433,13 +433,17 @@ function welcomeBody(person = {}) {
 }
 
 function pendingWelcomeEmailPeople(people = []) {
-  return people.filter((person) =>
-    String(person.email || "").trim()
-    && String(person.pin || "").replace(/\D/g, "").length === 6
-    && person.welcomeEmailQueuedAt
-    && !person.welcomeEmailSentAt
-    && !["disabled", "expired"].includes(String(person.pinStatus || "").toLowerCase())
-  );
+  const legacyCutoff = new Date(env("WELCOME_LEGACY_CUTOFF_AT", "2026-06-04T00:00:00+02:00"));
+  return people.filter((person) => {
+    const pinCreatedAt = new Date(person.pinCreatedAt || person.createdAt || person.updatedAt || "2026-05-06T00:00:00Z");
+    const isLegacyAccess = Number.isNaN(pinCreatedAt.getTime()) || pinCreatedAt < legacyCutoff;
+    return String(person.email || "").trim()
+      && String(person.pin || "").replace(/\D/g, "").length === 6
+      && person.welcomeEmailQueuedAt
+      && !person.welcomeEmailSentAt
+      && !isLegacyAccess
+      && !["disabled", "expired"].includes(String(person.pinStatus || "").toLowerCase());
+  });
 }
 
 function openAccessFallbackWelcomePeople(people = []) {
@@ -457,7 +461,7 @@ function openAccessFallbackWelcomePeople(people = []) {
 
 function welcomeEmailDraftsFromPeople(people = [], options = {}) {
   const queuedPeople = pendingWelcomeEmailPeople(people);
-  const allowFallback = env("WELCOME_OPEN_ACCESS_FALLBACK", "true").toLowerCase() !== "false";
+  const allowFallback = env("WELCOME_OPEN_ACCESS_FALLBACK", "false").toLowerCase() === "true";
   const fallbackPeople = allowFallback && !queuedPeople.length
     ? openAccessFallbackWelcomePeople(people).slice(0, Number(env("WELCOME_FALLBACK_LIMIT", "20")))
     : [];

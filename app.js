@@ -515,6 +515,7 @@ const defaultRoleOptions = [
 ];
 const defaultIntervenantRoleOptions = ["telephonie_destiny", "pm_dstny", "uc_pm_fr_nl_dstny", "uc_tech_fr_nl_dstny", "logistic_coord_dstny"];
 const tutorialVideosSettingsItemId = "__tutorial_videos__";
+const technicalSheetsSettingsItemId = "__technical_sheets__";
 const automationEmailsSettingsItemId = "__automation_emails__";
 const mailerStateSettingsItemId = "__mailer_state__";
 const defaultTutorialVideos = [
@@ -544,6 +545,7 @@ const defaultTutorialVideos = [
     description: "Cette section permet de signaler un SAV, faire une demande d'info, demander un remplacement ou demander du matériel supplémentaire."
   }
 ];
+const defaultTechnicalSheets = [];
 const defaultAutomations = [
   {
     id: "store_update_alert",
@@ -1161,6 +1163,9 @@ const appwriteAccount = appwriteClient && window.Appwrite?.Account
 const appwriteDatabases = appwriteClient && window.Appwrite?.Databases
   ? new window.Appwrite.Databases(appwriteClient)
   : null;
+const appwriteStorage = appwriteClient && window.Appwrite?.Storage
+  ? new window.Appwrite.Storage(appwriteClient)
+  : null;
 const appwriteQuery = window.Appwrite?.Query || null;
 const appwriteIdFactory = window.Appwrite?.ID || null;
 const appwriteEndpoint = appConfig.appwriteEndpoint || "";
@@ -1172,6 +1177,7 @@ const appwriteActivitiesCollectionId = appConfig.appwriteActivitiesCollectionId 
 const appwriteSettingsCollectionId = appConfig.appwriteSettingsCollectionId || "settings";
 const appwriteTicketsCollectionId = appConfig.appwriteTicketsCollectionId || "tickets";
 const appwriteMailerFunctionId = appConfig.appwriteMailerFunctionId || "";
+const appwritePlansBucketId = appConfig.appwritePlansBucketId || "store-plans";
 const hasAppwriteDataConfig = Boolean(
   appwriteDatabases
   && appwriteDatabaseId
@@ -1204,6 +1210,7 @@ const state = {
   accessOverrides: [],
   roleOptions: [...defaultRoleOptions],
   tutorialVideos: clone(defaultTutorialVideos),
+  technicalSheets: clone(defaultTechnicalSheets),
   automations: clone(defaultAutomations),
   roleVisibilityConfig: {},
   visibilityEditorRole: "supadmin_twem",
@@ -1216,6 +1223,8 @@ const state = {
   automationEmails: [],
   activeAutomationSubtab: "rules",
   focusedUpdate: null,
+  storeSaveFeedback: null,
+  technicalSheetEditId: "",
   filters: {
     search: "",
     status: "all",
@@ -1244,6 +1253,8 @@ const knownTestPeopleNames = [
 ];
 const knownTestSavNotes = ["test", "test 2"];
 const provenanceOptions = ["Nouveau", "Migration"];
+const legacyWelcomeSentAt = "2026-06-02T10:00:00.000Z";
+const legacyWelcomeCutoffAt = new Date("2026-06-04T00:00:00+02:00");
 
 function markStoreEditorDirty(storeId) {
   storeEditorDraftLock = {
@@ -1365,6 +1376,8 @@ const pinRolloutStatusFilter = document.querySelector("#pinRolloutStatusFilter")
 const pinRolloutSummary = document.querySelector("#pinRolloutSummary");
 const pinRolloutList = document.querySelector("#pinRolloutList");
 const pinRolloutOpenButton = document.querySelector("#pinRolloutOpenButton");
+const pinRolloutOpenAllButton = document.querySelector("#pinRolloutOpenAllButton");
+const pinMarkAllMailSentButton = document.querySelector("#pinMarkAllMailSentButton");
 const pinRolloutCloseButton = document.querySelector("#pinRolloutCloseButton");
 const storeForm = document.querySelector("#storeForm");
 const storeEditSelect = document.querySelector("#storeEditSelect");
@@ -1438,6 +1451,29 @@ function hydrateAccessProfile(person) {
     accessibleBlocks: Array.isArray(normalizedPerson.accessibleBlocks) ? normalizedPerson.accessibleBlocks : (defaults.accessibleBlocks || ["appointments", "problem_notes"]),
     loginHistory: Array.isArray(normalizedPerson.loginHistory) ? normalizedPerson.loginHistory : []
   };
+}
+
+function shouldMarkLegacyWelcomeSent(person = {}) {
+  if (!person?.id || person.welcomeEmailSentAt || normalizePin(person.pin).length !== 6) {
+    return false;
+  }
+  const createdAt = new Date(person.pinCreatedAt || person.createdAt || person.updatedAt || "2026-05-06T00:00:00Z");
+  return Number.isNaN(createdAt.getTime()) || createdAt < legacyWelcomeCutoffAt;
+}
+
+function markLegacyWelcomeMailsSent(people = state.people) {
+  const changed = [];
+  (people || []).forEach((person) => {
+    if (!shouldMarkLegacyWelcomeSent(person)) {
+      return;
+    }
+    person.welcomeEmailSentAt = legacyWelcomeSentAt;
+    person.welcomeEmailQueuedAt = "";
+    person.manualWelcomeEmailSentAt = legacyWelcomeSentAt;
+    person.manualWelcomeEmailSentBy = person.manualWelcomeEmailSentBy || "Migration TWEM";
+    changed.push(person);
+  });
+  return changed;
 }
 
 function stripKnownTestPeople(people = []) {
@@ -1675,6 +1711,8 @@ function buildAppwriteSettingsDocument() {
   const cleanToolItems = (state.toolItems || []).filter((item) =>
     item?.id !== tutorialVideosSettingsItemId
     && item?.kind !== "tutorial_videos"
+    && item?.id !== technicalSheetsSettingsItemId
+    && item?.kind !== "technical_sheets"
     && item?.id !== automationEmailsSettingsItemId
     && item?.kind !== "automation_emails"
     && item?.id !== mailerStateSettingsItemId
@@ -1948,6 +1986,7 @@ function localUiState() {
     roleOptions: state.roleOptions,
     automations: state.automations,
     tutorialVideos: state.tutorialVideos,
+    technicalSheets: state.technicalSheets,
     roleVisibilityConfig: state.roleVisibilityConfig,
     visibilityEditorRole: state.visibilityEditorRole,
     roleViewUnlocked: state.roleViewUnlocked,
@@ -1976,6 +2015,7 @@ function loadState() {
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
         tutorialVideos: clone(defaultTutorialVideos),
+        technicalSheets: clone(defaultTechnicalSheets),
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
@@ -2013,6 +2053,7 @@ function loadState() {
         accessOverrides: parsed.accessOverrides || [],
         roleOptions: normalizedRoleOptions(parsed.roleOptions),
         tutorialVideos: normalizedTutorialVideos(parsed.tutorialVideos || []),
+        technicalSheets: normalizedTechnicalSheets(parsed.technicalSheets || []),
         automations: normalizedAutomations(parsed.automations),
         roleVisibilityConfig: parsed.roleVisibilityConfig || {},
         visibilityEditorRole: parsed.visibilityEditorRole || "supadmin_twem",
@@ -2037,6 +2078,7 @@ function loadState() {
         accessOverrides: [],
         roleOptions: [...defaultRoleOptions],
         tutorialVideos: clone(defaultTutorialVideos),
+        technicalSheets: clone(defaultTechnicalSheets),
         automations: clone(defaultAutomations),
         roleVisibilityConfig: {},
         visibilityEditorRole: "supadmin_twem",
@@ -2354,6 +2396,24 @@ function scrollToFocusedUpdate() {
   window.setTimeout(() => {
     document.querySelector("[data-update-focus-banner]")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, 120);
+}
+
+function renderPreservingScroll() {
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  render();
+  window.requestAnimationFrame(() => {
+    window.scrollTo(scrollX, scrollY);
+  });
+}
+
+function setStoreSaveFeedback(storeId, message, status = "success") {
+  state.storeSaveFeedback = {
+    storeId: Number(storeId),
+    message,
+    status,
+    at: new Date().toISOString()
+  };
 }
 
 function normalizeCoreRole(person) {
@@ -3995,7 +4055,7 @@ function reconcileNetworkRowsWithQuantities(store) {
     return previous
       ? {
           ...row,
-          extensionLabel: defaultNetworkExtensionForRow(row) || previous.extensionLabel || row.extensionLabel || "",
+          extensionLabel: previous.extensionLabel || row.extensionLabel || "",
           note: previous.note || ""
         }
       : row;
@@ -4205,7 +4265,7 @@ function buildStorePilotSkeleton(store) {
         <p class="posts-skeleton-intro">Le responsable magasin remplit cette partie pour permettre a l IT de programmer les appareils avant installation.</p>
         <input type="hidden" name="network_config_confirmed" value="${workflow.networkConfigConfirmed ? "1" : "0"}">
         ${showConfirmBar
-          ? (workflow.networkConfigConfirmed ? summaryContent : editableContent)
+          ? (workflow.networkConfigConfirmed && !canEditZone(store, "network_config") ? summaryContent : editableContent)
           : editableContent}
         ${showConfirmBar ? `
           <div class="network-confirm-bar">
@@ -4726,9 +4786,16 @@ function buildConfigurationHubCard(store) {
 function buildStoreDocumentsCard(store) {
   const workflow = ensureStoreWorkflowData(store);
   const planName = workflow.planPdfName || "";
+  const isZipPlan = /\.zip$/i.test(planName) || workflow.planFileType === "application/zip";
+  const emptyLabel = "Aucun document importe";
+  const importLabel = planName ? "Remplacer le document" : "Importer PDF / ZIP";
+  const openLabel = isZipPlan ? "Telecharger le ZIP" : "Ouvrir le PDF";
   const updatedLabel = workflow.planPdfUpdatedAt
     ? `Derniere mise a jour ${formatDateTime(workflow.planPdfUpdatedAt)}`
-    : "Ajoute ici le plan PDF du magasin.";
+    : "Ajoute ici le plan PDF du magasin ou un ZIP contenant plusieurs plans.";
+  const saveFeedback = state.storeSaveFeedback?.storeId === Number(store.id)
+    ? state.storeSaveFeedback
+    : null;
 
   return `
     <div class="editor-grid section-anchor" id="section-documents">
@@ -4736,16 +4803,17 @@ function buildStoreDocumentsCard(store) {
         <h3>Documents / Plan magasin</h3>
         <div class="two-col align-end-grid">
           <div class="cell-stack">
-            <strong>${escapeHtml(planName || "Aucun plan PDF importe")}</strong>
+            <strong>${escapeHtml(planName || emptyLabel)}</strong>
             <span class="cell-note">${escapeHtml(updatedLabel)}</span>
           </div>
           <div class="posts-skeleton-actions">
-            <input type="file" class="hidden-file-input" data-plan-file="${store.id}" accept="application/pdf">
-            <button type="button" class="mini-button" data-plan-upload="${store.id}">${planName ? "Remplacer le plan PDF" : "Importer le plan PDF"}</button>
-            <button type="button" class="mini-button" data-plan-open="${store.id}" ${workflow.planPdfDataUrl ? "" : "disabled"}>Ouvrir le PDF</button>
-            <button type="button" class="mini-button" data-plan-delete="${store.id}" ${workflow.planPdfDataUrl ? "" : "disabled"}>Supprimer</button>
+            <input type="file" class="hidden-file-input" data-plan-file="${store.id}" accept="application/pdf,application/zip,.pdf,.zip">
+            <button type="button" class="mini-button" data-plan-upload="${store.id}">${importLabel}</button>
+            <button type="button" class="mini-button" data-plan-open="${store.id}" ${workflow.planPdfDataUrl || workflow.planFileId ? "" : "disabled"}>${openLabel}</button>
+            <button type="button" class="mini-button" data-plan-delete="${store.id}" ${workflow.planPdfDataUrl || workflow.planFileId ? "" : "disabled"}>Supprimer</button>
           </div>
         </div>
+        ${saveFeedback ? `<p class="validation-text is-${escapeHtml(saveFeedback.status)} document-feedback">${escapeHtml(saveFeedback.message)}</p>` : ""}
       </article>
     </div>
   `;
@@ -4985,6 +5053,10 @@ function ensureStoreWorkflowData(store) {
     mobileChargersSent: "Non",
     mobileChargerCount: String(Math.max(1, Math.ceil(mobileCount / 10))),
     planPdfName: "",
+    planFileType: "",
+    planFileId: "",
+    planFileBucketId: "",
+    planFileSize: "",
     planPdfDataUrl: "",
     planPdfUpdatedAt: "",
     destinyInstallDone: "Non",
@@ -5347,6 +5419,9 @@ function buildStoreDetailForm(store, mode = "stores") {
         </div>
       `
     : "";
+  const saveFeedback = state.storeSaveFeedback?.storeId === Number(store.id)
+    ? state.storeSaveFeedback
+    : null;
   const detailContent = mode === "configuration"
     ? `
         ${buildStoreSectionNav("configuration", store)}
@@ -5428,7 +5503,7 @@ function buildStoreDetailForm(store, mode = "stores") {
       <form class="store-editor" data-store-editor="${store.id}" data-store-mode="${mode}">
         ${detailContent}
         <div class="editor-actions">
-          <span class="validation-text" data-validation="${store.id}"></span>
+          <span class="validation-text ${saveFeedback ? `is-${escapeHtml(saveFeedback.status)}` : ""}" data-validation="${store.id}">${escapeHtml(saveFeedback?.message || "")}</span>
           <button type="submit" data-store-submit>Enregistrer ce magasin</button>
         </div>
       </form>
@@ -5847,6 +5922,39 @@ function normalizedTutorialVideos(videos = []) {
   });
 }
 
+function normalizedTechnicalSheets(sheets = []) {
+  const seen = new Set();
+  return (Array.isArray(sheets) ? sheets : [])
+    .map((sheet, index) => ({
+      id: String(sheet?.id || `sheet-${Date.now()}-${index}`),
+      title: normalizeImportCell(sheet?.title || ""),
+      tag: normalizeImportCell(sheet?.tag || ""),
+      summary: normalizeImportCell(sheet?.summary || ""),
+      body: String(sheet?.body || sheet?.content || "").trim(),
+      note: String(sheet?.note || "").trim(),
+      updatedAt: sheet?.updatedAt || new Date().toISOString()
+    }))
+    .filter((sheet) => {
+      if ((!sheet.title && !sheet.body) || seen.has(sheet.id)) {
+        return false;
+      }
+      seen.add(sheet.id);
+      return true;
+    })
+    .sort((left, right) =>
+      normalizeImportCell(left.title || "").localeCompare(
+        normalizeImportCell(right.title || ""),
+        "fr",
+        { sensitivity: "base" }
+      )
+    );
+}
+
+function technicalSheetDocumentId(sheetOrId) {
+  const rawId = typeof sheetOrId === "object" ? sheetOrId?.id : sheetOrId;
+  return safeDocumentId("technical-sheet", rawId || Date.now());
+}
+
 function renderTutorialVideoMedia(video) {
   if (!video.embedUrl) {
     return `
@@ -5889,6 +5997,138 @@ async function handleTutorialVideoSubmit(event) {
   }
 }
 
+async function syncTechnicalSheetsAfterEdit(options = {}) {
+  state.technicalSheets = normalizedTechnicalSheets(state.technicalSheets || []);
+  saveState();
+  renderTutorialRows();
+  if (hasRemoteData()) {
+    try {
+      if (options.deletedId) {
+        await deleteTechnicalSheetFromRemote(options.deletedId);
+      }
+      if (options.sheet) {
+        await syncTechnicalSheetToRemote(options.sheet);
+      }
+    } catch (error) {
+      console.error("Impossible de synchroniser les fiches techniques.", error);
+      window.alert("Fiche sauvegardee localement, mais la synchronisation distante a echoue.");
+    }
+  }
+}
+
+async function handleTechnicalSheetSubmit(event) {
+  event.preventDefault();
+  if (!isAdminTwem()) {
+    return;
+  }
+  const form = event.currentTarget;
+  const editId = form.getAttribute("data-technical-sheet-edit") || "";
+  const nextSheet = {
+    id: editId || `sheet-${Date.now()}`,
+    title: form.querySelector('[name="technical_title"]')?.value.trim() || "",
+    tag: form.querySelector('[name="technical_tag"]')?.value.trim() || "",
+    summary: form.querySelector('[name="technical_summary"]')?.value.trim() || "",
+    body: form.querySelector('[name="technical_body"]')?.value.trim() || "",
+    note: form.querySelector('[name="technical_note"]')?.value.trim() || "",
+    updatedAt: new Date().toISOString()
+  };
+  if (!nextSheet.title || !nextSheet.body) {
+    window.alert("Indique au minimum un titre et le texte de la fiche.");
+    return;
+  }
+  const sheets = normalizedTechnicalSheets(state.technicalSheets || []);
+  state.technicalSheets = editId
+    ? sheets.map((sheet) => (sheet.id === editId ? nextSheet : sheet))
+    : [nextSheet, ...sheets];
+  state.technicalSheetEditId = "";
+  await syncTechnicalSheetsAfterEdit({ sheet: nextSheet });
+}
+
+function handleTechnicalSheetEdit(event) {
+  state.technicalSheetEditId = event.currentTarget.getAttribute("data-technical-edit") || "";
+  renderTutorialRows();
+}
+
+async function handleTechnicalSheetDelete(event) {
+  const id = event.currentTarget.getAttribute("data-technical-delete") || "";
+  if (!id || !window.confirm("Supprimer cette fiche technique ?")) {
+    return;
+  }
+  state.technicalSheets = normalizedTechnicalSheets(state.technicalSheets || []).filter((sheet) => sheet.id !== id);
+  if (state.technicalSheetEditId === id) {
+    state.technicalSheetEditId = "";
+  }
+  await syncTechnicalSheetsAfterEdit({ deletedId: id });
+}
+
+function handleTechnicalSheetCancel() {
+  state.technicalSheetEditId = "";
+  renderTutorialRows();
+}
+
+function renderTechnicalSheets() {
+  const sheets = normalizedTechnicalSheets(state.technicalSheets || []);
+  const canEditSheets = isAdminTwem();
+  const editedSheet = sheets.find((sheet) => sheet.id === state.technicalSheetEditId) || null;
+  return `
+    <div class="tuto-intro">
+      <h3>Fiches techniques</h3>
+      <p>Guides courts crees selon les besoins terrain.</p>
+    </div>
+    ${canEditSheets ? `
+      <form class="technical-sheet-form" data-technical-sheet-edit="${escapeHtml(editedSheet?.id || "")}">
+        <label>
+          <span>Titre</span>
+          <input type="text" name="technical_title" value="${escapeHtml(editedSheet?.title || "")}" placeholder="Ex: Faire un transfert d'appel">
+        </label>
+        <label>
+          <span>Theme</span>
+          <input type="text" name="technical_tag" value="${escapeHtml(editedSheet?.tag || "")}" placeholder="Ex: Telephone fixe, Call button, SAV">
+        </label>
+        <label class="technical-sheet-wide">
+          <span>Resume court</span>
+          <input type="text" name="technical_summary" value="${escapeHtml(editedSheet?.summary || "")}" placeholder="Une phrase pour expliquer a quoi sert la fiche">
+        </label>
+        <label class="technical-sheet-wide">
+          <span>Texte de la fiche</span>
+          <textarea name="technical_body" rows="6" placeholder="Ecris ici les etapes, consignes, cas particuliers...">${escapeHtml(editedSheet?.body || "")}</textarea>
+        </label>
+        <label class="technical-sheet-wide">
+          <span>Point d'attention</span>
+          <textarea name="technical_note" rows="3" placeholder="Optionnel: attention, exception, info importante">${escapeHtml(editedSheet?.note || "")}</textarea>
+        </label>
+        <div class="technical-sheet-actions">
+          ${editedSheet ? `<button type="button" class="mini-button" data-technical-cancel>Annuler</button>` : ""}
+          <button type="submit" class="mini-button">${editedSheet ? "Enregistrer la fiche" : "Creer la fiche"}</button>
+        </div>
+      </form>
+    ` : ""}
+    ${sheets.length ? `
+    <div class="technical-sheet-grid">
+      ${sheets.map((sheet) => `
+        <details class="technical-sheet-card">
+          <summary>
+            <span>
+              <strong>${escapeHtml(sheet.title)}</strong>
+              <small>${escapeHtml(sheet.summary)}</small>
+            </span>
+            ${sheet.tag ? `<em>${escapeHtml(sheet.tag)}</em>` : ""}
+          </summary>
+          <div class="technical-sheet-body">${escapeHtml(sheet.body).replace(/\n/g, "<br>")}</div>
+          ${sheet.note ? `<p class="technical-sheet-note">${escapeHtml(sheet.note).replace(/\n/g, "<br>")}</p>` : ""}
+          ${canEditSheets ? `
+            <div class="technical-sheet-card-actions">
+              <button type="button" class="mini-button" data-technical-edit="${escapeHtml(sheet.id)}">Modifier</button>
+              <button type="button" class="mini-button" data-technical-delete="${escapeHtml(sheet.id)}">Supprimer</button>
+            </div>
+          ` : ""}
+        </details>
+      `).join("")}
+    </div>
+    ` : '<div class="empty-state">Aucune fiche technique pour le moment.</div>'}
+  `;
+}
+
 function renderTutorialRows() {
   setMainTableHeaders([]);
   const videos = normalizedTutorialVideos(state.tutorialVideos);
@@ -5924,12 +6164,21 @@ function renderTutorialRows() {
               </article>
             `).join("")}
           </div>
+          ${renderTechnicalSheets()}
         </section>
       </td>
     </tr>
   `;
   projectTableBody.querySelectorAll(".tuto-video-form").forEach((form) => {
     form.addEventListener("submit", handleTutorialVideoSubmit);
+  });
+  projectTableBody.querySelector(".technical-sheet-form")?.addEventListener("submit", handleTechnicalSheetSubmit);
+  projectTableBody.querySelector("[data-technical-cancel]")?.addEventListener("click", handleTechnicalSheetCancel);
+  projectTableBody.querySelectorAll("[data-technical-edit]").forEach((button) => {
+    button.addEventListener("click", handleTechnicalSheetEdit);
+  });
+  projectTableBody.querySelectorAll("[data-technical-delete]").forEach((button) => {
+    button.addEventListener("click", handleTechnicalSheetDelete);
   });
 }
 
@@ -6257,8 +6506,21 @@ function renderExtensionsRows(stores) {
     if (!search) {
       return true;
     }
-    const haystack = `${row.category} ${row.model} ${row.number} ${row.label} ${row.language} ${row.item} ${row.activation} ${row.oldNumber || ""} ${row.usage || ""}`.toLowerCase();
-    return haystack.includes(search);
+    const haystack = [
+      row.category,
+      row.model,
+      row.number,
+      row.label,
+      row.labelFr,
+      row.labelNl,
+      row.labelEn,
+      row.language,
+      row.item,
+      row.activation,
+      row.oldNumber,
+      row.usage
+    ].join(" ");
+    return matchesSearchTokens(haystack, search);
   });
 
   if (!filteredExtensions.length) {
@@ -6420,8 +6682,21 @@ function renderExtensionsRowsV2(stores) {
     if (!search) {
       return true;
     }
-    const haystack = `${row.category} ${row.model} ${row.number} ${row.labelFr || row.label || ""} ${row.labelNl || ""} ${row.labelEn || ""} ${row.item || ""}`.toLowerCase();
-    return haystack.includes(search);
+    const haystack = [
+      row.category,
+      row.model,
+      row.number,
+      row.label,
+      row.labelFr,
+      row.labelNl,
+      row.labelEn,
+      row.language,
+      row.item,
+      row.activation,
+      row.oldNumber,
+      row.usage
+    ].join(" ");
+    return matchesSearchTokens(haystack, search);
   });
 
   if (!filteredExtensions.length) {
@@ -8499,16 +8774,21 @@ function renderPinRolloutList() {
   }).join("");
 }
 
-async function applyPinRollout(action) {
+async function applyPinRollout(action, scope = "selected") {
   const selectedIds = [...(pinRolloutList?.querySelectorAll("[data-pin-rollout-person]:checked") || [])]
     .map((checkbox) => checkbox.getAttribute("data-pin-rollout-person"))
     .filter(Boolean);
-  if (!selectedIds.length) {
-    window.alert("Coche au moins une personne.");
+  const targetPeople = scope === "all-closed"
+    ? state.people.filter((person) => canManageRolloutPerson(person) && pinRolloutStatus(person) === "closed")
+    : state.people.filter((person) => selectedIds.includes(person.id) && canManageRolloutPerson(person));
+  if (!targetPeople.length) {
+    window.alert(scope === "all-closed" ? "Aucun acces ferme a rouvrir." : "Coche au moins une personne.");
     return;
   }
-  const selectedPeople = state.people.filter((person) => selectedIds.includes(person.id) && canManageRolloutPerson(person));
-  selectedPeople.forEach((person) => {
+  if (scope === "all-closed" && !window.confirm(`Rouvrir ${targetPeople.length} acces ferme(s) ?`)) {
+    return;
+  }
+  targetPeople.forEach((person) => {
     if (action === "open") {
       person.pinStatus = "active";
       if (normalizePin(person.pin).length !== 6) {
@@ -8520,14 +8800,61 @@ async function applyPinRollout(action) {
     }
   });
   ensureAutomationEmailDrafts();
-  if (hasRemoteData()) {
-    for (const person of selectedPeople) {
-      await syncPersonToRemote(person);
-    }
-    await syncSettingsToRemote();
-    await loadRemoteState();
-  }
   saveState();
+  if (hasRemoteData()) {
+    let synced = 0;
+    for (const person of targetPeople) {
+      try {
+        await syncPersonToRemote(person);
+        synced += 1;
+      } catch (error) {
+        console.error("Erreur sync acces PIN", person.name, error);
+      }
+    }
+    try {
+      await syncSettingsToRemote();
+    } catch (error) {
+      console.error("Erreur sync settings apres diffusion PIN", error);
+    }
+    if (synced !== targetPeople.length) {
+      window.alert(`${synced}/${targetPeople.length} acces synchronise(s). Les autres sont gardes localement, retente apres refresh.`);
+    }
+  }
+  render();
+}
+
+async function markAllPinMailsReceived() {
+  const sentAt = legacyWelcomeSentAt;
+  const targetPeople = state.people.filter((person) => person?.id && normalizePin(person.pin).length === 6);
+  if (!targetPeople.length) {
+    window.alert("Aucun contact PIN a mettre a jour.");
+    return;
+  }
+  if (!window.confirm(`Marquer ${targetPeople.length} contact(s) PIN comme mail recu/envoye le 02/06/2026 ?`)) {
+    return;
+  }
+  targetPeople.forEach((person) => {
+    person.welcomeEmailSentAt = sentAt;
+    person.welcomeEmailQueuedAt = "";
+    person.manualWelcomeEmailSentAt = sentAt;
+    person.manualWelcomeEmailSentBy = currentUser()?.name || state.activeUserName || "TWEM";
+  });
+  ensureAutomationEmailDrafts();
+  saveState();
+  if (hasRemoteData()) {
+    let synced = 0;
+    for (const person of targetPeople) {
+      try {
+        await syncPersonToRemote(person);
+        synced += 1;
+      } catch (error) {
+        console.error("Erreur sync mail recu PIN", person.name, error);
+      }
+    }
+    if (synced !== targetPeople.length) {
+      window.alert(`${synced}/${targetPeople.length} contact(s) synchronise(s). Les autres sont gardes localement, retente apres refresh.`);
+    }
+  }
   render();
 }
 
@@ -8844,6 +9171,8 @@ function renderToolList() {
   const visibleToolItems = (state.toolItems || []).filter((item) =>
     item?.id !== tutorialVideosSettingsItemId
     && item?.kind !== "tutorial_videos"
+    && item?.id !== technicalSheetsSettingsItemId
+    && item?.kind !== "technical_sheets"
     && item?.id !== automationEmailsSettingsItemId
     && item?.kind !== "automation_emails"
     && item?.id !== mailerStateSettingsItemId
@@ -9023,6 +9352,7 @@ async function handleNetworkConfirm(event) {
     return;
   }
   const workflow = ensureStoreWorkflowData(store);
+  setStoreSaveFeedback(storeId, "Sauvegarde en cours...", "pending");
   workflow.networkRows = readNetworkRows(form, store);
   workflow.networkConfigConfirmed = true;
   store.updatedAt = new Date().toISOString();
@@ -9030,13 +9360,19 @@ async function handleNetworkConfirm(event) {
   if (hiddenField) {
     hiddenField.value = "1";
   }
-  if (hasRemoteData()) {
-    await syncStoreToRemote(store, "Choix telephonie confirmes");
-    await loadRemoteState();
-  }
   saveState();
-  render();
-  scrollToFocusedUpdate();
+  if (hasRemoteData()) {
+    try {
+      await syncStoreToRemote(store, "Choix telephonie confirmes");
+      setStoreSaveFeedback(storeId, `Sauvegarde Appwrite OK a ${new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`, "success");
+    } catch (error) {
+      console.error("Erreur sauvegarde Appwrite configuration reseau", error);
+      setStoreSaveFeedback(storeId, "Garde localement, erreur Appwrite. Ne refresh pas tout de suite.", "error");
+    }
+  } else {
+    setStoreSaveFeedback(storeId, `Sauvegarde locale OK a ${new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`, "success");
+  }
+  renderPreservingScroll();
 }
 
 async function loadRemoteState() {
@@ -9147,10 +9483,13 @@ async function loadRemoteState() {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     const remoteToolItems = parseJsonField(settingsDocument.tool_items_json, []);
     const tutorialVideosItem = remoteToolItems.find((item) => item?.id === tutorialVideosSettingsItemId || item?.kind === "tutorial_videos");
+    const technicalSheetsItem = remoteToolItems.find((item) => item?.id === technicalSheetsSettingsItemId || item?.kind === "technical_sheets");
     const automationEmailsItem = remoteToolItems.find((item) => item?.id === automationEmailsSettingsItemId || item?.kind === "automation_emails");
     state.toolItems = remoteToolItems.filter((item) =>
       item?.id !== tutorialVideosSettingsItemId
       && item?.kind !== "tutorial_videos"
+      && item?.id !== technicalSheetsSettingsItemId
+      && item?.kind !== "technical_sheets"
       && item?.id !== automationEmailsSettingsItemId
       && item?.kind !== "automation_emails"
       && item?.id !== mailerStateSettingsItemId
@@ -9166,6 +9505,14 @@ async function loadRemoteState() {
       ? automationEmailsItem.emails
       : parseJsonField(settingsDocument.automation_emails_json, state.automationEmails || []);
     state.tutorialVideos = normalizedTutorialVideos(tutorialVideosItem?.videos || state.tutorialVideos || []);
+    const technicalSheetDocuments = settingsDocuments
+      .flatMap((document) => parseJsonField(document.tool_items_json, []))
+      .filter((item) => item?.kind === "technical_sheet" && item?.sheet)
+      .map((item) => item.sheet);
+    state.technicalSheets = normalizedTechnicalSheets([
+      ...technicalSheetDocuments,
+      ...(technicalSheetsItem?.sheets || state.technicalSheets || [])
+    ]);
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
       extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index)));
@@ -9175,6 +9522,7 @@ async function loadRemoteState() {
     state.toolItems = state.toolItems || [];
     state.accessOverrides = state.accessOverrides || [];
     state.tutorialVideos = normalizedTutorialVideos(state.tutorialVideos || []);
+    state.technicalSheets = normalizedTechnicalSheets(state.technicalSheets || []);
   }
 
   if (state.activeUserName && !state.people.some((person) => person.name === state.activeUserName)) {
@@ -9182,9 +9530,17 @@ async function loadRemoteState() {
   }
 
   state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
+  const legacyWelcomePeople = markLegacyWelcomeMailsSent(state.people);
   ensureAutomationEmailDrafts();
   saveState();
   refreshRemoteSyncShadow();
+  if (legacyWelcomePeople.length && hasAppwriteDataConfig) {
+    legacyWelcomePeople.forEach((person) => {
+      syncPersonToRemote(person).catch((error) => {
+        console.error("Erreur sync migration mail acces", person.name, error);
+      });
+    });
+  }
   } finally {
     remoteSyncSuppressed = false;
   }
@@ -9412,6 +9768,43 @@ async function syncSettingsToRemote() {
     "global-state",
     buildAppwriteSettingsDocument()
   );
+}
+
+async function syncTechnicalSheetToRemote(sheet) {
+  if (!hasAppwriteDataConfig || !sheet) {
+    return;
+  }
+  await upsertAppwriteDocument(
+    appwriteSettingsCollectionId,
+    technicalSheetDocumentId(sheet),
+    {
+      tool_items_json: JSON.stringify([
+        {
+          id: sheet.id,
+          kind: "technical_sheet",
+          sheet
+        }
+      ])
+    }
+  );
+}
+
+async function deleteTechnicalSheetFromRemote(sheetId) {
+  if (!hasAppwriteDataConfig || !appwriteDatabases || !sheetId) {
+    return;
+  }
+  try {
+    await appwriteDatabases.deleteDocument(
+      appwriteDatabaseId,
+      appwriteSettingsCollectionId,
+      technicalSheetDocumentId(sheetId)
+    );
+  } catch (error) {
+    const code = Number(error?.code || error?.response?.code || 0);
+    if (code !== 404) {
+      throw error;
+    }
+  }
 }
 
 async function syncAllRemoteState() {
@@ -9856,6 +10249,51 @@ function downloadBlob(blob, fileName) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [header, payload] = String(dataUrl || "").split(",");
+  const mimeMatch = header?.match(/^data:([^;]+);base64$/i);
+  if (!mimeMatch || !payload) {
+    return null;
+  }
+  const binary = window.atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeMatch[1] || "application/pdf" });
+}
+
+function appwriteStorageFileUrl(fileId, mode = "download") {
+  if (!fileId || !appwritePlansBucketId || !appwriteEndpoint || !appwriteProjectId) {
+    return "";
+  }
+  const action = mode === "view" ? "view" : "download";
+  const base = appwriteEndpoint.replace(/\/$/, "");
+  return `${base}/storage/buckets/${encodeURIComponent(appwritePlansBucketId)}/files/${encodeURIComponent(fileId)}/${action}?project=${encodeURIComponent(appwriteProjectId)}`;
+}
+
+async function createAppwriteStorageFile(bucketId, fileId, file) {
+  if (!appwriteStorage) {
+    throw new Error("Storage Appwrite indisponible.");
+  }
+  try {
+    return await appwriteStorage.createFile({ bucketId, fileId, file });
+  } catch (error) {
+    return appwriteStorage.createFile(bucketId, fileId, file);
+  }
+}
+
+async function deleteAppwriteStorageFile(bucketId, fileId) {
+  if (!appwriteStorage || !bucketId || !fileId) {
+    return;
+  }
+  try {
+    await appwriteStorage.deleteFile({ bucketId, fileId });
+  } catch (error) {
+    await appwriteStorage.deleteFile(bucketId, fileId);
+  }
 }
 
 function csvEscape(value) {
@@ -10338,6 +10776,25 @@ function importExtensionRows(rows) {
 function normalizeImportCell(value) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
+}
+
+function normalizeSearchText(value) {
+  return normalizeImportCell(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function matchesSearchTokens(haystack, search) {
+  const normalizedHaystack = normalizeSearchText(haystack);
+  const compactHaystack = normalizedHaystack.replace(/\s+/g, "");
+  const tokens = normalizeSearchText(search).split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return true;
+  }
+  return tokens.every((token) => normalizedHaystack.includes(token) || compactHaystack.includes(token));
 }
 
 function preserveCoreTwemPeople() {
@@ -11192,10 +11649,38 @@ function handleStorePlanOpen(event) {
   const storeId = Number(event.currentTarget.getAttribute("data-plan-open"));
   const store = state.stores.find((item) => item.id === storeId);
   const workflow = store ? ensureStoreWorkflowData(store) : null;
-  if (!workflow?.planPdfDataUrl) {
+  if (!workflow?.planPdfDataUrl && !workflow?.planFileId) {
+    window.alert("Aucun document n'est enregistre pour ce magasin.");
     return;
   }
-  window.open(workflow.planPdfDataUrl, "_blank");
+  const isZipPlan = /\.zip$/i.test(workflow.planPdfName || "") || workflow.planFileType === "application/zip";
+  if (workflow.planFileId) {
+    const url = appwriteStorageFileUrl(workflow.planFileId, isZipPlan ? "download" : "view");
+    if (!url) {
+      window.alert("Impossible de construire le lien Appwrite Storage.");
+      return;
+    }
+    const openedWindow = window.open(url, "_blank");
+    if (!openedWindow) {
+      window.location.href = url;
+    }
+    return;
+  }
+  const blob = dataUrlToBlob(workflow.planPdfDataUrl);
+  if (isZipPlan) {
+    if (blob) {
+      downloadBlob(blob, workflow.planPdfName || `plans-${store?.code || storeId}.zip`);
+      return;
+    }
+    window.alert("Impossible de telecharger ce ZIP.");
+    return;
+  }
+  const pdfWindow = window.open(workflow.planPdfDataUrl, "_blank");
+  if (!pdfWindow && blob) {
+    downloadBlob(blob, workflow.planPdfName || `plan-${store?.code || storeId}.pdf`);
+  } else if (!pdfWindow) {
+    window.alert("Impossible d'ouvrir ou de telecharger ce document.");
+  }
 }
 
 async function handleStorePlanDelete(event) {
@@ -11205,16 +11690,35 @@ async function handleStorePlanDelete(event) {
     return;
   }
   const workflow = ensureStoreWorkflowData(store);
+  const previousFileId = workflow.planFileId || "";
+  const previousBucketId = workflow.planFileBucketId || appwritePlansBucketId;
   workflow.planPdfName = "";
+  workflow.planFileType = "";
+  workflow.planFileId = "";
+  workflow.planFileBucketId = "";
+  workflow.planFileSize = "";
   workflow.planPdfDataUrl = "";
   workflow.planPdfUpdatedAt = "";
   store.updatedAt = new Date().toISOString();
+  setStoreSaveFeedback(storeId, "Document supprime localement, synchronisation en cours...", "pending");
+  saveState();
+  renderPreservingScroll();
   if (hasRemoteData()) {
-    await syncStoreToRemote(store, "Suppression du plan magasin PDF");
-    await loadRemoteState();
+    try {
+      if (previousFileId) {
+        await deleteAppwriteStorageFile(previousBucketId, previousFileId).catch((error) => {
+          console.warn("Document Storage non supprime, reference retiree de la fiche", error);
+        });
+      }
+      await syncStoreToRemote(store, "Suppression du document magasin");
+      setStoreSaveFeedback(storeId, "Document supprime et synchronise.", "success");
+    } catch (error) {
+      console.error("Erreur suppression document magasin", error);
+      setStoreSaveFeedback(storeId, "Document supprime localement, mais Appwrite n'a pas confirme la synchro.", "error");
+    }
   }
   saveState();
-  render();
+  renderPreservingScroll();
 }
 
 async function handleStorePlanFileChange(event) {
@@ -11228,30 +11732,68 @@ async function handleStorePlanFileChange(event) {
   if (!store) {
     return;
   }
-  if (!/\.pdf$/i.test(file.name)) {
-    window.alert("Utilise uniquement un fichier PDF pour le plan magasin.");
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === "application/pdf";
+  const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip" || file.type === "application/x-zip-compressed";
+  if (!isPdf && !isZip) {
+    window.alert("Utilise uniquement un fichier PDF ou ZIP pour les plans magasin.");
     input.value = "";
     return;
   }
-  if (file.size > 4 * 1024 * 1024) {
-    window.alert("Le plan PDF est trop lourd. Garde un fichier inferieur a 4 Mo.");
+  if (file.size > 10 * 1024 * 1024) {
+    window.alert("Le document est trop lourd. Garde un fichier inferieur a 10 Mo.");
     input.value = "";
     return;
   }
 
+  setStoreSaveFeedback(storeId, `Import de ${file.name} en cours...`, "pending");
+  renderPreservingScroll();
   const reader = new FileReader();
   reader.onload = async () => {
     const workflow = ensureStoreWorkflowData(store);
+    const previousFileId = workflow.planFileId || "";
+    const previousBucketId = workflow.planFileBucketId || appwritePlansBucketId;
     workflow.planPdfName = file.name;
-    workflow.planPdfDataUrl = String(reader.result || "");
+    workflow.planFileType = isZip ? "application/zip" : "application/pdf";
+    workflow.planFileSize = String(file.size || "");
     workflow.planPdfUpdatedAt = new Date().toISOString();
     store.updatedAt = workflow.planPdfUpdatedAt;
-    if (hasRemoteData()) {
-      await syncStoreToRemote(store, "Ajout / mise a jour du plan magasin PDF");
-      await loadRemoteState();
+    setStoreSaveFeedback(storeId, "Document prepare, envoi vers Appwrite Storage en cours...", "pending");
+    saveState();
+    renderPreservingScroll();
+    if (hasRemoteData() && appwriteStorage && appwritePlansBucketId) {
+      try {
+        const fileId = safeDocumentId("plan", `${store.code || store.id}-${Date.now()}`);
+        await createAppwriteStorageFile(appwritePlansBucketId, fileId, file);
+        workflow.planFileId = fileId;
+        workflow.planFileBucketId = appwritePlansBucketId;
+        workflow.planPdfDataUrl = "";
+        if (previousFileId) {
+          await deleteAppwriteStorageFile(previousBucketId, previousFileId).catch((error) => {
+            console.warn("Ancien document non supprime", error);
+          });
+        }
+        await syncStoreToRemote(store, "Ajout / mise a jour du document magasin");
+        setStoreSaveFeedback(storeId, "Document importe et synchronise.", "success");
+      } catch (error) {
+        console.error("Erreur sync document magasin", error);
+        workflow.planFileId = "";
+        workflow.planFileBucketId = "";
+        workflow.planPdfDataUrl = String(reader.result || "");
+        setStoreSaveFeedback(storeId, "Appwrite Storage refuse le document. Verifie que le bucket store-plans existe et accepte PDF/ZIP.", "error");
+      }
+    } else {
+      workflow.planPdfDataUrl = String(reader.result || "");
+      setStoreSaveFeedback(storeId, "Document importe localement.", "success");
     }
     saveState();
-    render();
+    renderPreservingScroll();
+    input.value = "";
+  };
+  reader.onerror = () => {
+    setStoreSaveFeedback(storeId, "Impossible de lire ce PDF. Essaie de le retelecharger puis de le reinserer.", "error");
+    saveState();
+    renderPreservingScroll();
+    input.value = "";
   };
   reader.readAsDataURL(file);
 }
@@ -11822,7 +12364,7 @@ function readAppointments(form, store) {
 function readNetworkRows(form, store) {
   return getNetworkConfigRows(store).map((row) => ({
     ...row,
-    extensionLabel: defaultNetworkExtensionForRow(row) || form.querySelector(`[name="network_extension_${row.id}"]`)?.value || row.extensionLabel || "",
+    extensionLabel: form.querySelector(`[name="network_extension_${row.id}"]`)?.value || row.extensionLabel || defaultNetworkExtensionForRow(row) || "",
     note: form.querySelector(`[name="network_note_${row.id}"]`)?.value?.trim() ?? row.note ?? ""
   }));
 }
@@ -11884,6 +12426,7 @@ async function handleStoreEditorSubmit(event) {
   }
 
   validationNode.textContent = "";
+  setStoreSaveFeedback(storeId, "Sauvegarde en cours...", "pending");
   const workflow = ensureStoreWorkflowData(store);
   store.owner = form.querySelector('[name="owner"]')?.value || store.owner || "";
   store.manager = form.querySelector('[name="manager"]')?.value.trim() || store.manager || "";
@@ -11987,14 +12530,23 @@ async function handleStoreEditorSubmit(event) {
   };
   state.activities.unshift(updateActivity);
 
+  saveState();
   if (hasRemoteData()) {
-    await syncStoreToRemote(store, `Mise a jour magasin - statut ${statusLabel(store.status)}`);
-    await loadRemoteState();
+    try {
+      await syncStoreToRemote(store, `Mise a jour magasin - statut ${statusLabel(store.status)}`);
+      setStoreSaveFeedback(storeId, `Sauvegarde Appwrite OK a ${new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`, "success");
+    } catch (error) {
+      console.error("Erreur sauvegarde Appwrite magasin", error);
+      setStoreSaveFeedback(storeId, "Garde localement, erreur Appwrite. Ne refresh pas tout de suite.", "error");
+    }
+  } else {
+    setStoreSaveFeedback(storeId, `Sauvegarde locale OK a ${new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`, "success");
   }
   clearStoreEditorDirty(storeId);
-  saveState();
-  state.expandedStoreIds.delete(storeId);
-  render();
+  if (form.dataset.storeMode !== "configuration") {
+    state.expandedStoreIds.delete(storeId);
+  }
+  renderPreservingScroll();
 }
 
 async function handleSavCreate(event) {
@@ -12534,6 +13086,8 @@ async function handlePinAccessSubmit(event) {
   let target = editId
     ? state.people.find((person) => person.id === editId)
     : state.people.find((person) => person.name.toLowerCase() === name.toLowerCase());
+  const isNewAccessPerson = !target;
+  const now = new Date().toISOString();
 
   if (!target) {
     target = hydrateAccessProfile({
@@ -12562,12 +13116,15 @@ async function handlePinAccessSubmit(event) {
   target.allowedStoreCodes = canSeeAllStores(target) ? ["*"] : selectedStores;
   target.accessibleTabs = accessibleTabsForUser(target).includes("*") ? ["*"] : defaultTabsForRole(role);
   target.pinStatus = pinStatusSelect?.value || "active";
-  target.pinCreatedAt = target.pinCreatedAt || new Date().toISOString();
+  target.pinCreatedAt = isNewAccessPerson ? now : (target.pinCreatedAt || now);
   target.pinExpiresAt = pinExpiryInput?.value || "";
+  if (isNewAccessPerson) {
+    target.welcomeEmailQueuedAt = now;
+    target.welcomeEmailSentAt = "";
+  }
 
   if (hasRemoteData()) {
     await syncPersonToRemote(target);
-    await loadRemoteState();
   }
 
   pinAccessForm.reset();
@@ -13065,6 +13622,8 @@ pinStoreSearchInput?.addEventListener("input", filterPinStoreOptions);
 pinRolloutSearchInput?.addEventListener("input", renderPinRolloutList);
 pinRolloutStatusFilter?.addEventListener("change", renderPinRolloutList);
 pinRolloutOpenButton?.addEventListener("click", () => applyPinRollout("open"));
+pinRolloutOpenAllButton?.addEventListener("click", () => applyPinRollout("open", "all-closed"));
+pinMarkAllMailSentButton?.addEventListener("click", markAllPinMailsReceived);
 pinRolloutCloseButton?.addEventListener("click", () => applyPinRollout("close"));
 personForm.addEventListener("submit", handlePersonSubmit);
 intervenantForm?.addEventListener("submit", handleIntervenantSubmit);
@@ -13116,10 +13675,16 @@ async function init() {
   state.activeAdminTab = stored.activeAdminTab || "dashboard";
   state.activeAutomationSubtab = stored.activeAutomationSubtab || "rules";
   state.pinValidated = false;
-  state.toolItems = (stored.toolItems || []).filter((item) => item?.id !== tutorialVideosSettingsItemId && item?.kind !== "tutorial_videos");
+  state.toolItems = (stored.toolItems || []).filter((item) =>
+    item?.id !== tutorialVideosSettingsItemId
+    && item?.kind !== "tutorial_videos"
+    && item?.id !== technicalSheetsSettingsItemId
+    && item?.kind !== "technical_sheets"
+  );
   state.accessOverrides = stored.accessOverrides || [];
   state.roleOptions = normalizedRoleOptions(stored.roleOptions);
   state.tutorialVideos = normalizedTutorialVideos(stored.tutorialVideos || []);
+  state.technicalSheets = normalizedTechnicalSheets(stored.technicalSheets || []);
   state.automations = normalizedAutomations(stored.automations);
   state.roleVisibilityConfig = stored.roleVisibilityConfig || {};
   state.visibilityEditorRole = stored.visibilityEditorRole || "supadmin_twem";

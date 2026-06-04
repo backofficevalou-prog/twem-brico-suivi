@@ -883,6 +883,113 @@ button {
   font: inherit;
 }
 
+.technical-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.technical-sheet-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.technical-sheet-form label {
+  display: grid;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.technical-sheet-form input,
+.technical-sheet-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 500;
+  resize: vertical;
+}
+
+.technical-sheet-wide,
+.technical-sheet-actions {
+  grid-column: 1 / -1;
+}
+
+.technical-sheet-actions,
+.technical-sheet-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.technical-sheet-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.technical-sheet-card summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.technical-sheet-card summary span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.technical-sheet-card summary strong {
+  color: var(--ink);
+}
+
+.technical-sheet-card summary small {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.technical-sheet-card summary em {
+  align-self: start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff3b0;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.technical-sheet-body {
+  padding: 0 12px 12px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.technical-sheet-note {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.technical-sheet-card-actions {
+  padding: 0 12px 12px;
+}
+
 .extensions-table {
   width: 100%;
   min-width: 760px;
@@ -1928,6 +2035,25 @@ button {
 .validation-text {
   color: var(--danger-text);
   font-size: 0.88rem;
+}
+
+.validation-text.is-success {
+  color: #247a3d;
+  font-weight: 700;
+}
+
+.validation-text.is-error {
+  color: var(--danger-text);
+  font-weight: 700;
+}
+
+.validation-text.is-pending {
+  color: #6f5a00;
+  font-weight: 700;
+}
+
+.document-feedback {
+  margin-top: 10px;
 }
 
 .list-block {
@@ -3347,6 +3473,8 @@ button {
   }
 
   .tuto-grid,
+  .technical-sheet-grid,
+  .technical-sheet-form,
   .tuto-video-card,
   .tuto-video-form {
     grid-template-columns: 1fr;
