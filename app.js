@@ -1,17 +1,16 @@
 const twemOptions = ["Emir", "Valou"];
-const forcedDigestRecipientNames = [
-  "Emir",
-  "Valou",
-  "Anton",
-  "Nicolas",
-  "Diana",
-  "Charles",
-  "Fabien",
-  "Jean-Yves",
-  "Marc",
-  "Medhi",
-  "Rob",
-  "Ronald"
+const forcedDigestRecipients = [
+  { label: "Emir", aliases: ["Emir"] },
+  { label: "Valou", aliases: ["Valou"], email: "backoffice@twem.be", exclude: ["Georgette", "Larix", "valou@twem.be"] },
+  { label: "Anton", aliases: ["Anton"] },
+  { label: "Nicolas Bertholet", aliases: ["Nicolas Bertholet", "Bertholet"], exclude: ["Crohain"] },
+  { label: "Diana", aliases: ["Diana"] },
+  { label: "Charles", aliases: ["Charles"] },
+  { label: "Fabien", aliases: ["Fabien"] },
+  { label: "Jean-Yves", aliases: ["Jean-Yves", "Jean Yves"] },
+  { label: "Medhi", aliases: ["Medhi", "Mehdi"] },
+  { label: "Rob", aliases: ["Rob"] },
+  { label: "Ronald", aliases: ["Ronald"] }
 ];
 const interventionOptions = [
   { value: "planned", label: "A commencer" },
@@ -7608,19 +7607,35 @@ function digestNameKey(value = "") {
     .toLowerCase();
 }
 
-function digestPersonMatchesName(person = {}, expectedName = "") {
-  const haystack = digestNameKey([person.name, person.email, person.role].filter(Boolean).join(" "));
-  const expectedKeys = expectedName === "Medhi"
-    ? ["medhi", "mehdi"]
-    : [digestNameKey(expectedName)];
-  return Boolean(haystack && expectedKeys.some((key) => haystack.includes(key)));
+function digestPersonHaystack(person = {}) {
+  return digestNameKey([person.name, person.email, person.role].filter(Boolean).join(" "));
+}
+
+function digestPersonMatchesRecipient(person = {}, recipient = {}) {
+  const haystack = digestPersonHaystack(person);
+  const excluded = (recipient.exclude || []).some((value) => haystack.includes(digestNameKey(value)));
+  if (!haystack || excluded) {
+    return false;
+  }
+  if (recipient.email && normalizeImportCell(person.email).toLowerCase() === recipient.email.toLowerCase()) {
+    return true;
+  }
+  return (recipient.aliases || [recipient.label]).some((alias) => haystack.includes(digestNameKey(alias)));
+}
+
+function digestFallbackPerson(recipient = {}) {
+  return {
+    id: recipient.email || recipient.label,
+    name: recipient.label,
+    email: recipient.email || ""
+  };
 }
 
 function digestBasePeople() {
-  return forcedDigestRecipientNames
-    .map((name) =>
-      (state.people || []).find((person) => digestPersonMatchesName(person, name))
-      || { id: name, name }
+  return forcedDigestRecipients
+    .map((recipient) =>
+      (state.people || []).find((person) => digestPersonMatchesRecipient(person, recipient))
+      || digestFallbackPerson(recipient)
     )
     .filter(Boolean);
 }
@@ -7673,7 +7688,7 @@ function renderDigestRecipientChoices(automation = {}) {
   return (state.people || [])
     .filter((person) =>
       normalizeImportCell(person.name)
-      && !forcedDigestRecipientNames.some((name) => digestPersonMatchesName(person, name))
+      && !forcedDigestRecipients.some((recipient) => digestPersonMatchesRecipient(person, recipient))
     )
     .sort((left, right) => normalizeImportCell(left.name).localeCompare(normalizeImportCell(right.name), "fr", { sensitivity: "base" }))
     .map((person) => {

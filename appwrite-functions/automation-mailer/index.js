@@ -1,17 +1,16 @@
 const DEFAULT_ENDPOINT = "https://fra.cloud.appwrite.io/v1";
-const FORCED_DIGEST_RECIPIENT_NAMES = [
-  "Emir",
-  "Valou",
-  "Anton",
-  "Nicolas",
-  "Diana",
-  "Charles",
-  "Fabien",
-  "Jean-Yves",
-  "Marc",
-  "Medhi",
-  "Rob",
-  "Ronald"
+const FORCED_DIGEST_RECIPIENTS = [
+  { label: "Emir", aliases: ["Emir"] },
+  { label: "Valou", aliases: ["Valou"], email: "backoffice@twem.be", exclude: ["Georgette", "Larix", "valou@twem.be"] },
+  { label: "Anton", aliases: ["Anton"] },
+  { label: "Nicolas Bertholet", aliases: ["Nicolas Bertholet", "Bertholet"], exclude: ["Crohain"] },
+  { label: "Diana", aliases: ["Diana"] },
+  { label: "Charles", aliases: ["Charles"] },
+  { label: "Fabien", aliases: ["Fabien"] },
+  { label: "Jean-Yves", aliases: ["Jean-Yves", "Jean Yves"] },
+  { label: "Medhi", aliases: ["Medhi", "Mehdi"] },
+  { label: "Rob", aliases: ["Rob"] },
+  { label: "Ronald", aliases: ["Ronald"] }
 ];
 
 function env(name, fallback = "") {
@@ -218,18 +217,28 @@ function digestNameKey(value = "") {
     .toLowerCase();
 }
 
-function personMatchesDigestName(person = {}, expectedName = "") {
-  const haystack = digestNameKey([person.name, person.email, person.role].filter(Boolean).join(" "));
-  const expectedKeys = expectedName === "Medhi"
-    ? ["medhi", "mehdi"]
-    : [digestNameKey(expectedName)];
-  return Boolean(haystack && expectedKeys.some((key) => haystack.includes(key)));
+function digestPersonHaystack(person = {}) {
+  return digestNameKey([person.name, person.email, person.role].filter(Boolean).join(" "));
+}
+
+function personMatchesDigestRecipient(person = {}, recipient = {}) {
+  const haystack = digestPersonHaystack(person);
+  const excluded = (recipient.exclude || []).some((value) => haystack.includes(digestNameKey(value)));
+  if (!haystack || excluded) {
+    return false;
+  }
+  if (recipient.email && String(person.email || "").trim().toLowerCase() === recipient.email.toLowerCase()) {
+    return true;
+  }
+  return (recipient.aliases || [recipient.label]).some((alias) => haystack.includes(digestNameKey(alias)));
 }
 
 function forcedDigestRecipientsFromPeople(people = []) {
-  const recipients = FORCED_DIGEST_RECIPIENT_NAMES
-    .map((name) => people.find((person) => personMatchesDigestName(person, name)))
-    .map((person) => String(person?.email || "").trim())
+  const recipients = FORCED_DIGEST_RECIPIENTS
+    .map((recipient) => {
+      const person = people.find((entry) => personMatchesDigestRecipient(entry, recipient));
+      return String(person?.email || recipient.email || "").trim();
+    })
     .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
   return uniqueEmailList(recipients);
 }
