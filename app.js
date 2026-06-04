@@ -7989,6 +7989,44 @@ function defaultLaunchMailBody() {
   ].join("\n");
 }
 
+function defaultLaunchMailBodyNl() {
+  return [
+    "Hallo,",
+    "",
+    "De TWEM Brico opvolgingsapplicatie is beschikbaar voor uw winkel.",
+    "",
+    "Via deze applicatie kunt u nuttige informatie, afspraken, SAV-aanvragen en de opvolging van het dossier raadplegen.",
+    "",
+    "Wij nodigen u uit om regelmatig in te loggen zodat u de updates kunt opvolgen.",
+    "",
+    "Link naar de applicatie: https://twem-brico-suivi.appwrite.network/",
+    "",
+    "Met vriendelijke groeten,",
+    "",
+    "Valou",
+    "Back Office TWEM"
+  ].join("\n");
+}
+
+function launchMailLanguageForPerson(person = {}) {
+  const personLanguage = normalizeLanguageCode(person.language || "");
+  if (personLanguage === "nl") {
+    return "nl";
+  }
+  const storeLanguage = storesForPersonAccess(person)
+    .map((store) => storeLanguageForPrint(store))
+    .find((language) => language === "nl");
+  return storeLanguage === "nl" ? "nl" : "fr";
+}
+
+function groupedLaunchMailRecipients(recipients = []) {
+  return recipients.reduce((groups, person) => {
+    const language = launchMailLanguageForPerson(person);
+    groups[language === "nl" ? "nl" : "fr"].push(person);
+    return groups;
+  }, { fr: [], nl: [] });
+}
+
 function renderLaunchMailComposer() {
   if (!launchMailComposer) {
     return;
@@ -8000,10 +8038,16 @@ function renderLaunchMailComposer() {
     storeType: "DOS",
     role: roles[0] || "",
     personId: people[0]?.id || "",
-    subject: "Utilisation de l'application TWEM Brico",
-    body: defaultLaunchMailBody(),
+    subjectFr: "Utilisation de l'application TWEM Brico",
+    bodyFr: defaultLaunchMailBody(),
+    subjectNl: "Gebruik van de TWEM Brico-applicatie",
+    bodyNl: defaultLaunchMailBodyNl(),
     ...(state.launchMailDraft || {})
   };
+  draft.subjectFr ||= draft.subject || "Utilisation de l'application TWEM Brico";
+  draft.bodyFr ||= draft.body || defaultLaunchMailBody();
+  draft.subjectNl ||= "Gebruik van de TWEM Brico-applicatie";
+  draft.bodyNl ||= defaultLaunchMailBodyNl();
   launchMailComposer.innerHTML = `
     <section class="launch-mail-card">
       <div class="automation-group-head">
@@ -8043,12 +8087,20 @@ function renderLaunchMailComposer() {
           </select>
         </label>
         <label class="launch-mail-wide">
-          <span>Objet</span>
-          <input type="text" name="launch_subject" value="${escapeHtml(draft.subject)}">
+          <span>Objet FR</span>
+          <input type="text" name="launch_subject_fr" value="${escapeHtml(draft.subjectFr)}">
         </label>
         <label class="launch-mail-wide">
-          <span>Texte du mail</span>
-          <textarea rows="8" name="launch_body">${escapeHtml(draft.body)}</textarea>
+          <span>Texte FR</span>
+          <textarea rows="8" name="launch_body_fr">${escapeHtml(draft.bodyFr)}</textarea>
+        </label>
+        <label class="launch-mail-wide">
+          <span>Objet NL</span>
+          <input type="text" name="launch_subject_nl" value="${escapeHtml(draft.subjectNl)}">
+        </label>
+        <label class="launch-mail-wide">
+          <span>Tekst NL</span>
+          <textarea rows="8" name="launch_body_nl">${escapeHtml(draft.bodyNl)}</textarea>
         </label>
         <div class="launch-mail-summary" data-launch-mail-summary></div>
         <div class="launch-mail-actions">
@@ -8078,8 +8130,10 @@ function saveLaunchMailDraftFromForm(form) {
     storeType: form.querySelector('[name="launch_store_type"]')?.value || "DOS",
     role: form.querySelector('[name="launch_role"]')?.value || "",
     personId: form.querySelector('[name="launch_person"]')?.value || "",
-    subject: form.querySelector('[name="launch_subject"]')?.value || "",
-    body: form.querySelector('[name="launch_body"]')?.value || ""
+    subjectFr: form.querySelector('[name="launch_subject_fr"]')?.value || "",
+    bodyFr: form.querySelector('[name="launch_body_fr"]')?.value || "",
+    subjectNl: form.querySelector('[name="launch_subject_nl"]')?.value || "",
+    bodyNl: form.querySelector('[name="launch_body_nl"]')?.value || ""
   };
   saveState();
 }
@@ -8091,10 +8145,11 @@ function updateLaunchMailComposer(form) {
     node.classList.toggle("is-hidden", node.getAttribute("data-launch-filter") !== mode);
   });
   const recipients = launchMailRecipientsFromForm(form);
+  const groups = groupedLaunchMailRecipients(recipients);
   const summary = form?.querySelector("[data-launch-mail-summary]");
   if (summary) {
     summary.innerHTML = recipients.length
-      ? `<strong>${recipients.length} destinataire(s)</strong><span>${escapeHtml(recipients.slice(0, 12).map((person) => person.email).join(", "))}${recipients.length > 12 ? "..." : ""}</span>`
+      ? `<strong>${recipients.length} destinataire(s)</strong><span>FR: ${groups.fr.length} - NL: ${groups.nl.length}</span><span>${escapeHtml(recipients.slice(0, 12).map((person) => `${person.name || person.email} (${launchMailLanguageForPerson(person).toUpperCase()})`).join(", "))}${recipients.length > 12 ? "..." : ""}</span>`
       : "<strong>0 destinataire</strong><span>Aucun contact avec mail et PIN actif pour cette selection.</span>";
   }
 }
@@ -8112,10 +8167,12 @@ function launchMailPayloadFromForm(form) {
   const recipients = launchMailRecipientsFromForm(form);
   return {
     recipients,
+    groups: groupedLaunchMailRecipients(recipients),
     to: "backoffice@twem.be",
-    bcc: recipients.map((person) => normalizeImportCell(person.email)).join(";"),
-    subject: form?.querySelector('[name="launch_subject"]')?.value.trim() || "Utilisation de l'application TWEM Brico",
-    body: form?.querySelector('[name="launch_body"]')?.value.trim() || ""
+    subjectFr: form?.querySelector('[name="launch_subject_fr"]')?.value.trim() || "Utilisation de l'application TWEM Brico",
+    bodyFr: form?.querySelector('[name="launch_body_fr"]')?.value.trim() || "",
+    subjectNl: form?.querySelector('[name="launch_subject_nl"]')?.value.trim() || "Gebruik van de TWEM Brico-applicatie",
+    bodyNl: form?.querySelector('[name="launch_body_nl"]')?.value.trim() || ""
   };
 }
 
@@ -8126,7 +8183,19 @@ async function handleLaunchMailCopy(event) {
     window.alert("Aucun destinataire pour cette selection.");
     return;
   }
-  const text = [`A: ${payload.to}`, `BCC: ${payload.bcc}`, `Objet: ${payload.subject}`, "", payload.body].join("\n");
+  const text = [
+    `A: ${payload.to}`,
+    `BCC FR: ${payload.groups.fr.map((person) => normalizeImportCell(person.email)).join(";")}`,
+    `Objet FR: ${payload.subjectFr}`,
+    "",
+    payload.bodyFr,
+    "",
+    "-----",
+    `BCC NL: ${payload.groups.nl.map((person) => normalizeImportCell(person.email)).join(";")}`,
+    `Objet NL: ${payload.subjectNl}`,
+    "",
+    payload.bodyNl
+  ].join("\n");
   try {
     await navigator.clipboard?.writeText(text);
     window.alert("Destinataires et texte copies.");
@@ -8143,21 +8212,29 @@ function handleLaunchMailSubmit(event) {
     return;
   }
   const chunkSize = 40;
-  const chunks = [];
-  for (let index = 0; index < payload.recipients.length; index += chunkSize) {
-    chunks.push(payload.recipients.slice(index, index + chunkSize));
-  }
-  chunks.forEach((chunk, index) => {
+  const mailJobs = [];
+  [
+    { language: "FR", people: payload.groups.fr, subject: payload.subjectFr, body: payload.bodyFr },
+    { language: "NL", people: payload.groups.nl, subject: payload.subjectNl, body: payload.bodyNl }
+  ].forEach((group) => {
+    for (let index = 0; index < group.people.length; index += chunkSize) {
+      mailJobs.push({
+        ...group,
+        people: group.people.slice(index, index + chunkSize)
+      });
+    }
+  });
+  mailJobs.forEach((job, index) => {
     const url = outlookComposeUrl({
       to: payload.to,
-      bcc: chunk.map((person) => normalizeImportCell(person.email)).join(";"),
-      subject: payload.subject,
-      body: payload.body
+      bcc: job.people.map((person) => normalizeImportCell(person.email)).join(";"),
+      subject: job.subject,
+      body: job.body
     });
     window.setTimeout(() => window.open(url, "_blank"), index * 350);
   });
-  if (chunks.length > 1) {
-    window.alert(`${payload.recipients.length} destinataires repartis en ${chunks.length} mails Outlook pour eviter une limite technique.`);
+  if (mailJobs.length > 1) {
+    window.alert(`${payload.recipients.length} destinataires repartis en ${mailJobs.length} mails Outlook par langue et par limite technique.`);
   }
 }
 
