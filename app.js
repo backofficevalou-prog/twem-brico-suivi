@@ -8342,6 +8342,7 @@ function storeUpdateAlertActivities() {
 function defaultAutomationEmailDraft(automation, context = {}) {
   const template = automationEmailTemplate(automation, context);
   const isManualBody = Boolean(automation.emailBodyManual);
+  const isDailyDigest = automation.id === "daily_operations_digest";
   const suffix = context.store
     ? `-${context.store.id || context.store.code}`
     : context.person
@@ -8360,14 +8361,25 @@ function defaultAutomationEmailDraft(automation, context = {}) {
           ? `${automation.title} - ${context.activity.storeName || "magasin"}`
       : automation.title,
     recipient: template.recipient || automation.recipients || "",
-    subject: automation.emailSubject || template.subject,
-    body: isManualBody && !context.store && !context.activity ? (automation.emailBody || "") : template.body,
+    subject: isDailyDigest ? template.subject : (automation.emailSubject || template.subject),
+    body: isDailyDigest
+      ? template.body
+      : (isManualBody && !context.store && !context.activity ? (automation.emailBody || "") : template.body),
     status: template.status || automation.emailStatus || (automation.active ? "ready" : "draft"),
     blockedReason: template.blockedReason || "",
     plannedAt: automation.emailPlannedAt || (automation.id === "daily_operations_digest" ? nextMorningIso(9) : ""),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizeAutomationTemplateState(automation) {
+  if (automation?.id !== "daily_operations_digest") {
+    return;
+  }
+  automation.emailSubject = "";
+  automation.emailBody = "";
+  automation.emailBodyManual = false;
 }
 
 function mergedAutomationDraftStatus(baseDraft, current) {
@@ -8407,6 +8419,7 @@ function ensureAutomationEmailDrafts() {
     previsit_reminder: previsitReminderStores
   };
   (state.automations || []).forEach((automation) => {
+    normalizeAutomationTemplateState(automation);
     if (automation.id === "store_update_alert") {
       const activities = storeUpdateAlertActivities();
       activities.forEach((activity) => {
@@ -8926,6 +8939,12 @@ function renderAutomationTemplateList() {
   }
   automationTemplateList.innerHTML = (state.automations || []).map((automation) => {
     const template = automationEmailTemplate(automation);
+    const isDailyDigest = automation.id === "daily_operations_digest";
+    const isManualTemplate = automation.emailBodyManual && !isDailyDigest;
+    const subjectValue = isDailyDigest ? template.subject : (automation.emailSubject || template.subject || "");
+    const bodyValue = isDailyDigest
+      ? (template.body || "")
+      : (isManualTemplate ? (automation.emailBody || "") : (template.body || ""));
     return `
       <article class="automation-template-card">
         <div class="automation-card-head">
@@ -8933,16 +8952,17 @@ function renderAutomationTemplateList() {
             <h5>${escapeHtml(automation.title || automation.id)}</h5>
             <p>${escapeHtml(automation.languageMode || "")}</p>
           </div>
-          <span class="automation-email-status ${automation.emailBodyManual ? "status-ready" : "status-draft"}">${automation.emailBodyManual ? "Personnalise" : "Modele auto"}</span>
+          <span class="automation-email-status ${isManualTemplate ? "status-ready" : "status-draft"}">${isManualTemplate ? "Personnalise" : "Modele auto"}</span>
         </div>
         <label class="automation-field">
           <span>Objet du mail</span>
-          <input type="text" data-automation-template-id="${escapeHtml(automation.id)}" data-automation-template-field="emailSubject" value="${escapeHtml(automation.emailSubject || template.subject || "")}">
+          <input type="text" data-automation-template-id="${escapeHtml(automation.id)}" data-automation-template-field="emailSubject" value="${escapeHtml(subjectValue)}" ${isDailyDigest ? "readonly" : ""}>
         </label>
         <label class="automation-field">
           <span>Corps du mail</span>
-          <textarea rows="7" data-automation-template-id="${escapeHtml(automation.id)}" data-automation-template-field="emailBody">${escapeHtml(automation.emailBodyManual ? (automation.emailBody || "") : (template.body || ""))}</textarea>
+          <textarea rows="7" data-automation-template-id="${escapeHtml(automation.id)}" data-automation-template-field="emailBody" ${isDailyDigest ? "readonly" : ""}>${escapeHtml(bodyValue)}</textarea>
         </label>
+        ${isDailyDigest ? `<p class="automation-template-note">Ce digest est genere automatiquement depuis les activites, les changements de fiche, les SAV et les documents ajoutes.</p>` : ""}
       </article>
     `;
   }).join("");
@@ -9451,6 +9471,13 @@ function handleAutomationTemplateFieldChange(event) {
 
   const automation = state.automations.find((entry) => entry.id === automationId);
   if (!automation) {
+    return;
+  }
+
+  if (automation.id === "daily_operations_digest") {
+    normalizeAutomationTemplateState(automation);
+    ensureAutomationEmailDrafts();
+    renderAutomationTemplateList();
     return;
   }
 
