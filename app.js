@@ -1222,6 +1222,7 @@ const state = {
   tickets: [],
   automationEmails: [],
   activeAutomationSubtab: "rules",
+  launchMailDraft: {},
   focusedUpdate: null,
   storeSaveFeedback: null,
   technicalSheetEditId: "",
@@ -1976,6 +1977,7 @@ function localUiState() {
     activities: state.activities,
     tickets: state.tickets,
     automationEmails: state.automationEmails,
+    launchMailDraft: state.launchMailDraft,
     people: state.people,
     activeUserName: state.activeUserName,
     language: state.language,
@@ -2007,6 +2009,7 @@ function loadState() {
       activities: clone(demoActivities),
       tickets: clone(demoTickets),
       automationEmails: [],
+      launchMailDraft: {},
       people: demoPinPeople(),
       activeUserName: "",
       language: "fr",
@@ -2040,6 +2043,7 @@ function loadState() {
       activities: parsed.activities || clone(demoActivities),
       tickets: parsed.tickets || clone(demoTickets),
       automationEmails: Array.isArray(parsed.automationEmails) ? parsed.automationEmails : [],
+      launchMailDraft: parsed.launchMailDraft || {},
       people: mergePeopleWithPinFallback((parsed.people || []).map((person) => ({
         language: "fr",
         storeCode: "",
@@ -2070,6 +2074,7 @@ function loadState() {
       activities: clone(demoActivities),
       tickets: clone(demoTickets),
       automationEmails: [],
+      launchMailDraft: {},
       people: demoPinPeople(),
       activeUserName: "",
       language: "fr",
@@ -7990,6 +7995,15 @@ function renderLaunchMailComposer() {
   }
   const roles = normalizedRoleOptions(state.roleOptions || defaultRoleOptions);
   const people = launchMailEligiblePeople();
+  const draft = {
+    recipientMode: "storeType",
+    storeType: "DOS",
+    role: roles[0] || "",
+    personId: people[0]?.id || "",
+    subject: "Utilisation de l'application TWEM Brico",
+    body: defaultLaunchMailBody(),
+    ...(state.launchMailDraft || {})
+  };
   launchMailComposer.innerHTML = `
     <section class="launch-mail-card">
       <div class="automation-group-head">
@@ -8002,42 +8016,43 @@ function renderLaunchMailComposer() {
         <label>
           <span>Cible</span>
           <select name="launch_recipient_mode">
-            <option value="storeType">Type magasin</option>
-            <option value="role">Role</option>
-            <option value="person">Personne precise</option>
+            <option value="storeType" ${draft.recipientMode === "storeType" ? "selected" : ""}>Type magasin</option>
+            <option value="role" ${draft.recipientMode === "role" ? "selected" : ""}>Role</option>
+            <option value="person" ${draft.recipientMode === "person" ? "selected" : ""}>Personne precise</option>
           </select>
         </label>
         <label data-launch-filter="storeType">
           <span>Type magasin</span>
           <select name="launch_store_type">
-            <option value="DOS">DOS</option>
-            <option value="FOS-FOSDOS">FOS + FOSDOS</option>
-            <option value="FOS">FOS uniquement</option>
-            <option value="FOSDOS">FOSDOS uniquement</option>
+            <option value="DOS" ${draft.storeType === "DOS" ? "selected" : ""}>DOS</option>
+            <option value="FOS-FOSDOS" ${draft.storeType === "FOS-FOSDOS" ? "selected" : ""}>FOS + FOSDOS</option>
+            <option value="FOS" ${draft.storeType === "FOS" ? "selected" : ""}>FOS uniquement</option>
+            <option value="FOSDOS" ${draft.storeType === "FOSDOS" ? "selected" : ""}>FOSDOS uniquement</option>
           </select>
         </label>
         <label data-launch-filter="role">
           <span>Role</span>
           <select name="launch_role">
-            ${roles.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(roleLabel(role))}</option>`).join("")}
+            ${roles.map((role) => `<option value="${escapeHtml(role)}" ${draft.role === role ? "selected" : ""}>${escapeHtml(roleLabel(role))}</option>`).join("")}
           </select>
         </label>
         <label data-launch-filter="person">
           <span>Personne</span>
           <select name="launch_person">
-            ${people.map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml([person.name, person.email].filter(Boolean).join(" - "))}</option>`).join("")}
+            ${people.map((person) => `<option value="${escapeHtml(person.id)}" ${draft.personId === person.id ? "selected" : ""}>${escapeHtml([person.name, person.email].filter(Boolean).join(" - "))}</option>`).join("")}
           </select>
         </label>
         <label class="launch-mail-wide">
           <span>Objet</span>
-          <input type="text" name="launch_subject" value="Utilisation de l'application TWEM Brico">
+          <input type="text" name="launch_subject" value="${escapeHtml(draft.subject)}">
         </label>
         <label class="launch-mail-wide">
           <span>Texte du mail</span>
-          <textarea rows="8" name="launch_body">${escapeHtml(defaultLaunchMailBody())}</textarea>
+          <textarea rows="8" name="launch_body">${escapeHtml(draft.body)}</textarea>
         </label>
         <div class="launch-mail-summary" data-launch-mail-summary></div>
         <div class="launch-mail-actions">
+          <button type="button" class="mini-button" data-launch-reset>Reinitialiser le brouillon</button>
           <button type="button" class="mini-button" data-launch-copy>Copier destinataires + texte</button>
           <button type="submit" class="mini-button">Ouvrir Outlook</button>
         </div>
@@ -8050,10 +8065,27 @@ function renderLaunchMailComposer() {
   form?.addEventListener("change", update);
   form?.addEventListener("submit", handleLaunchMailSubmit);
   form?.querySelector("[data-launch-copy]")?.addEventListener("click", handleLaunchMailCopy);
+  form?.querySelector("[data-launch-reset]")?.addEventListener("click", handleLaunchMailReset);
   update();
 }
 
+function saveLaunchMailDraftFromForm(form) {
+  if (!form) {
+    return;
+  }
+  state.launchMailDraft = {
+    recipientMode: form.querySelector('[name="launch_recipient_mode"]')?.value || "storeType",
+    storeType: form.querySelector('[name="launch_store_type"]')?.value || "DOS",
+    role: form.querySelector('[name="launch_role"]')?.value || "",
+    personId: form.querySelector('[name="launch_person"]')?.value || "",
+    subject: form.querySelector('[name="launch_subject"]')?.value || "",
+    body: form.querySelector('[name="launch_body"]')?.value || ""
+  };
+  saveState();
+}
+
 function updateLaunchMailComposer(form) {
+  saveLaunchMailDraftFromForm(form);
   const mode = form?.querySelector('[name="launch_recipient_mode"]')?.value || "storeType";
   form?.querySelectorAll("[data-launch-filter]").forEach((node) => {
     node.classList.toggle("is-hidden", node.getAttribute("data-launch-filter") !== mode);
@@ -8065,6 +8097,15 @@ function updateLaunchMailComposer(form) {
       ? `<strong>${recipients.length} destinataire(s)</strong><span>${escapeHtml(recipients.slice(0, 12).map((person) => person.email).join(", "))}${recipients.length > 12 ? "..." : ""}</span>`
       : "<strong>0 destinataire</strong><span>Aucun contact avec mail et PIN actif pour cette selection.</span>";
   }
+}
+
+function handleLaunchMailReset(event) {
+  if (!window.confirm("Reinitialiser le brouillon du mail libre ?")) {
+    return;
+  }
+  state.launchMailDraft = {};
+  saveState();
+  renderLaunchMailComposer();
 }
 
 function launchMailPayloadFromForm(form) {
@@ -13893,6 +13934,7 @@ async function init() {
   state.activeAdminTab = stored.activeAdminTab || "dashboard";
   state.activeAutomationSubtab = stored.activeAutomationSubtab || "rules";
   state.pinValidated = false;
+  state.launchMailDraft = stored.launchMailDraft || {};
   state.toolItems = (stored.toolItems || []).filter((item) =>
     item?.id !== tutorialVideosSettingsItemId
     && item?.kind !== "tutorial_videos"
