@@ -466,10 +466,6 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
   const addedPlans = stores
     .filter((store) => sameDateKey(workflowOf(store).planPdfUpdatedAt, reportKey))
     .map((store) => digestStoreLine(store, workflowOf(store).planPdfName || "document ajoute"));
-  const generalActivities = uniqueDigestList(dayActivities
-    .filter((activity) => !/sav|document|plan|vlan|cabl|switch|pre.?visite|configuration|install/i.test(String(activity.comment || "")))
-    .map((activity) => `${activity.storeCode || activity.storeName || "-"} : ${activity.comment}`));
-
   return [
     "Digest du jour :",
     "",
@@ -505,10 +501,7 @@ function buildActivityDigestBody(stores, tickets, activities, now = new Date()) 
     lineList(savClosed, "Aucun SAV cloture hier."),
     "",
     "Plans / documents ajoutes",
-    lineList(addedPlans, "Aucun plan ou document ajoute hier."),
-    "",
-    "Autres modifications de fiche",
-    lineList(generalActivities, "Aucune autre modification journalisee hier.")
+    lineList(addedPlans, "Aucun plan ou document ajoute hier.")
   ].join("\n");
 }
 
