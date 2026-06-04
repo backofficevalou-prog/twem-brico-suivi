@@ -8463,6 +8463,20 @@ function ensureAutomationEmailDrafts() {
     }
     const current = existingByAutomation.get(automation.id);
     const baseDraft = defaultAutomationEmailDraft(automation);
+    if (automation.id === "daily_operations_digest") {
+      drafts.push({
+        ...baseDraft,
+        ...current,
+        automationTitle: automation.title,
+        recipient: baseDraft.recipient,
+        subject: baseDraft.subject,
+        body: baseDraft.body,
+        bodyManual: false,
+        status: current?.status || baseDraft.status,
+        updatedAt: new Date().toISOString()
+      });
+      return;
+    }
     drafts.push(current
       ? {
           ...baseDraft,
