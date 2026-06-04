@@ -2386,6 +2386,75 @@ button {
   color: var(--muted);
 }
 
+.launch-mail-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.launch-mail-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.launch-mail-form label {
+  display: grid;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.launch-mail-form input,
+.launch-mail-form select,
+.launch-mail-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.launch-mail-form textarea {
+  resize: vertical;
+}
+
+.launch-mail-wide,
+.launch-mail-summary,
+.launch-mail-actions {
+  grid-column: 1 / -1;
+}
+
+.launch-mail-summary {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff8d1;
+}
+
+.launch-mail-summary span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.launch-mail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
 .automation-subtabs {
   display: flex;
   flex-wrap: wrap;
@@ -3399,6 +3468,7 @@ button {
     grid-column: 1 / -1;
   }
 
+  .launch-mail-form,
   .automation-email-row {
     grid-template-columns: 1fr;
   }

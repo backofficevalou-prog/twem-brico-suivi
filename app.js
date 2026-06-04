@@ -1338,6 +1338,7 @@ const automationList = document.querySelector("#automationList");
 const automationSubtabs = document.querySelector("#automationSubtabs");
 const automationTemplateList = document.querySelector("#automationTemplateList");
 const automationEmailQueue = document.querySelector("#automationEmailQueue");
+const launchMailComposer = document.querySelector("#launchMailComposer");
 const automationFutureList = document.querySelector("#automationFutureList");
 const twemWorkspace = document.querySelector("#twemWorkspace");
 const workspaceSidebar = document.querySelector("#workspaceSidebar");
@@ -7171,6 +7172,56 @@ function personRecipientValue(person = {}) {
   return normalizeImportCell(person.email) || normalizeImportCell(person.name);
 }
 
+function launchMailEligiblePeople() {
+  return (state.people || [])
+    .filter((person) =>
+      normalizeImportCell(person.email)
+      && normalizePin(person.pin).length === 6
+      && !["disabled", "expired"].includes(String(person.pinStatus || "").toLowerCase())
+    );
+}
+
+function personMatchesStoreType(person, targetType) {
+  const types = storesForPersonAccess(person).map((store) => normalizeShopTypeValue(store.shopType)).filter(Boolean);
+  if (targetType === "FOS-FOSDOS") {
+    return types.some((type) => type === "FOS" || type === "FOSDOS");
+  }
+  return types.includes(targetType);
+}
+
+function launchMailRecipientsFromForm(form) {
+  if (!form) {
+    return [];
+  }
+  const mode = form.querySelector('[name="launch_recipient_mode"]')?.value || "storeType";
+  const storeType = form.querySelector('[name="launch_store_type"]')?.value || "DOS";
+  const role = form.querySelector('[name="launch_role"]')?.value || "";
+  const personId = form.querySelector('[name="launch_person"]')?.value || "";
+  const seen = new Set();
+  return launchMailEligiblePeople()
+    .filter((person) => {
+      if (mode === "storeType") {
+        return personMatchesStoreType(person, storeType);
+      }
+      if (mode === "role") {
+        return String(person.role || "") === role;
+      }
+      if (mode === "person") {
+        return String(person.id || "") === personId;
+      }
+      return false;
+    })
+    .filter((person) => {
+      const email = normalizeImportCell(person.email).toLowerCase();
+      if (!email || seen.has(email)) {
+        return false;
+      }
+      seen.add(email);
+      return true;
+    })
+    .sort((left, right) => String(left.name || "").localeCompare(String(right.name || ""), "fr", { sensitivity: "base" }));
+}
+
 function digestBasePeople() {
   return ["Emir", "Valou"]
     .map((name) => (state.people || []).find((person) => person.name === name) || { id: name, name })
@@ -7914,10 +7965,166 @@ function ensureAutomationEmailDrafts() {
   state.automationEmails = drafts;
 }
 
+function defaultLaunchMailBody() {
+  return [
+    "Bonjour,",
+    "",
+    "L'application de suivi TWEM Brico est disponible pour votre magasin.",
+    "",
+    "Elle vous permet de consulter les informations utiles, les rendez-vous, les demandes SAV et le suivi du dossier.",
+    "",
+    "Nous vous invitons a vous connecter regulierement afin de suivre les mises a jour.",
+    "",
+    "Lien vers l'application : https://twem-brico-suivi.appwrite.network/",
+    "",
+    "Bien a vous,",
+    "",
+    "Valou",
+    "Back Office TWEM"
+  ].join("\n");
+}
+
+function renderLaunchMailComposer() {
+  if (!launchMailComposer) {
+    return;
+  }
+  const roles = normalizedRoleOptions(state.roleOptions || defaultRoleOptions);
+  const people = launchMailEligiblePeople();
+  launchMailComposer.innerHTML = `
+    <section class="launch-mail-card">
+      <div class="automation-group-head">
+        <div>
+          <h4>Mail libre / lancement app</h4>
+          <p>Preparer un mail manuel vers des magasins DOS/FOS, un role ou une personne precise. Les destinataires sont mis en BCC.</p>
+        </div>
+      </div>
+      <form class="launch-mail-form">
+        <label>
+          <span>Cible</span>
+          <select name="launch_recipient_mode">
+            <option value="storeType">Type magasin</option>
+            <option value="role">Role</option>
+            <option value="person">Personne precise</option>
+          </select>
+        </label>
+        <label data-launch-filter="storeType">
+          <span>Type magasin</span>
+          <select name="launch_store_type">
+            <option value="DOS">DOS</option>
+            <option value="FOS-FOSDOS">FOS + FOSDOS</option>
+            <option value="FOS">FOS uniquement</option>
+            <option value="FOSDOS">FOSDOS uniquement</option>
+          </select>
+        </label>
+        <label data-launch-filter="role">
+          <span>Role</span>
+          <select name="launch_role">
+            ${roles.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(roleLabel(role))}</option>`).join("")}
+          </select>
+        </label>
+        <label data-launch-filter="person">
+          <span>Personne</span>
+          <select name="launch_person">
+            ${people.map((person) => `<option value="${escapeHtml(person.id)}">${escapeHtml([person.name, person.email].filter(Boolean).join(" - "))}</option>`).join("")}
+          </select>
+        </label>
+        <label class="launch-mail-wide">
+          <span>Objet</span>
+          <input type="text" name="launch_subject" value="Utilisation de l'application TWEM Brico">
+        </label>
+        <label class="launch-mail-wide">
+          <span>Texte du mail</span>
+          <textarea rows="8" name="launch_body">${escapeHtml(defaultLaunchMailBody())}</textarea>
+        </label>
+        <div class="launch-mail-summary" data-launch-mail-summary></div>
+        <div class="launch-mail-actions">
+          <button type="button" class="mini-button" data-launch-copy>Copier destinataires + texte</button>
+          <button type="submit" class="mini-button">Ouvrir Outlook</button>
+        </div>
+      </form>
+    </section>
+  `;
+  const form = launchMailComposer.querySelector(".launch-mail-form");
+  const update = () => updateLaunchMailComposer(form);
+  form?.addEventListener("input", update);
+  form?.addEventListener("change", update);
+  form?.addEventListener("submit", handleLaunchMailSubmit);
+  form?.querySelector("[data-launch-copy]")?.addEventListener("click", handleLaunchMailCopy);
+  update();
+}
+
+function updateLaunchMailComposer(form) {
+  const mode = form?.querySelector('[name="launch_recipient_mode"]')?.value || "storeType";
+  form?.querySelectorAll("[data-launch-filter]").forEach((node) => {
+    node.classList.toggle("is-hidden", node.getAttribute("data-launch-filter") !== mode);
+  });
+  const recipients = launchMailRecipientsFromForm(form);
+  const summary = form?.querySelector("[data-launch-mail-summary]");
+  if (summary) {
+    summary.innerHTML = recipients.length
+      ? `<strong>${recipients.length} destinataire(s)</strong><span>${escapeHtml(recipients.slice(0, 12).map((person) => person.email).join(", "))}${recipients.length > 12 ? "..." : ""}</span>`
+      : "<strong>0 destinataire</strong><span>Aucun contact avec mail et PIN actif pour cette selection.</span>";
+  }
+}
+
+function launchMailPayloadFromForm(form) {
+  const recipients = launchMailRecipientsFromForm(form);
+  return {
+    recipients,
+    to: "backoffice@twem.be",
+    bcc: recipients.map((person) => normalizeImportCell(person.email)).join(";"),
+    subject: form?.querySelector('[name="launch_subject"]')?.value.trim() || "Utilisation de l'application TWEM Brico",
+    body: form?.querySelector('[name="launch_body"]')?.value.trim() || ""
+  };
+}
+
+async function handleLaunchMailCopy(event) {
+  const form = event.currentTarget.closest("form");
+  const payload = launchMailPayloadFromForm(form);
+  if (!payload.recipients.length) {
+    window.alert("Aucun destinataire pour cette selection.");
+    return;
+  }
+  const text = [`A: ${payload.to}`, `BCC: ${payload.bcc}`, `Objet: ${payload.subject}`, "", payload.body].join("\n");
+  try {
+    await navigator.clipboard?.writeText(text);
+    window.alert("Destinataires et texte copies.");
+  } catch {
+    window.alert(text);
+  }
+}
+
+function handleLaunchMailSubmit(event) {
+  event.preventDefault();
+  const payload = launchMailPayloadFromForm(event.currentTarget);
+  if (!payload.recipients.length) {
+    window.alert("Aucun destinataire pour cette selection.");
+    return;
+  }
+  const chunkSize = 40;
+  const chunks = [];
+  for (let index = 0; index < payload.recipients.length; index += chunkSize) {
+    chunks.push(payload.recipients.slice(index, index + chunkSize));
+  }
+  chunks.forEach((chunk, index) => {
+    const url = outlookComposeUrl({
+      to: payload.to,
+      bcc: chunk.map((person) => normalizeImportCell(person.email)).join(";"),
+      subject: payload.subject,
+      body: payload.body
+    });
+    window.setTimeout(() => window.open(url, "_blank"), index * 350);
+  });
+  if (chunks.length > 1) {
+    window.alert(`${payload.recipients.length} destinataires repartis en ${chunks.length} mails Outlook pour eviter une limite technique.`);
+  }
+}
+
 function renderAutomationEmailQueue() {
   if (!automationEmailQueue) {
     return;
   }
+  renderLaunchMailComposer();
   ensureAutomationEmailDrafts();
   const emails = [...(state.automationEmails || [])].sort((a, b) => {
     const statusScore = { ready: 0, draft: 1, error: 2, blocked: 3, sent: 4 };
@@ -9079,6 +9286,17 @@ function welcomeMailOutlookUrl(email, subjectText, bodyText) {
     `?to=${encodeOutlookParam(email)}`,
     `&subject=${encodeOutlookParam(subjectText)}`,
     `&body=${encodeOutlookParam(bodyText)}`
+  ].join("");
+}
+
+function outlookComposeUrl({ to = "", bcc = "", subject = "", body = "" } = {}) {
+  const encodeOutlookParam = (value) => encodeURIComponent(String(value || "")).replace(/%20/g, "%20");
+  return [
+    "https://outlook.office.com/mail/deeplink/compose",
+    `?to=${encodeOutlookParam(to)}`,
+    bcc ? `&bcc=${encodeOutlookParam(bcc)}` : "",
+    `&subject=${encodeOutlookParam(subject)}`,
+    `&body=${encodeOutlookParam(body)}`
   ].join("");
 }
 
