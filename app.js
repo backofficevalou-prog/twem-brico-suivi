@@ -2135,6 +2135,18 @@ function buildAppwriteSettingsDocument() {
   };
 }
 
+function buildAppwriteRoleSettingsDocument() {
+  state.roleVisibilityConfig = normalizedRoleVisibilityConfig(state.roleVisibilityConfig || {});
+  return {
+    role_options_json: JSON.stringify(state.roleOptions || []),
+    role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {})
+  };
+}
+
+function syncErrorLabel(error) {
+  return String(error?.message || error?.response?.message || "raison inconnue");
+}
+
 function storeProvenance(store) {
   const raw = normalizeImportCell(store?.owner);
   return provenanceOptions.includes(raw) ? raw : "Migration";
@@ -6221,9 +6233,13 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         </td>
       `;
     } else {
+      const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || store.city || "-";
       row.innerHTML = `
         <td>${escapeHtml(store.code)}</td>
-        <td><strong>${escapeHtml(store.name)}</strong></td>
+        <td>
+          <strong>${escapeHtml(store.name)}</strong>
+          <div class="cell-note">${escapeHtml(addressBits)}</div>
+        </td>
         <td>${escapeHtml(store.city || "-")}</td>
         <td>${escapeHtml(store.shopType || "-")}</td>
         <td>
@@ -9592,7 +9608,7 @@ function renderRoleList() {
       }
       state.roleOptions = state.roleOptions.filter((entry) => entry !== role);
       if (hasRemoteData()) {
-        await syncSettingsToRemote();
+        await syncRoleSettingsToRemote();
         await loadRemoteState();
       }
       saveState();
@@ -11097,6 +11113,23 @@ async function syncSettingsToRemote() {
     appwriteSettingsCollectionId,
     "global-state",
     buildAppwriteSettingsDocument()
+  );
+}
+
+async function syncRoleSettingsToRemote() {
+  if (supabaseClient) {
+    await syncRoleOptionsToRemote();
+    return;
+  }
+
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
+
+  await upsertAppwriteDocument(
+    appwriteSettingsCollectionId,
+    "global-state",
+    buildAppwriteRoleSettingsDocument()
   );
 }
 
@@ -14315,10 +14348,10 @@ async function handleRoleSubmit(event) {
   renderVisibilityEditor();
   if (hasRemoteData()) {
     try {
-      await syncSettingsToRemote();
+      await syncRoleSettingsToRemote();
     } catch (error) {
       console.error("Erreur sync role", error);
-      window.alert("Role ajoute localement, mais la synchro Appwrite a echoue. Retente apres refresh si besoin.");
+      window.alert(`Role ajoute localement, mais la synchro Appwrite a echoue: ${syncErrorLabel(error)}`);
     }
   }
 }
@@ -14342,7 +14375,7 @@ async function handleRoleEditSubmit(event) {
     for (const person of state.people.filter((entry) => entry.role === nextRole)) {
       await syncPersonToRemote(person);
     }
-    await syncSettingsToRemote();
+    await syncRoleSettingsToRemote();
     await loadRemoteState();
   }
   saveState();
@@ -14872,10 +14905,10 @@ async function handleIntervenantRoleSubmit(event) {
 
   if (hasRemoteData()) {
     try {
-      await syncSettingsToRemote();
+      await syncRoleSettingsToRemote();
     } catch (error) {
       console.error("Erreur sync sorte intervenant", error);
-      window.alert("Sorte d'intervenant ajoutee localement, mais la synchro Appwrite a echoue. Retente apres refresh si besoin.");
+      window.alert(`Sorte d'intervenant ajoutee localement, mais la synchro Appwrite a echoue: ${syncErrorLabel(error)}`);
     }
   }
 }
@@ -14929,7 +14962,7 @@ async function handleStoreSubmit(event) {
     shopNumber: storeShopNumberInput?.value.trim() || code.replace(/^BRI-/i, ""),
     name,
     city,
-    address: storeAddressInput?.value.trim() || "",
+    address: storeAddressInput?.value.trim() || targetStore?.address || "",
     shopType: normalizeShopTypeValue(storeShopTypeSelect?.value || ""),
     shopSize: storeShopSizeInput?.value.trim() || "",
     poLicences: storePoLicencesInput?.value.trim() || "",
