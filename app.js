@@ -5268,68 +5268,26 @@ function buildConfigurationHubCard(store) {
       <article class="editor-card full-span-card grouped-card" data-access-zone="configuration_request">
         <div class="grouped-card-head">
           <h3>Configuration magasin</h3>
-          <p>De la demande de configuration jusqu au choix final des extensions.</p>
-        </div>
-        <div class="two-col">
-          <label>
-            <span>Demande configuration</span>
-            <select name="config_status">
-              ${renderOptions(["Pas envoye", "Envoye", "Recue"], workflow.configStatus || "Envoye")}
-            </select>
-          </label>
-          <label>
-            <span>Date telephonie actuelle</span>
-            <input type="date" name="current_phone_date" value="${escapeHtml(workflow.currentPhoneDate || "")}">
-          </label>
-          <label>
-            <span>Commande articles</span>
-            <select name="order_status">
-              ${renderOptions(["Non transmise", "Transmise fournisseur", "Recue magasin"], workflow.orderStatus || "Transmise fournisseur")}
-            </select>
-          </label>
-          <label>
-            <span>Commentaire logistique</span>
-            <input type="text" name="order_note" value="${escapeHtml(workflow.orderNote || "")}">
-          </label>
+          <p>Infos reseau, contrat et numeros utiles a la configuration.</p>
         </div>
         <div class="two-col section-block">
-          <label>
-            <span>Type magasin</span>
-            <select name="shop_type">${renderOptions(["DOS", "FOS", "FOSDOS"], normalizeShopTypeValue(store.shopType) || "DOS")}</select>
-          </label>
           <label>
             <span>IP range</span>
-            <input type="text" value="${escapeHtml(store.ipRange || "")}" readonly>
+            <input type="text" name="ip_range" value="${escapeHtml(store.ipRange || "")}">
           </label>
-        </div>
-        <div class="two-col section-block">
           <label>
             <span>N client contrat actuel</span>
             <input type="text" name="current_contract_client_number" value="${escapeHtml(workflow.currentContractClientNumber || "")}">
           </label>
+        </div>
+        <div class="two-col section-block">
           <label>
             <span>Numero principal actuel</span>
             <input type="text" name="current_contract_main_number" value="${escapeHtml(workflow.currentContractMainNumber || "")}">
           </label>
-        </div>
-        <div class="section-block">
           <label>
             <span>Autres numeros releves</span>
             <textarea name="current_contract_other_numbers" rows="4">${escapeHtml(workflow.currentContractOtherNumbers || "")}</textarea>
-          </label>
-        </div>
-        <div class="contacts-form-grid section-block">
-          <label>
-            <span>Mail configuration envoye</span>
-            <select name="extension_request_status">
-              ${renderOptions(["A envoyer", "Envoye", "Relancee"], workflow.extensionRequestStatus)}
-            </select>
-          </label>
-          <label>
-            <span>Configuration extensions recue</span>
-            <select name="extension_config_status">
-              ${renderOptions(["En attente", "Partielle", "Recue"], workflow.extensionConfigStatus)}
-            </select>
           </label>
         </div>
         <div class="two-col section-block">
@@ -13860,6 +13818,7 @@ async function handleStoreEditorSubmit(event) {
   store.appointments = readAppointments(form, store);
 
   workflow.destinyInstallDate = fieldValue("destiny_install_date", workflow.destinyInstallDate);
+  store.ipRange = fieldValue("ip_range", store.ipRange, { trim: true });
   workflow.configStatus = fieldValue("config_status", workflow.configStatus);
   workflow.currentPhoneDate = fieldValue("current_phone_date", workflow.currentPhoneDate);
   workflow.orderStatus = fieldValue("order_status", workflow.orderStatus);
@@ -13867,6 +13826,20 @@ async function handleStoreEditorSubmit(event) {
   workflow.currentContractClientNumber = fieldValue("current_contract_client_number", workflow.currentContractClientNumber, { trim: true });
   workflow.currentContractMainNumber = fieldValue("current_contract_main_number", workflow.currentContractMainNumber, { trim: true });
   workflow.currentContractOtherNumbers = fieldValue("current_contract_other_numbers", workflow.currentContractOtherNumbers, { trim: true });
+  if (form.dataset.storeMode === "configuration") {
+    const missingConfigurationFields = [
+      ["IP range", store.ipRange],
+      ["N client contrat actuel", workflow.currentContractClientNumber],
+      ["Numero principal actuel", workflow.currentContractMainNumber],
+      ["Autres numeros releves", workflow.currentContractOtherNumbers]
+    ].filter(([, value]) => !normalizeImportCell(value));
+    if (missingConfigurationFields.length) {
+      const message = `Infos manquantes: ${missingConfigurationFields.map(([label]) => label).join(", ")}.`;
+      validationNode.textContent = message;
+      setStoreSaveFeedback(storeId, message, "error");
+      return;
+    }
+  }
   workflow.destinyPmName = fieldValue("destiny_pm_name", workflow.destinyPmName, { trim: true });
   workflow.destinyPmEmail = fieldValue("destiny_pm_email", workflow.destinyPmEmail, { trim: true });
   workflow.destinyTicketRef = fieldValue("destiny_ticket_ref", workflow.destinyTicketRef, { trim: true });
