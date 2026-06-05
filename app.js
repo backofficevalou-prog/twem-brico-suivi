@@ -176,6 +176,11 @@ function defaultNetworkExtensionForRow(row = {}) {
   return "";
 }
 
+function networkRowPositionKey(row = {}) {
+  const match = String(row.id || row.slotLabel || "").match(/(\d+)$/);
+  return `${normalizeImportCell(row.category)}:${match ? Number(match[1]) : normalizeImportCell(row.slotLabel)}`;
+}
+
 function networkExtensionOptionsForCategory(categoryFilter = "", language = "fr", selected = "") {
   const options = [notApplicableExtensionOption, ...availableExtensionReferenceOptions(categoryFilter, language)];
   const selectedValue = normalizeImportCell(selected);
@@ -4516,8 +4521,9 @@ function reconcileNetworkRowsWithQuantities(store) {
   const blueprintRows = defaultNetworkRowsForStore(store);
   const existingRows = Array.isArray(workflow.networkRows) ? workflow.networkRows : [];
   const existingById = new Map(existingRows.map((row) => [row.id, row]));
+  const existingByPosition = new Map(existingRows.map((row) => [networkRowPositionKey(row), row]));
   workflow.networkRows = blueprintRows.map((row) => {
-    const previous = existingById.get(row.id);
+    const previous = existingById.get(row.id) || existingByPosition.get(networkRowPositionKey(row));
     return previous
       ? {
           ...row,
@@ -13736,11 +13742,17 @@ function readAppointments(form, store) {
 }
 
 function readNetworkRows(form, store) {
-  return getNetworkConfigRows(store).map((row) => ({
-    ...row,
-    extensionLabel: form.querySelector(`[name="network_extension_${row.id}"]`)?.value || row.extensionLabel || defaultNetworkExtensionForRow(row) || "",
-    note: form.querySelector(`[name="network_note_${row.id}"]`)?.value?.trim() ?? row.note ?? ""
-  }));
+  return getNetworkConfigRows(store).map((row) => {
+    const extensionField = form.querySelector(`[name="network_extension_${row.id}"]`);
+    const noteField = form.querySelector(`[name="network_note_${row.id}"]`);
+    const extensionValue = extensionField ? normalizeImportCell(extensionField.value) : "";
+    const noteValue = noteField ? noteField.value.trim() : null;
+    return {
+      ...row,
+      extensionLabel: extensionValue || row.extensionLabel || defaultNetworkExtensionForRow(row) || "",
+      note: noteValue !== null ? noteValue : (row.note || "")
+    };
+  });
 }
 
 function readGsmRows(form, store) {
