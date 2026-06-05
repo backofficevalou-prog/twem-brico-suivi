@@ -371,12 +371,15 @@ function renderSavPersonCheckboxes(store) {
   if (!options.length) {
     return '<div class="empty-state sav-empty">Aucune personne disponible dans les contacts.</div>';
   }
-  return options.map((option) => `
-    <label class="sav-person-option">
-      <input type="checkbox" name="new_ticket_people" value="${escapeHtml(option.value)}">
-      <span>${escapeHtml(option.label)}</span>
-    </label>
-  `).join("");
+  return options.map((option, index) => {
+    const optionId = `new-ticket-person-${index}`;
+    return `
+    <div class="sav-person-option">
+      <input id="${escapeHtml(optionId)}" type="checkbox" name="new_ticket_people" value="${escapeHtml(option.value)}">
+      <label for="${escapeHtml(optionId)}">${escapeHtml(option.label)}</label>
+    </div>
+  `;
+  }).join("");
 }
 
 function renderSavDispatchCheckboxes(store, selectedNames = [], inputName = "sav_dispatch_people") {
@@ -385,13 +388,14 @@ function renderSavDispatchCheckboxes(store, selectedNames = [], inputName = "sav
   if (!options.length) {
     return '<div class="empty-state sav-empty">Aucune personne disponible dans les contacts.</div>';
   }
-  return options.map((option) => {
+  return options.map((option, index) => {
     const checked = selectedSet.has(normalizeImportCell(option.value).toLowerCase()) ? "checked" : "";
+    const optionId = `${inputName}-${index}`;
     return `
-      <label class="sav-person-option">
-        <input type="checkbox" name="${escapeHtml(inputName)}" value="${escapeHtml(option.value)}" ${checked}>
-        <span>${escapeHtml(option.label)}</span>
-      </label>
+      <div class="sav-person-option">
+        <input id="${escapeHtml(optionId)}" type="checkbox" name="${escapeHtml(inputName)}" value="${escapeHtml(option.value)}" ${checked}>
+        <label for="${escapeHtml(optionId)}">${escapeHtml(option.label)}</label>
+      </div>
     `;
   }).join("");
 }

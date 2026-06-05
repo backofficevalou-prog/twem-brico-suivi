@@ -1682,7 +1682,8 @@ button {
 }
 
 .sav-person-option {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: 7px;
   align-items: center;
   min-width: 0;
@@ -1701,11 +1702,19 @@ button {
 
 .sav-person-option input {
   margin: 0;
-  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  justify-self: center;
 }
 
-.sav-person-option span {
+.sav-person-option label {
+  display: block;
   min-width: 0;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
   overflow-wrap: anywhere;
 }
 
