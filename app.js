@@ -14952,14 +14952,15 @@ async function handleStoreSubmit(event) {
   const code = storeCodeInput.value.trim().toUpperCase();
   const owner = storeOwnerSelect.value;
   const manager = storeManagerInput.value.trim();
-  const editId = Number(storeEditSelect?.value || 0);
+  const editId = storeEditSelect?.value || "";
 
   if (!name || !city || !code || !owner) {
+    window.alert("Nom, ville, code et provenance sont obligatoires pour enregistrer le magasin.");
     return;
   }
 
   const targetStore = editId
-    ? state.stores.find((store) => store.id === editId)
+    ? state.stores.find((store) => String(store.id) === editId)
     : null;
   const store = targetStore || {
     id: Date.now(),
@@ -15073,8 +15074,8 @@ function fillStoreContactForm(store) {
 }
 
 function handleStoreEditSelectChange() {
-  const storeId = Number(storeEditSelect?.value || 0);
-  const store = state.stores.find((entry) => entry.id === storeId);
+  const storeId = storeEditSelect?.value || "";
+  const store = state.stores.find((entry) => String(entry.id) === storeId);
   fillStoreContactForm(store);
 }
 
