@@ -4906,6 +4906,7 @@ function buildStoreHeaderCards() {
 function buildStoreSectionNav(mode = "stores", store = null) {
   const links = mode === "configuration"
     ? [
+        ["quantities", "Quantites"],
         ["configuration", "Configuration"],
         ["equipment", "Equipements"]
       ]
@@ -5944,6 +5945,10 @@ function buildStoreDetailForm(store, mode = "stores") {
   const detailContent = mode === "configuration"
     ? `
         ${buildStoreSectionNav("configuration", store)}
+
+        <div class="editor-grid section-anchor" id="section-quantities">
+          ${buildStorePilotSkeleton(store)}
+        </div>
 
         ${buildConfigurationHubCard(store)}
 
