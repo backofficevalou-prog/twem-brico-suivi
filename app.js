@@ -4553,6 +4553,12 @@ function getGsmRows(store) {
   return workflow.gsmRows;
 }
 
+function groupedCallExtensionList(language = "fr") {
+  return extensionRowsForCategory(groupedCallExtensionCategoryLabel)
+    .map((row) => extensionReferenceText(row, language))
+    .filter(Boolean);
+}
+
 function reconcileGsmRowsWithQuantities(store) {
   const workflow = ensureStoreWorkflowData(store);
   const blueprintRows = defaultGsmRowsForStore(store);
@@ -4728,17 +4734,11 @@ function buildStorePilotSkeleton(store) {
         <span>Lignes generees automatiquement par quantite magasin</span>
       </summary>
       <div class="network-skeleton-body">
-        <p class="posts-skeleton-intro">Le responsable magasin remplit cette partie pour permettre a l IT de programmer les appareils avant installation.</p>
+        <p class="posts-skeleton-intro">La configuration ci-dessous est differente en quantite. C'est normal : les quantites ont ete revues avec Brico, et certains numeros d'extension ont change afin d'uniformiser la telephonie dans tous les magasins.</p>
         <input type="hidden" name="network_config_confirmed" value="${workflow.networkConfigConfirmed ? "1" : "0"}">
         ${showConfirmBar
           ? (workflow.networkConfigConfirmed && !canEditZone(store, "network_config") ? summaryContent : editableContent)
           : editableContent}
-        ${showConfirmBar ? `
-          <div class="network-confirm-bar">
-            <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Le magasin remplit ses choix puis confirme en bas du module."}</span>
-            <button type="button" class="mini-button" data-network-confirm="${store.id}">${workflow.networkConfigConfirmed ? "Choix confirmes" : "Confirmer vos choix"}</button>
-          </div>
-        ` : ""}
       </div>
     </details>
   `;
@@ -4923,7 +4923,6 @@ function buildStoreSectionNav(mode = "stores", store = null) {
   return `
     <nav class="store-editor-nav">
       ${links.map(([key, label]) => `<a href="#section-${key}" class="store-editor-nav-link">${escapeHtml(label)}</a>`).join("")}
-      ${store ? '<button type="submit" class="mini-button store-editor-nav-action store-editor-save-top" data-store-submit-top>Enregistrer</button>' : ""}
       ${store ? `<button type="button" class="mini-button store-editor-nav-action" data-store-print="${store.id}">Imprimer la fiche complete</button>` : ""}
     </nav>
   `;
@@ -5349,69 +5348,81 @@ function buildEquipmentCards(store) {
   const workflow = ensureStoreWorkflowData(store);
   const gsmRows = getGsmRows(store);
   const extensionOptions = availableExtensionReferenceOptions("", store.language || "fr");
+  const groupedExtensions = groupedCallExtensionList(store.language || "fr");
   return `
     <div class="editor-grid section-anchor" id="section-equipment">
-      <article class="editor-card full-span-card grouped-card" data-access-zone="store_posts">
-        <h3>GSM / SIM</h3>
-        <div class="gsm-compact-stack">
-          ${gsmRows.map((row, index) => `
-            <article class="gsm-compact-item">
-              <div class="network-category-head">
-                <h4>GSM ${index + 1}</h4>
-                <span>${escapeHtml(row.user || row.mobileNumber || "A definir")}</span>
-              </div>
-              <div class="gsm-compact-grid">
-                <label>
-                  <span>Modele appareil</span>
-                  <select name="gsm_model_${escapeHtml(row.id)}">
-                    ${gsmModelOptions().map((option) => `<option value="${escapeHtml(option)}" ${row.model === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-                  </select>
-                </label>
-                <label>
-                  <span>Extension liee</span>
-                  <select name="gsm_extension_${escapeHtml(row.id)}">
-                    <option value="">Choisir une extension</option>
-                    ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-                  </select>
-                </label>
-                <label>
-                  <span>Utilisateur</span>
-                  <input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}">
-                </label>
-                <label>
-                  <span>Numero mobile</span>
-                  <input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}">
-                </label>
-                <label>
-                  <span>Reseau mobile</span>
-                  <input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}">
-                </label>
-                <label>
-                  <span>ICCID</span>
-                  <input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}">
-                </label>
-                <label>
-                  <span>Code PUK</span>
-                  <input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}">
-                </label>
-                <label>
-                  <span>Groupe appel</span>
-                  <input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}">
-                </label>
-              </div>
-            </article>
-          `).join("")}
+      <details class="posts-skeleton equipment-collapsible" data-access-zone="store_posts">
+        <summary>
+          <span>GSM / SIM</span>
+          <span>${gsmRows.length} ligne(s) disponibles si besoin</span>
+        </summary>
+        <div class="posts-skeleton-body">
+          <div class="gsm-compact-stack">
+            ${gsmRows.map((row, index) => `
+              <article class="gsm-compact-item">
+                <div class="network-category-head">
+                  <h4>GSM ${index + 1}</h4>
+                  <span>${escapeHtml(row.user || row.mobileNumber || "A definir")}</span>
+                </div>
+                <div class="gsm-compact-grid">
+                  <label>
+                    <span>Modele appareil</span>
+                    <select name="gsm_model_${escapeHtml(row.id)}">
+                      ${gsmModelOptions().map((option) => `<option value="${escapeHtml(option)}" ${row.model === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Extension liee</span>
+                    <select name="gsm_extension_${escapeHtml(row.id)}">
+                      <option value="">Choisir une extension</option>
+                      ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Utilisateur</span>
+                    <input type="text" name="gsm_user_${escapeHtml(row.id)}" value="${escapeHtml(row.user || "")}">
+                  </label>
+                  <label>
+                    <span>Numero mobile</span>
+                    <input type="text" name="gsm_number_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNumber || "")}">
+                  </label>
+                  <label>
+                    <span>Reseau mobile</span>
+                    <input type="text" name="gsm_network_${escapeHtml(row.id)}" value="${escapeHtml(row.mobileNetwork || "")}">
+                  </label>
+                  <label>
+                    <span>ICCID</span>
+                    <input type="text" name="gsm_iccid_${escapeHtml(row.id)}" value="${escapeHtml(row.iccid || "")}">
+                  </label>
+                  <label>
+                    <span>Code PUK</span>
+                    <input type="text" name="gsm_puk_${escapeHtml(row.id)}" value="${escapeHtml(row.puk || "")}">
+                  </label>
+                  <label>
+                    <span>Groupe appel</span>
+                    <input type="text" name="gsm_group_${escapeHtml(row.id)}" value="${escapeHtml(row.callGroup || "")}">
+                  </label>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+          <div class="posts-skeleton-actions">
+            ${isSupAdmin() ? `<button type="button" class="mini-button" data-gsm-add="${store.id}">Ajouter un GSM</button>` : ""}
+            <button type="submit" class="mini-button">Sauvegarder les GSM</button>
+          </div>
         </div>
-        <div class="posts-skeleton-actions">
-          ${isSupAdmin() ? `<button type="button" class="mini-button" data-gsm-add="${store.id}">Ajouter un GSM</button>` : ""}
-          <button type="submit" class="mini-button">Sauvegarder les GSM</button>
-        </div>
-      </article>
+      </details>
         <article class="editor-card full-span-card">
-          <h3>Groupes d appel</h3>
+          <h3>Groupes d'appel / secteurs qui sonnent ensemble</h3>
+          <p>Checkpoint : les extensions d'appel groupe font sonner tous les telephones du secteur concerne jusqu'au premier decroche.</p>
+          ${groupedExtensions.length ? `
+            <div class="tag-list grouped-call-list">
+              ${groupedExtensions.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+            </div>
+          ` : '<p class="validation-text is-error">Extensions d appel groupe introuvables dans le catalogue.</p>'}
           <label>
-            <span>Groupes d appel</span>
-            <textarea name="call_groups_note" rows="6" placeholder="Ex: accueil > caisse > directeur">${escapeHtml(workflow.callGroupsNote)}</textarea>
+            <span>Validation / remarque groupes d'appel</span>
+            <textarea name="call_groups_note" rows="6" placeholder="Ex: groupe accueil OK, groupe caisse a verifier">${escapeHtml(workflow.callGroupsNote)}</textarea>
           </label>
           <div class="posts-skeleton-actions">
             <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
@@ -5419,18 +5430,13 @@ function buildEquipmentCards(store) {
         </article>
         <article class="editor-card full-span-card">
           <h3>Cascades</h3>
+          <p>Si personne ne decroche, l'appel est redirige vers un autre poste, puis vers le suivant, avant de revenir au poste initial. Exemple : 200 Centrale -> 201 Accueil magasin -> 211 Caisse 1 -> 200 Centrale.</p>
           <label>
-            <span>Cascades</span>
-          <textarea name="cascade_note" rows="6" placeholder="Ex: si non reponse, renvoi vers permanence">${escapeHtml(workflow.cascadeNote)}</textarea>
+            <span>Validation / remarque cascades</span>
+          <textarea name="cascade_note" rows="6" placeholder="Ex: cascade centrale OK, accueil a verifier">${escapeHtml(workflow.cascadeNote)}</textarea>
         </label>
         <div class="posts-skeleton-actions">
           <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
-        </div>
-      </article>
-      <article class="editor-card full-span-card">
-        <div class="network-confirm-bar">
-          <span class="cell-note">${workflow.networkConfigConfirmed ? "Choix magasin confirmes. Modifications ensuite via Probleme / notes." : "Les choix telephonie sont complets ? Confirme-les ici en fin de parcours."}</span>
-          <button type="button" class="mini-button" data-network-confirm="${store.id}">${workflow.networkConfigConfirmed ? "Choix confirmes" : "Confirmer vos choix"}</button>
         </div>
       </article>
     </div>
@@ -6021,6 +6027,7 @@ function buildStoreDetailForm(store, mode = "stores") {
           <span class="validation-text ${saveFeedback ? `is-${escapeHtml(saveFeedback.status)}` : ""}" data-validation="${store.id}">${escapeHtml(saveFeedback?.message || "")}</span>
           <button type="submit" data-store-submit>Enregistrer ce magasin</button>
         </div>
+        <button type="submit" class="floating-store-save" data-store-submit-floating>Enregistrer</button>
       </form>
     </div>
   `;
