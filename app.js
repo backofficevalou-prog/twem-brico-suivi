@@ -13241,6 +13241,8 @@ function buildPrintableStoreHtml(store) {
         finalRemark: "Finale opmerking Brico",
         platformSwitch: "Switch platform LT",
         storePlan: "Winkelplan PDF",
+        storeConfiguration: "Winkelconfiguratie",
+        networkPrintIntro: "De configuratie hieronder kan qua aantallen afwijken. Dat is normaal: de aantallen werden met Brico herzien en sommige extensienummers zijn aangepast om de telefonie in alle winkels te uniformiseren.",
         networkConfig: "Netwerkconfiguratie",
         category: "Type",
         slot: "Slot",
@@ -13256,12 +13258,15 @@ function buildPrintableStoreHtml(store) {
         user: "Gebruiker",
         callGroup: "Oproepgroep",
         noGsm: "Geen GSM ingevuld.",
-        alarmGroups: "Alarm, oproepgroepen en cascades",
+        alarmGroups: "Alarm",
         alarmCompany: "Firma",
         alarmCentralPhone: "Tel alarmcentrale",
         other: "Andere",
-        callGroups: "Oproepgroepen",
+        callGroups: "Oproepgroepen / zones die samen rinkelen",
+        groupedCallExplanation: "Deze groepsoproepextensies laten alle telefoons van de betrokken zone rinkelen tot iemand opneemt.",
+        groupedCallExtensions: "Groepsoproepextensies",
         cascades: "Cascades",
+        cascadeExplanation: "Als niemand opneemt, wordt de oproep doorgestuurd naar een ander toestel, daarna naar het volgende, en keert hij terug naar het oorspronkelijke toestel. Voorbeeld: 200 Centrale -> 201 Onthaal winkel -> 211 Kassa 1 -> 200 Centrale.",
         appointments: "Afspraken",
         date: "Datum",
         status: "Status",
@@ -13341,6 +13346,8 @@ function buildPrintableStoreHtml(store) {
         finalRemark: "Remarque finale Brico",
         platformSwitch: "Switch plateforme LT",
         storePlan: "Plan magasin PDF",
+        storeConfiguration: "Configuration magasin",
+        networkPrintIntro: "La configuration ci-dessous est differente en quantite. C'est normal : les quantites ont ete revues avec Brico, et certains numeros d'extension ont change afin d'uniformiser la telephonie dans tous les magasins.",
         networkConfig: "Configuration du reseau",
         category: "Type",
         slot: "Slot",
@@ -13356,12 +13363,15 @@ function buildPrintableStoreHtml(store) {
         user: "Utilisateur",
         callGroup: "Groupe appel",
         noGsm: "Aucun GSM renseigne.",
-        alarmGroups: "Alarme, groupes d appel et cascades",
+        alarmGroups: "Alarme",
         alarmCompany: "Societe",
         alarmCentralPhone: "Tel centrale alarme",
         other: "Autres",
-        callGroups: "Groupes d appel",
+        callGroups: "Groupes d'appel / secteurs qui sonnent ensemble",
+        groupedCallExplanation: "Ces extensions d'appel groupe font sonner tous les telephones du secteur concerne jusqu'au premier decroche.",
+        groupedCallExtensions: "Extensions d'appel groupe",
         cascades: "Cascades",
+        cascadeExplanation: "Si personne ne decroche, l'appel est redirige vers un autre poste, puis vers le suivant, avant de revenir au poste initial. Exemple : 200 Centrale -> 201 Accueil magasin -> 211 Caisse 1 -> 200 Centrale.",
         appointments: "Rendez-vous",
         date: "Date",
         status: "Statut",
@@ -13403,6 +13413,19 @@ function buildPrintableStoreHtml(store) {
     }
     return normalized ? normalized : emptyLabel;
   };
+  const printableGsmRows = gsmRows.filter((row) =>
+    [
+      row.model,
+      row.mobileNumber,
+      row.mobileNetwork,
+      row.iccid,
+      row.puk,
+      row.extensionLinked,
+      row.user,
+      row.callGroup
+    ].some((value) => printableValue(value))
+  );
+  const groupedExtensions = groupedCallExtensionList(storeLanguage);
   const printableRemarkList = (remarks = []) => Array.isArray(remarks) && remarks.length
     ? `
       <ul class="remark-list">
@@ -13526,19 +13549,19 @@ function buildPrintableStoreHtml(store) {
           ${printableRemarkList(workflow.installationRemarks)}
         </div>
         <div class="card full">
-          <h3>${escapeHtml(labels.configPrep)}</h3>
+          <h3>${escapeHtml(labels.storeConfiguration)}</h3>
           <table>
             <tbody>
-              <tr><th>${escapeHtml(labels.configRequest)}</th><td>${escapeHtml(printableValue(workflow.configStatus))}</td><th>${escapeHtml(labels.orderArticles)}</th><td>${escapeHtml(printableValue(workflow.orderStatus))}</td></tr>
-              <tr><th>${escapeHtml(labels.logisticComment)}</th><td>${escapeHtml(printableValue(workflow.orderNote))}</td><th>${escapeHtml(labels.configMail)}</th><td>${escapeHtml(printableValue(workflow.extensionRequestStatus))}</td></tr>
-              <tr><th>${escapeHtml(labels.clientNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractClientNumber))}</td><th>${escapeHtml(labels.mainNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractMainNumber))}</td></tr>
+              <tr><th>${escapeHtml(labels.ipRange)}</th><td>${escapeHtml(printableValue(store.ipRange))}</td><th>${escapeHtml(labels.clientNumber)}</th><td>${escapeHtml(printableValue(workflow.currentContractClientNumber))}</td></tr>
+              <tr><th>${escapeHtml(labels.mainNumber)}</th><td colspan="3">${escapeHtml(printableValue(workflow.currentContractMainNumber))}</td></tr>
               <tr><th>${escapeHtml(labels.otherNumbers)}</th><td colspan="3">${escapeHtml(printableValue(workflow.currentContractOtherNumbers))}</td></tr>
-              <tr><th>${escapeHtml(labels.configReceived)}</th><td>${escapeHtml(printableValue(workflow.extensionConfigStatus))}</td><th>${escapeHtml(labels.storePlan)}</th><td>${escapeHtml(printableValue(planName))}</td></tr>
+              <tr><th>${escapeHtml(labels.storePlan)}</th><td colspan="3">${escapeHtml(printableValue(planName))}</td></tr>
             </tbody>
           </table>
         </div>
         <div class="card full">
           <h3>${escapeHtml(labels.networkConfig)}</h3>
+          <div class="print-note">${escapeHtml(labels.networkPrintIntro)}</div>
           ${networkRows.length ? `
             <table class="network-table">
               <thead><tr><th>${escapeHtml(labels.category)}</th><th>${escapeHtml(labels.slot)}</th><th>${escapeHtml(labels.assignedExtension)}</th><th>${escapeHtml(labels.managerNote)}</th></tr></thead>
@@ -13555,13 +13578,13 @@ function buildPrintableStoreHtml(store) {
             </table>
           ` : `<div class="muted">${escapeHtml(labels.noNetwork)}</div>`}
         </div>
+        ${printableGsmRows.length ? `
         <div class="card full">
           <h3>${escapeHtml(labels.gsmSim)}</h3>
-          ${gsmRows.length ? `
             <table>
               <thead><tr><th>${escapeHtml(labels.model)}</th><th>${escapeHtml(labels.mobileNumber)}</th><th>${escapeHtml(labels.network)}</th><th>ICCID</th><th>PUK</th><th>${escapeHtml(labels.linkedExtension)}</th><th>${escapeHtml(labels.user)}</th><th>${escapeHtml(labels.callGroup)}</th></tr></thead>
               <tbody>
-                ${gsmRows.map((row) => `
+                ${printableGsmRows.map((row) => `
                   <tr>
                     <td>${escapeHtml(printableValue(row.model))}</td>
                     <td>${escapeHtml(printableValue(row.mobileNumber))}</td>
@@ -13575,8 +13598,8 @@ function buildPrintableStoreHtml(store) {
                 `).join("")}
               </tbody>
             </table>
-          ` : `<div class="muted">${escapeHtml(labels.noGsm)}</div>`}
         </div>
+        ` : ""}
         <div class="card full">
           <h3>${escapeHtml(labels.alarmGroups)}</h3>
           <div class="print-info-grid">
@@ -13584,9 +13607,18 @@ function buildPrintableStoreHtml(store) {
             <div class="print-info-item"><strong>${escapeHtml(labels.alarmCompany)}</strong>${escapeHtml(printableValue(workflow.alarmCompany))}</div>
             <div class="print-info-item"><strong>${escapeHtml(labels.alarmCentralPhone)}</strong>${escapeHtml(printableValue(workflow.alarmCentralPhone))}</div>
             <div class="print-info-item"><strong>${escapeHtml(labels.other)}</strong>${escapeHtml(printableValue(workflow.alarmOther))}</div>
-            <div class="print-info-item full"><strong>${escapeHtml(labels.callGroups)}</strong>${escapeHtml(printableValue(workflow.callGroupsNote))}</div>
-            <div class="print-info-item full"><strong>${escapeHtml(labels.cascades)}</strong>${escapeHtml(printableValue(workflow.cascadeNote))}</div>
           </div>
+        </div>
+        <div class="card full">
+          <h3>${escapeHtml(labels.callGroups)}</h3>
+          <div class="print-note">${escapeHtml(labels.groupedCallExplanation)}</div>
+          <div class="print-info-item full"><strong>${escapeHtml(labels.groupedCallExtensions)}</strong>${escapeHtml(groupedExtensions.length ? groupedExtensions.join(" / ") : "")}</div>
+          <div class="print-info-item full"><strong>${escapeHtml(labels.note)}</strong>${escapeHtml(printableValue(workflow.callGroupsNote))}</div>
+        </div>
+        <div class="card full">
+          <h3>${escapeHtml(labels.cascades)}</h3>
+          <div class="print-note">${escapeHtml(labels.cascadeExplanation)}</div>
+          <div class="print-info-item full"><strong>${escapeHtml(labels.note)}</strong>${escapeHtml(printableValue(workflow.cascadeNote))}</div>
         </div>
         <div class="card full">
           <h3>${escapeHtml(labels.appointments)}</h3>
