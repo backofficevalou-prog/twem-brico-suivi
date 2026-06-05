@@ -13632,6 +13632,22 @@ function handleStorePrint(event) {
   if (!store) {
     return;
   }
+  const openForm = projectTableBody.querySelector(`[data-store-editor="${storeId}"]`);
+  if (openForm) {
+    const workflow = ensureStoreWorkflowData(store);
+    if (openForm.querySelector('[name^="network_extension_"]')) {
+      workflow.networkRows = readNetworkRows(openForm, store);
+    }
+    if (openForm.querySelector('[name^="gsm_model_"]')) {
+      workflow.gsmRows = readGsmRows(openForm, store);
+    }
+    workflow.callGroupsNote = openForm.querySelector('[name="call_groups_note"]')?.value.trim() || workflow.callGroupsNote || "";
+    workflow.cascadeNote = openForm.querySelector('[name="cascade_note"]')?.value.trim() || workflow.cascadeNote || "";
+    store.ipRange = openForm.querySelector('[name="ip_range"]')?.value.trim() || store.ipRange || "";
+    workflow.currentContractClientNumber = openForm.querySelector('[name="current_contract_client_number"]')?.value.trim() || workflow.currentContractClientNumber || "";
+    workflow.currentContractMainNumber = openForm.querySelector('[name="current_contract_main_number"]')?.value.trim() || workflow.currentContractMainNumber || "";
+    workflow.currentContractOtherNumbers = openForm.querySelector('[name="current_contract_other_numbers"]')?.value.trim() || workflow.currentContractOtherNumbers || "";
+  }
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     window.alert(t("reportWindowError"));
@@ -13833,20 +13849,6 @@ async function handleStoreEditorSubmit(event) {
   workflow.currentContractClientNumber = fieldValue("current_contract_client_number", workflow.currentContractClientNumber, { trim: true });
   workflow.currentContractMainNumber = fieldValue("current_contract_main_number", workflow.currentContractMainNumber, { trim: true });
   workflow.currentContractOtherNumbers = fieldValue("current_contract_other_numbers", workflow.currentContractOtherNumbers, { trim: true });
-  if (form.dataset.storeMode === "configuration") {
-    const missingConfigurationFields = [
-      ["IP range", store.ipRange],
-      ["N client contrat actuel", workflow.currentContractClientNumber],
-      ["Numero principal actuel", workflow.currentContractMainNumber],
-      ["Autres numeros releves", workflow.currentContractOtherNumbers]
-    ].filter(([, value]) => !normalizeImportCell(value));
-    if (missingConfigurationFields.length) {
-      const message = `Infos manquantes: ${missingConfigurationFields.map(([label]) => label).join(", ")}.`;
-      validationNode.textContent = message;
-      setStoreSaveFeedback(storeId, message, "error");
-      return;
-    }
-  }
   workflow.destinyPmName = fieldValue("destiny_pm_name", workflow.destinyPmName, { trim: true });
   workflow.destinyPmEmail = fieldValue("destiny_pm_email", workflow.destinyPmEmail, { trim: true });
   workflow.destinyTicketRef = fieldValue("destiny_ticket_ref", workflow.destinyTicketRef, { trim: true });
