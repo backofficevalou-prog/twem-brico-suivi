@@ -715,8 +715,17 @@ const visibilityTabCatalog = [
     label: "Configuration magasin",
     blocks: [
       { key: "config_list", label: "Liste configuration", hint: "Acces aux magasins a configurer." },
-      { key: "config_preparation", label: "Preparation chantier", hint: "Coordination Destiny, pre-visite et preparation externe." },
       { key: "config_choices", label: "Choix telephonie", hint: "Extensions, GSM, alarme, groupes d appel et cascades." }
+    ]
+  },
+  {
+    key: "preparation",
+    label: "Preparation chantier",
+    blocks: [
+      { key: "external_prep", label: "Preparation chantier", hint: "VLAN, cablage, switch, couverture mobile." },
+      { key: "alarm", label: "Alarme", hint: "Type, societe, centrale et notes." },
+      { key: "destiny_closure", label: "Cloture installation Dstny", hint: "Fin d'installation et retour Brico." },
+      { key: "call_button_merchandising", label: "Presentoirs / stickers boutons d'appel", hint: "Suivi Steven: demande, installation, remarques." }
     ]
   },
   {
@@ -1075,6 +1084,7 @@ const nlUiTextMap = {
   "Call buttons": "Call buttons",
   "Panic buttons": "Panic buttons",
   "Preparation chantier": "Werfvoorbereiding",
+  "Préparation chantier": "Werfvoorbereiding",
   "Preparation externe": "Externe voorbereiding",
   "Installation": "Installatie",
   "Couverture mobile": "Mobiele dekking",
@@ -1083,6 +1093,13 @@ const nlUiTextMap = {
   "Date switch": "Datum switch",
   "Nouvelle remarque preparation externe": "Nieuwe opmerking externe voorbereiding",
   "Nouvelle remarque installation": "Nieuwe opmerking installatie",
+  "Presentoirs / stickers boutons d'appel": "Displays / stickers oproepknoppen",
+  "Presentoirs boutons d'appel": "Displays oproepknoppen",
+  "Stickers boutons d'appel": "Stickers oproepknoppen",
+  "Nouvelle remarque presentoir": "Nieuwe opmerking display",
+  "Nouvelle remarque sticker": "Nieuwe opmerking sticker",
+  "Sauvegarder presentoirs / stickers": "Displays / stickers opslaan",
+  "Cloture Dstny": "Afsluiting Dstny",
   "Aucune remarque enregistree.": "Geen opmerking opgeslagen.",
   "Elements confirmes": "Bevestigde elementen",
   "Coordination Destiny": "Coordination Destiny",
@@ -1663,7 +1680,7 @@ function isStoreEditorDirty() {
   return Date.now() - storeEditorDraftLock.lastTouchedAt < 15 * 60 * 1000;
 }
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -3036,8 +3053,19 @@ function isTwemUser() {
   return Boolean(user && ["supadmin_twem", "admin_twem"].includes(user.role));
 }
 
+function isCallButtonMerchandisingUser(user = currentUser()) {
+  const name = normalizeRoleKey(user?.name || "");
+  const email = normalizeImportCell(user?.email || "").toLowerCase();
+  return Boolean(
+    ["steven_de_nil", "steven_van_de_vliet"].includes(name)
+    || email.includes("steven.de.nil")
+    || email.includes("steven.van.de.vliet")
+    || email.includes("steven.vandevliet")
+  );
+}
+
 function canSeeAllStores(user = currentUser()) {
-  return Boolean(user && !["manager", "supmanager", "magasin"].includes(user.role));
+  return Boolean(user && (isCallButtonMerchandisingUser(user) || !["manager", "supmanager", "magasin"].includes(user.role)));
 }
 
 function allowedStoresForUser(user = currentUser()) {
@@ -3061,20 +3089,20 @@ function defaultTabsForRole(role) {
   const normalizedRole = canonicalRoleKey(role);
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
-    direction_brico: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    brico: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    supmanager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations"],
-    manager: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    magasin: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    pm_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    uc_pm_fr_nl_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    uc_tech_fr_nl_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    logistic_coord_dstny: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    it: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    infra: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"],
-    intervenant: ["dashboard", "timeline", "stores", "configuration", "sav", "extensions", "invoice", "tuto", "reports"]
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
+    direction_brico: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    brico: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    supmanager: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations"],
+    manager: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    magasin: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    telephonie_destiny: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    pm_dstny: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    uc_pm_fr_nl_dstny: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    uc_tech_fr_nl_dstny: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    logistic_coord_dstny: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    it: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    infra: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
+    intervenant: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"]
   };
   return map[normalizedRole] || ["dashboard"];
 }
@@ -3132,6 +3160,7 @@ function tabTitle(tab) {
     timeline: isNl ? "Tijdlijn / Planning" : "Timeline / Planning",
     stores: isNl ? "Winkels" : "Magasins",
     configuration: isNl ? "Configuratie winkel" : "Configuration magasin",
+    preparation: isNl ? "Werfvoorbereiding" : "Préparation chantier",
     sav: "SAV / Tickets",
     extensions: isNl ? "Extensies" : "Extensions",
     invoice: isNl ? "Facturatie" : "Invoice",
@@ -3188,7 +3217,13 @@ function canEditZone(store, zone) {
   if (!user || !zone) {
     return false;
   }
+  if (zone === "call_button_merchandising" && isCallButtonMerchandisingUser(user)) {
+    return true;
+  }
   const allowedZones = editableZonesForRole(user.role);
+  if (zone === "alarm" && allowedZones.includes("external_prep")) {
+    return true;
+  }
   if (allowedZones.includes("all") || allowedZones.includes(zone)) {
     return true;
   }
@@ -3385,6 +3420,7 @@ function defaultVisibilityModesForRole(role) {
       const editable = editableZones.includes("all")
         || editableZones.includes(block.key)
         || editableZones.includes(tabKey)
+        || (block.key === "alarm" && editableZones.includes("external_prep"))
         || (tabKey === "stores" && editableZones.includes("sav_ticket") && block.key === "store_sav");
       blocks[tabKey][block.key] = editable ? "edit" : "view";
     });
@@ -3396,11 +3432,25 @@ function ensureRoleVisibilityConfig(role) {
   if (!role) {
     return { tabs: {}, blocks: {} };
   }
+  const defaultConfig = defaultVisibilityModesForRole(role);
   if (!state.roleVisibilityConfig[role]) {
-    state.roleVisibilityConfig[role] = defaultVisibilityModesForRole(role);
+    state.roleVisibilityConfig[role] = defaultConfig;
   }
   state.roleVisibilityConfig[role].tabs ||= {};
   state.roleVisibilityConfig[role].blocks ||= {};
+  Object.entries(defaultConfig.tabs || {}).forEach(([tabKey, visible]) => {
+    if (!(tabKey in state.roleVisibilityConfig[role].tabs)) {
+      state.roleVisibilityConfig[role].tabs[tabKey] = visible;
+    }
+  });
+  Object.entries(defaultConfig.blocks || {}).forEach(([tabKey, blocks]) => {
+    state.roleVisibilityConfig[role].blocks[tabKey] ||= {};
+    Object.entries(blocks || {}).forEach(([blockKey, mode]) => {
+      if (!(blockKey in state.roleVisibilityConfig[role].blocks[tabKey])) {
+        state.roleVisibilityConfig[role].blocks[tabKey][blockKey] = mode;
+      }
+    });
+  });
   return state.roleVisibilityConfig[role];
 }
 
@@ -4828,11 +4878,15 @@ function buildStoreHeaderCards() {
 function buildStoreSectionNav(mode = "stores", store = null) {
   const links = mode === "configuration"
     ? [
-        ["overview", "Vue d ensemble"],
-        ["preparation", "Preparation"],
         ["configuration", "Configuration"],
-        ["equipment", "Equipements"],
-        ["closing", "Cloture"]
+        ["equipment", "Equipements"]
+      ]
+    : mode === "preparation"
+      ? [
+        ["preparation", "Preparation chantier"],
+        ["alarm", "Alarme"],
+        ["call-button-merchandising", "Presentoirs / stickers"],
+        ["closing", "Cloture Dstny"]
       ]
     : [
         ["overview", "Vue d ensemble"],
@@ -5087,6 +5141,104 @@ function buildPreparationHubCard(store) {
   `;
 }
 
+function buildAlarmPreparationCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  return `
+    <div class="editor-grid section-anchor" id="section-alarm">
+      <article class="editor-card full-span-card" data-access-zone="alarm">
+        <h3>Alarme</h3>
+        <div class="two-col">
+          <label>
+            <span>Type d alarme</span>
+            <select name="alarm_type">
+              ${renderOptions(["PSTN", "DATA", "PSTN / DATA", "A confirmer"], workflow.alarmType)}
+            </select>
+          </label>
+          <label>
+            <span>Societe</span>
+            <input type="text" name="alarm_company" value="${escapeHtml(workflow.alarmCompany)}">
+          </label>
+          <label>
+            <span>Tel centrale alarme</span>
+            <input type="text" name="alarm_phone" value="${escapeHtml(workflow.alarmCentralPhone)}">
+          </label>
+          <label class="full-row">
+            <span>Autres</span>
+            <textarea name="alarm_other" rows="4">${escapeHtml(workflow.alarmOther)}</textarea>
+          </label>
+        </div>
+        <div class="posts-skeleton-actions">
+          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
+function buildCallButtonMerchandisingCard(store) {
+  const workflow = ensureStoreWorkflowData(store);
+  const statusOptions = ["A demander", "En cours", "Installe"];
+  return `
+    <div class="editor-grid section-anchor" id="section-call-button-merchandising">
+      <article class="editor-card full-span-card grouped-card" data-access-zone="call_button_merchandising">
+        <div class="grouped-card-head">
+          <h3>Presentoirs / stickers boutons d'appel</h3>
+          <p>Suivi terrain pour les supports visuels lies aux boutons d'appel.</p>
+        </div>
+        <div class="preparation-stack">
+          <section class="subpanel prep-wide-panel">
+            <h4>Presentoirs boutons d'appel</h4>
+            <div class="two-col">
+              <label>
+                <span>Statut</span>
+                <select name="call_button_display_status">
+                  ${renderOptions(statusOptions, workflow.callButtonDisplayStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Date</span>
+                <input type="date" name="call_button_display_date" value="${escapeHtml(workflow.callButtonDisplayDate || "")}">
+              </label>
+            </div>
+            <div class="remark-box">
+              <label>
+                <span>Nouvelle remarque presentoir</span>
+                <textarea name="call_button_display_new_note" rows="3" placeholder="La remarque sera horodatee avec ton nom lors de la sauvegarde."></textarea>
+              </label>
+              ${renderWorkflowRemarks(workflow.callButtonDisplayRemarks)}
+            </div>
+          </section>
+          <section class="subpanel prep-wide-panel">
+            <h4>Stickers boutons d'appel</h4>
+            <div class="two-col">
+              <label>
+                <span>Statut</span>
+                <select name="call_button_sticker_status">
+                  ${renderOptions(statusOptions, workflow.callButtonStickerStatus)}
+                </select>
+              </label>
+              <label>
+                <span>Date</span>
+                <input type="date" name="call_button_sticker_date" value="${escapeHtml(workflow.callButtonStickerDate || "")}">
+              </label>
+            </div>
+            <div class="remark-box">
+              <label>
+                <span>Nouvelle remarque sticker</span>
+                <textarea name="call_button_sticker_new_note" rows="3" placeholder="La remarque sera horodatee avec ton nom lors de la sauvegarde."></textarea>
+              </label>
+              ${renderWorkflowRemarks(workflow.callButtonStickerRemarks)}
+            </div>
+            <div class="posts-skeleton-actions">
+              <button type="submit" class="mini-button">Sauvegarder presentoirs / stickers</button>
+            </div>
+          </section>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
 function buildConfigurationHubCard(store) {
   const workflow = ensureStoreWorkflowData(store);
   return `
@@ -5276,32 +5428,6 @@ function buildEquipmentCards(store) {
         </div>
       </article>
         <article class="editor-card full-span-card">
-          <h3>Alarme</h3>
-          <div class="two-col">
-            <label>
-              <span>Type d alarme</span>
-            <select name="alarm_type">
-              ${renderOptions(["PSTN", "DATA", "PSTN / DATA", "A confirmer"], workflow.alarmType)}
-            </select>
-          </label>
-          <label>
-            <span>Societe</span>
-            <input type="text" name="alarm_company" value="${escapeHtml(workflow.alarmCompany)}">
-          </label>
-          <label>
-            <span>Tel centrale alarme</span>
-            <input type="text" name="alarm_phone" value="${escapeHtml(workflow.alarmCentralPhone)}">
-          </label>
-          <label class="full-row">
-            <span>Autres</span>
-            <textarea name="alarm_other" rows="4">${escapeHtml(workflow.alarmOther)}</textarea>
-          </label>
-        </div>
-          <div class="posts-skeleton-actions">
-            <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
-          </div>
-        </article>
-        <article class="editor-card full-span-card">
           <h3>Groupes d appel</h3>
           <label>
             <span>Groupes d appel</span>
@@ -5465,6 +5591,12 @@ function ensureStoreWorkflowData(store) {
     installCentralDate: "",
     externalPrepRemarks: [],
     installationRemarks: [],
+    callButtonDisplayStatus: "A demander",
+    callButtonDisplayDate: "",
+    callButtonDisplayRemarks: [],
+    callButtonStickerStatus: "A demander",
+    callButtonStickerDate: "",
+    callButtonStickerRemarks: [],
     networkConfigConfirmed: false,
     networkRows: defaultNetworkRowsForStore(store),
     gsmRows: defaultGsmRowsForStore(store),
@@ -5661,8 +5793,9 @@ function buildExternalPreparationCard(store) {
   `;
 }
 
-function buildClosureWorkflowCard(store) {
+function buildClosureWorkflowCard(store, options = {}) {
   const workflow = ensureStoreWorkflowData(store);
+  const includeBricoFeedback = options.includeBricoFeedback !== false;
   return `
     <div class="editor-grid">
       <article class="editor-card" data-access-zone="destiny_closure">
@@ -5688,7 +5821,7 @@ function buildClosureWorkflowCard(store) {
         </label>
       </article>
 
-      <article class="editor-card" data-access-zone="brico_feedback">
+      ${includeBricoFeedback ? `<article class="editor-card" data-access-zone="brico_feedback">
         <h3>Retour Brico / bascule suite</h3>
         <p>Remarques finales du magasin et eventuelle bascule vers la plateforme suivante.</p>
         <label>
@@ -5701,7 +5834,7 @@ function buildClosureWorkflowCard(store) {
             ${renderOptions(["En attente", "A decider", "Basculee"], workflow.ltSwitchStatus)}
           </select>
         </label>
-      </article>
+      </article>` : ""}
     </div>
   `;
 }
@@ -5820,14 +5953,22 @@ function buildStoreDetailForm(store, mode = "stores") {
     ? `
         ${buildStoreSectionNav("configuration", store)}
 
-        ${buildPreparationHubCard(store)}
-
         ${buildConfigurationHubCard(store)}
 
           ${buildEquipmentCards(store)}
+      `
+    : mode === "preparation"
+      ? `
+        ${buildStoreSectionNav("preparation", store)}
+
+        ${buildPreparationHubCard(store)}
+
+        ${buildAlarmPreparationCard(store)}
+
+        ${buildCallButtonMerchandisingCard(store)}
 
         <div class="editor-grid section-anchor" id="section-closing">
-          ${buildClosureWorkflowCard(store)}
+          ${buildClosureWorkflowCard(store, { includeBricoFeedback: false })}
         </div>
       `
     : `
@@ -5962,7 +6103,7 @@ function attachStoreInteractiveHandlers() {
       state.expandedStoreIds = new Set([storeId]);
       saveState();
       render();
-      window.location.hash = "#section-preparation";
+      window.location.hash = "#section-configuration";
     });
   });
 
@@ -6033,7 +6174,7 @@ function renderStoreCards(stores, mode = "stores") {
 function renderStoreOverviewRows(stores, mode = "stores") {
   projectTableBody.innerHTML = "";
   const plannedInterventionView = isPlannedInterventionListView();
-  const displayStores = mode === "configuration"
+  const displayStores = ["configuration", "preparation"].includes(mode)
     ? stores.slice().sort(compareStoresByInterventionDate)
     : stores;
   displayStores.forEach((store) => {
@@ -7432,6 +7573,11 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"]);
       renderStoreOverviewRows(stores, "configuration");
+      return;
+    case "preparation":
+      projectTable?.classList.add("compact-rows-table");
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"]);
+      renderStoreOverviewRows(stores, "preparation");
       return;
       case "stores":
       default:
@@ -10407,6 +10553,7 @@ function zoneLabel(value) {
     network_config: "Configuration reseau",
     store_posts: "Postes magasin",
     destiny_closure: "Cloture installation Destiny",
+    call_button_merchandising: "Presentoirs / stickers boutons d'appel",
     brico_feedback: "Retour Brico / bascule",
     problem_notes: "Probleme / notes",
     status_admin: "Statut global",
@@ -13627,6 +13774,14 @@ async function handleStoreEditorSubmit(event) {
   validationNode.textContent = "";
   setStoreSaveFeedback(storeId, "Sauvegarde en cours...", "pending");
   const workflow = ensureStoreWorkflowData(store);
+  const fieldValue = (name, fallback = "", { trim = false } = {}) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (!field) {
+      return fallback;
+    }
+    return trim ? field.value.trim() : field.value;
+  };
+  const hasField = (name) => Boolean(form.querySelector(`[name="${name}"]`));
   store.owner = form.querySelector('[name="owner"]')?.value || store.owner || "";
   store.manager = form.querySelector('[name="manager"]')?.value.trim() || store.manager || "";
   store.shopType = normalizeShopTypeValue(form.querySelector('[name="shop_type"]')?.value || store.shopType || "DOS");
@@ -13657,64 +13812,82 @@ async function handleStoreEditorSubmit(event) {
   stepFor(store, "electrician").note = form.querySelector('[name="electrician_note"]')?.value.trim() || stepFor(store, "electrician").note || "";
   store.appointments = readAppointments(form, store);
 
-  workflow.destinyInstallDate = form.querySelector('[name="destiny_install_date"]').value;
-  workflow.configStatus = form.querySelector('[name="config_status"]')?.value || workflow.configStatus;
-  workflow.currentPhoneDate = form.querySelector('[name="current_phone_date"]')?.value || "";
-  workflow.orderStatus = form.querySelector('[name="order_status"]')?.value || workflow.orderStatus;
-  workflow.orderNote = form.querySelector('[name="order_note"]')?.value.trim() || "";
-  workflow.currentContractClientNumber = form.querySelector('[name="current_contract_client_number"]')?.value.trim() || "";
-  workflow.currentContractMainNumber = form.querySelector('[name="current_contract_main_number"]')?.value.trim() || "";
-  workflow.currentContractOtherNumbers = form.querySelector('[name="current_contract_other_numbers"]')?.value.trim() || "";
-  workflow.destinyPmName = form.querySelector('[name="destiny_pm_name"]')?.value.trim() || "";
-  workflow.destinyPmEmail = form.querySelector('[name="destiny_pm_email"]')?.value.trim() || "";
-  workflow.destinyTicketRef = form.querySelector('[name="destiny_ticket_ref"]')?.value.trim() || "";
-  workflow.destinyCaseRef = form.querySelector('[name="destiny_case_ref"]')?.value.trim() || "";
-  workflow.destinyDistribution = form.querySelector('[name="destiny_distribution"]')?.value.trim() || "";
-  workflow.networkSurveyStatus = form.querySelector('[name="network_survey_status"]')?.value || workflow.networkSurveyStatus;
-  workflow.mobileCoverage = form.querySelector('[name="mobile_coverage"]')?.value || workflow.mobileCoverage;
-  workflow.firstVisitRemark = form.querySelector('[name="first_visit_remark"]')?.value.trim() || workflow.firstVisitRemark || "";
-  workflow.extensionRequestStatus = form.querySelector('[name="extension_request_status"]')?.value || workflow.extensionRequestStatus;
-  workflow.extensionConfigStatus = form.querySelector('[name="extension_config_status"]')?.value || workflow.extensionConfigStatus;
-  workflow.ivrNotes = form.querySelector('[name="ivr_notes"]')?.value.trim() || "";
-  workflow.greetingNotes = form.querySelector('[name="greeting_notes"]')?.value.trim() || "";
-  workflow.alarmHandledByIt = form.querySelector('[name="alarm_handled_by_it"]')?.value || workflow.alarmHandledByIt;
-  workflow.vlan22Status = form.querySelector('[name="vlan22_status"]')?.value || workflow.vlan22Status;
-  workflow.vlan22Date = form.querySelector('[name="vlan22_date"]')?.value || "";
-  const vlanValue = form.querySelector('[name="vlan22_activated"]')?.value || workflow.vlan22Activated;
-  workflow.vlan22Activated = workflow.vlan22Date ? "Oui" : (vlanValue === "OK" ? "Oui" : vlanValue);
-  workflow.charlesRouxStatus = form.querySelector('[name="charles_roux_status"]')?.value || workflow.charlesRouxStatus;
-  workflow.cablingStatus = form.querySelector('[name="cabling_status"]')?.value || workflow.cablingStatus;
-  workflow.cablingDate = form.querySelector('[name="cabling_date"]')?.value || "";
-  workflow.mobileChargersSent = form.querySelector('[name="mobile_chargers_sent"]')?.value || workflow.mobileChargersSent;
-  workflow.mobileChargerCount = form.querySelector('[name="mobile_charger_count"]')?.value || workflow.mobileChargerCount;
-  workflow.destinyInstallDone = form.querySelector('[name="destiny_install_done"]')?.value || workflow.destinyInstallDone;
-  workflow.destinyInstallRemark = form.querySelector('[name="destiny_install_remark"]')?.value.trim() || "";
-  workflow.bricoFinalMailStatus = form.querySelector('[name="brico_final_mail_status"]')?.value || workflow.bricoFinalMailStatus;
-  workflow.bricoFinalRemark = form.querySelector('[name="brico_final_remark"]')?.value.trim() || "";
+  workflow.destinyInstallDate = fieldValue("destiny_install_date", workflow.destinyInstallDate);
+  workflow.configStatus = fieldValue("config_status", workflow.configStatus);
+  workflow.currentPhoneDate = fieldValue("current_phone_date", workflow.currentPhoneDate);
+  workflow.orderStatus = fieldValue("order_status", workflow.orderStatus);
+  workflow.orderNote = fieldValue("order_note", workflow.orderNote, { trim: true });
+  workflow.currentContractClientNumber = fieldValue("current_contract_client_number", workflow.currentContractClientNumber, { trim: true });
+  workflow.currentContractMainNumber = fieldValue("current_contract_main_number", workflow.currentContractMainNumber, { trim: true });
+  workflow.currentContractOtherNumbers = fieldValue("current_contract_other_numbers", workflow.currentContractOtherNumbers, { trim: true });
+  workflow.destinyPmName = fieldValue("destiny_pm_name", workflow.destinyPmName, { trim: true });
+  workflow.destinyPmEmail = fieldValue("destiny_pm_email", workflow.destinyPmEmail, { trim: true });
+  workflow.destinyTicketRef = fieldValue("destiny_ticket_ref", workflow.destinyTicketRef, { trim: true });
+  workflow.destinyCaseRef = fieldValue("destiny_case_ref", workflow.destinyCaseRef, { trim: true });
+  workflow.destinyDistribution = fieldValue("destiny_distribution", workflow.destinyDistribution, { trim: true });
+  workflow.networkSurveyStatus = fieldValue("network_survey_status", workflow.networkSurveyStatus);
+  workflow.mobileCoverage = fieldValue("mobile_coverage", workflow.mobileCoverage);
+  workflow.firstVisitRemark = fieldValue("first_visit_remark", workflow.firstVisitRemark, { trim: true });
+  workflow.extensionRequestStatus = fieldValue("extension_request_status", workflow.extensionRequestStatus);
+  workflow.extensionConfigStatus = fieldValue("extension_config_status", workflow.extensionConfigStatus);
+  workflow.ivrNotes = fieldValue("ivr_notes", workflow.ivrNotes, { trim: true });
+  workflow.greetingNotes = fieldValue("greeting_notes", workflow.greetingNotes, { trim: true });
+  workflow.alarmHandledByIt = fieldValue("alarm_handled_by_it", workflow.alarmHandledByIt);
+  workflow.vlan22Status = fieldValue("vlan22_status", workflow.vlan22Status);
+  workflow.vlan22Date = fieldValue("vlan22_date", workflow.vlan22Date);
+  if (hasField("vlan22_activated") || hasField("vlan22_date")) {
+    const vlanValue = fieldValue("vlan22_activated", workflow.vlan22Activated);
+    workflow.vlan22Activated = workflow.vlan22Date ? "Oui" : (vlanValue === "OK" ? "Oui" : vlanValue);
+  }
+  workflow.charlesRouxStatus = fieldValue("charles_roux_status", workflow.charlesRouxStatus);
+  workflow.cablingStatus = fieldValue("cabling_status", workflow.cablingStatus);
+  workflow.cablingDate = fieldValue("cabling_date", workflow.cablingDate);
+  workflow.mobileChargersSent = fieldValue("mobile_chargers_sent", workflow.mobileChargersSent);
+  workflow.mobileChargerCount = fieldValue("mobile_charger_count", workflow.mobileChargerCount);
+  workflow.destinyInstallDone = fieldValue("destiny_install_done", workflow.destinyInstallDone);
+  workflow.destinyInstallRemark = fieldValue("destiny_install_remark", workflow.destinyInstallRemark, { trim: true });
+  workflow.bricoFinalMailStatus = fieldValue("brico_final_mail_status", workflow.bricoFinalMailStatus);
+  workflow.bricoFinalRemark = fieldValue("brico_final_remark", workflow.bricoFinalRemark, { trim: true });
   const preparationSwitchField = form.querySelector('[name="lt_switch_preparation_status"]');
   const closureSwitchField = form.querySelector('[name="lt_switch_status"]');
-  const switchValue = form.dataset.storeMode === "configuration"
+  const switchValue = ["configuration", "preparation"].includes(form.dataset.storeMode)
     ? (preparationSwitchField?.value || closureSwitchField?.value || workflow.ltSwitchStatus)
     : (closureSwitchField?.value || preparationSwitchField?.value || workflow.ltSwitchStatus);
   workflow.ltSwitchStatus = switchValue === "OK" ? "Basculee" : switchValue;
-  workflow.ltSwitchDate = form.querySelector('[name="lt_switch_date"]')?.value || workflow.ltSwitchDate || "";
-  workflow.networkSurveyStatus = externalPrepStatusLabel(workflow);
-  workflow.installSwitchDate = form.querySelector('[name="install_switch_date"]')?.value || "";
-  workflow.installCableDate = form.querySelector('[name="install_cable_date"]')?.value || "";
-  workflow.installAntennaDate = form.querySelector('[name="install_antenna_date"]')?.value || "";
-  workflow.installCentralDate = form.querySelector('[name="install_central_date"]')?.value || "";
-  appendWorkflowRemark(workflow, "externalPrepRemarks", form.querySelector('[name="external_prep_new_note"]')?.value || "");
-  appendWorkflowRemark(workflow, "installationRemarks", form.querySelector('[name="installation_new_note"]')?.value || "");
-  workflow.networkConfigConfirmed = form.querySelector('[name="network_config_confirmed"]')?.value === "1";
-  workflow.networkRows = readNetworkRows(form, store);
-  workflow.gsmRows = readGsmRows(form, store);
-  workflow.intervenantRows = readIntervenantRows(form, store);
-  workflow.alarmType = form.querySelector('[name="alarm_type"]')?.value || workflow.alarmType;
-  workflow.alarmCompany = form.querySelector('[name="alarm_company"]')?.value.trim() || "";
-  workflow.alarmCentralPhone = form.querySelector('[name="alarm_phone"]')?.value.trim() || "";
-  workflow.alarmOther = form.querySelector('[name="alarm_other"]')?.value.trim() || "";
-  workflow.callGroupsNote = form.querySelector('[name="call_groups_note"]')?.value.trim() || "";
-  workflow.cascadeNote = form.querySelector('[name="cascade_note"]')?.value.trim() || "";
+  workflow.ltSwitchDate = fieldValue("lt_switch_date", workflow.ltSwitchDate);
+  if (hasField("vlan22_activated") || hasField("cabling_status") || hasField("lt_switch_preparation_status") || hasField("mobile_coverage")) {
+    workflow.networkSurveyStatus = externalPrepStatusLabel(workflow);
+  }
+  workflow.installSwitchDate = fieldValue("install_switch_date", workflow.installSwitchDate);
+  workflow.installCableDate = fieldValue("install_cable_date", workflow.installCableDate);
+  workflow.installAntennaDate = fieldValue("install_antenna_date", workflow.installAntennaDate);
+  workflow.installCentralDate = fieldValue("install_central_date", workflow.installCentralDate);
+  appendWorkflowRemark(workflow, "externalPrepRemarks", fieldValue("external_prep_new_note", ""));
+  appendWorkflowRemark(workflow, "installationRemarks", fieldValue("installation_new_note", ""));
+  if (hasField("network_config_confirmed")) {
+    workflow.networkConfigConfirmed = fieldValue("network_config_confirmed", "") === "1";
+  }
+  if (form.querySelector('[name^="network_extension_"]')) {
+    workflow.networkRows = readNetworkRows(form, store);
+  }
+  if (form.querySelector('[name^="gsm_model_"]')) {
+    workflow.gsmRows = readGsmRows(form, store);
+  }
+  if (form.querySelector('[name^="intervenant_name_"]')) {
+    workflow.intervenantRows = readIntervenantRows(form, store);
+  }
+  workflow.alarmType = fieldValue("alarm_type", workflow.alarmType);
+  workflow.alarmCompany = fieldValue("alarm_company", workflow.alarmCompany, { trim: true });
+  workflow.alarmCentralPhone = fieldValue("alarm_phone", workflow.alarmCentralPhone, { trim: true });
+  workflow.alarmOther = fieldValue("alarm_other", workflow.alarmOther, { trim: true });
+  workflow.callGroupsNote = fieldValue("call_groups_note", workflow.callGroupsNote, { trim: true });
+  workflow.cascadeNote = fieldValue("cascade_note", workflow.cascadeNote, { trim: true });
+  workflow.callButtonDisplayStatus = fieldValue("call_button_display_status", workflow.callButtonDisplayStatus);
+  workflow.callButtonDisplayDate = fieldValue("call_button_display_date", workflow.callButtonDisplayDate);
+  workflow.callButtonStickerStatus = fieldValue("call_button_sticker_status", workflow.callButtonStickerStatus);
+  workflow.callButtonStickerDate = fieldValue("call_button_sticker_date", workflow.callButtonStickerDate);
+  appendWorkflowRemark(workflow, "callButtonDisplayRemarks", fieldValue("call_button_display_new_note", ""));
+  appendWorkflowRemark(workflow, "callButtonStickerRemarks", fieldValue("call_button_sticker_new_note", ""));
 
   const updateActivity = {
     id: `edit-${Date.now()}`,
@@ -13742,7 +13915,7 @@ async function handleStoreEditorSubmit(event) {
     setStoreSaveFeedback(storeId, `Sauvegarde locale OK a ${new Date().toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" })}`, "success");
   }
   clearStoreEditorDirty(storeId);
-  if (form.dataset.storeMode !== "configuration") {
+  if (!["configuration", "preparation"].includes(form.dataset.storeMode)) {
     state.expandedStoreIds.delete(storeId);
   }
   renderPreservingScroll();
