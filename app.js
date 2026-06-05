@@ -14950,18 +14950,19 @@ async function handleStoreSubmit(event) {
   const name = storeNameInput.value.trim();
   const city = storeCityInput.value.trim();
   const code = storeCodeInput.value.trim().toUpperCase();
-  const owner = storeOwnerSelect.value;
+  const ownerRaw = storeOwnerSelect.value;
   const manager = storeManagerInput.value.trim();
   const editId = storeEditSelect?.value || "";
 
-  if (!name || !city || !code || !owner) {
-    window.alert("Nom, ville, code et provenance sont obligatoires pour enregistrer le magasin.");
+  if (!name || !city || !code) {
+    window.alert("Nom, ville et code sont obligatoires pour enregistrer le magasin.");
     return;
   }
 
   const targetStore = editId
     ? state.stores.find((store) => String(store.id) === editId)
     : null;
+  const owner = ownerRaw || targetStore?.owner || provenanceOptions[0] || "Nouveau";
   const store = targetStore || {
     id: Date.now(),
     steps: [
