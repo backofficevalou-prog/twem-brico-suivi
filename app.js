@@ -1999,17 +1999,28 @@ function parseJsonField(value, fallback) {
   }
 }
 
+function sanitizeStoreForRemote(store) {
+  const sanitized = clone(store);
+  const workflow = sanitized.workflow || {};
+  if (workflow.planPdfDataUrl) {
+    workflow.planPdfDataUrl = "";
+  }
+  sanitized.workflow = workflow;
+  return sanitized;
+}
+
 function buildAppwriteStoreDocument(store) {
+  const remoteStore = sanitizeStoreForRemote(store);
   return {
-    code: store.code,
-    name: store.name,
-    city: store.city || "",
-    owner_name: store.owner || "",
-    manager_name: store.manager || "",
-    status: store.status || "planned",
-    health: store.health || "",
-    updated_at: store.updatedAt || new Date().toISOString(),
-    payload_json: JSON.stringify(store)
+    code: remoteStore.code,
+    name: remoteStore.name,
+    city: remoteStore.city || "",
+    owner_name: remoteStore.owner || "",
+    manager_name: remoteStore.manager || "",
+    status: remoteStore.status || "planned",
+    health: remoteStore.health || "",
+    updated_at: remoteStore.updatedAt || new Date().toISOString(),
+    payload_json: JSON.stringify(remoteStore)
   };
 }
 
@@ -10991,11 +11002,15 @@ async function syncStoreToRemote(store, activityComment) {
       createdAt: new Date().toISOString(),
       alertQueuedAt: new Date().toISOString()
     };
-    await upsertAppwriteDocument(
-      appwriteActivitiesCollectionId,
-      safeDocumentId("activity", activity.id),
-      buildAppwriteActivityDocument(activity)
-    );
+    try {
+      await upsertAppwriteDocument(
+        appwriteActivitiesCollectionId,
+        safeDocumentId("activity", activity.id),
+        buildAppwriteActivityDocument(activity)
+      );
+    } catch (error) {
+      console.error("Erreur sync activite magasin", error);
+    }
   }
 }
 
@@ -14989,9 +15004,17 @@ async function handleStoreSubmit(event) {
     state.stores.push(store);
   }
 
+  saveState();
+
   if (hasRemoteData()) {
-    await syncStoreToRemote(store, targetStore ? `Mise a jour magasin depuis Contacts - ${code}` : `Creation magasin depuis Contacts - ${code}`);
-    await loadRemoteState();
+    try {
+      await syncStoreToRemote(store, targetStore ? `Mise a jour magasin depuis Contacts - ${code}` : `Creation magasin depuis Contacts - ${code}`);
+    } catch (error) {
+      console.error("Erreur sync magasin contacts", error);
+      render();
+      window.alert(`Magasin garde localement, mais Appwrite a refuse la synchro: ${syncErrorLabel(error)}`);
+      return;
+    }
   }
   resetStoreContactForm();
   saveState();
