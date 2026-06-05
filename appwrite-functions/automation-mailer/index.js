@@ -5,7 +5,7 @@ const FORCED_DIGEST_RECIPIENTS = [
   { label: "Anton", aliases: ["Anton"] },
   { label: "Nicolas Bertholet", aliases: ["Nicolas Bertholet", "Bertholet"], exclude: ["Crohain"] },
   { label: "Diana", aliases: ["Diana"] },
-  { label: "Charles", aliases: ["Charles"] },
+  { label: "Charles Roels", aliases: ["Charles Roels", "Roels"], exclude: ["Conrad"] },
   { label: "Fabien", aliases: ["Fabien"] },
   { label: "Jean-Yves", aliases: ["Jean-Yves", "Jean Yves"] },
   { label: "Medhi", aliases: ["Medhi", "Mehdi"] },
