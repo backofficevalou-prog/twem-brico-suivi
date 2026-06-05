@@ -724,6 +724,13 @@ const visibilityTabCatalog = [
     ]
   },
   {
+    key: "quantity-bulk",
+    label: "Quantites",
+    blocks: [
+      { key: "quantity_bulk", label: "Edition massive quantites", hint: "Licences, postes, mobiles et boutons par magasin." }
+    ]
+  },
+  {
     key: "preparation",
     label: "Preparation chantier",
     blocks: [
@@ -1685,7 +1692,7 @@ function isStoreEditorDirty() {
   return Date.now() - storeEditorDraftLock.lastTouchedAt < 15 * 60 * 1000;
 }
 
-const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto"];
+const mainWorkspaceTabs = ["dashboard", "timeline", "stores", "configuration", "quantity-bulk", "preparation", "sav", "extensions", "invoice", "tuto"];
 
 const pinGate = document.querySelector("#pinGate");
 const pinForm = document.querySelector("#pinForm");
@@ -3075,6 +3082,16 @@ function canSeePinLoginJournal(user = currentUser()) {
   );
 }
 
+function canUseQuantityBulk(user = currentUser()) {
+  const name = normalizeImportCell(user?.name).toLowerCase();
+  const email = normalizeImportCell(user?.email).toLowerCase();
+  return Boolean(
+    isSupAdmin(user)
+    || ["valou", "emir"].includes(name)
+    || ["backoffice@twem.be", "emir.massart@brico.be", "emir@twem.be"].includes(email)
+  );
+}
+
 function isTwemUser() {
   const user = currentUser();
   return Boolean(user && ["supadmin_twem", "admin_twem"].includes(user.role));
@@ -3116,7 +3133,7 @@ function defaultTabsForRole(role) {
   const normalizedRole = canonicalRoleKey(role);
   const map = {
     supadmin_twem: ["*"],
-    admin_twem: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
+    admin_twem: ["dashboard", "timeline", "stores", "configuration", "quantity-bulk", "preparation", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations", "tools", "pin-access", "import-export"],
     direction_brico: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
     brico: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "reports"],
     supmanager: ["dashboard", "timeline", "stores", "configuration", "preparation", "sav", "extensions", "invoice", "tuto", "contacts", "reports", "automations"],
@@ -3150,6 +3167,9 @@ function accessibleTabsForUser(user = currentUser()) {
 function canAccessTab(tab, user = currentUser()) {
   if (tab === "visibility") {
     return isSupAdmin(user);
+  }
+  if (tab === "quantity-bulk") {
+    return canUseQuantityBulk(user);
   }
   const tabs = accessibleTabsForUser(user);
   return tabs.includes("*") || tabs.includes(tab);
@@ -3187,6 +3207,7 @@ function tabTitle(tab) {
     timeline: isNl ? "Tijdlijn / Planning" : "Timeline / Planning",
     stores: isNl ? "Winkels" : "Magasins",
     configuration: isNl ? "Configuratie winkel" : "Configuration magasin",
+    "quantity-bulk": isNl ? "Hoeveelheden" : "Quantites",
     preparation: isNl ? "Werfvoorbereiding" : "Préparation chantier",
     sav: "SAV / Tickets",
     extensions: isNl ? "Extensies" : "Extensions",
@@ -6045,6 +6066,10 @@ function buildStoreDetailForm(store, mode = "stores") {
 }
 
 function attachStoreInteractiveHandlers() {
+  projectTableBody.querySelectorAll("[data-quantity-bulk-save]").forEach((button) => {
+    button.addEventListener("click", handleQuantityBulkSave);
+  });
+
   projectTableBody.querySelectorAll("[data-store-toggle]").forEach((button) => {
     button.addEventListener("click", () => {
       const storeId = Number(button.getAttribute("data-store-toggle"));
@@ -7532,6 +7557,164 @@ function buildTicketThread(store, ticket) {
   `;
 }
 
+const quantityBulkFields = [
+  { key: "licenseCount", label: "Licences" },
+  { key: "fixCount", label: "Postes fixes" },
+  { key: "fixBigCount", label: "Fix big" },
+  { key: "mobileCount", label: "Mobiles" },
+  { key: "flashLightCount", label: "Flashlights" },
+  { key: "callButtonCount", label: "Call buttons" },
+  { key: "panicCount", label: "Panic buttons" }
+];
+
+function sortStoresForQuantityBulk(stores) {
+  return stores.slice().sort((a, b) => {
+    const regionOrder = storeLanguageForPrint(a) === "nl" ? 0 : 1;
+    const otherRegionOrder = storeLanguageForPrint(b) === "nl" ? 0 : 1;
+    if (regionOrder !== otherRegionOrder) {
+      return regionOrder - otherRegionOrder;
+    }
+    return normalizeImportStoreCode(a.code).localeCompare(normalizeImportStoreCode(b.code), "fr", { numeric: true });
+  });
+}
+
+function renderQuantityBulkRows(stores) {
+  projectTableBody.innerHTML = "";
+  if (!canUseQuantityBulk()) {
+    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Cet onglet est reserve a Emir et Valou.</td></tr>';
+    return;
+  }
+
+  const sortedStores = sortStoresForQuantityBulk(stores);
+  const regionSections = [
+    { title: "Region flamande", stores: sortedStores.filter((store) => storeLanguageForPrint(store) === "nl") },
+    { title: "Region francophone", stores: sortedStores.filter((store) => storeLanguageForPrint(store) !== "nl") }
+  ].filter((section) => section.stores.length);
+
+  const rowHtml = (store) => {
+    const quantityPlan = getStoreQuantityPlan(store);
+    return `
+      <tr data-quantity-row="${escapeHtml(String(store.id))}">
+        <td class="bulk-store-code">${escapeHtml(store.code || "-")}</td>
+        <td class="bulk-store-name">
+          <strong>${escapeHtml(store.name || "-")}</strong>
+          <span>${escapeHtml([store.city, store.shopType].filter(Boolean).join(" - ") || "-")}</span>
+        </td>
+        ${quantityBulkFields.map((field) => `
+          <td>
+            <input class="bulk-quantity-input" type="number" min="0" step="1" data-quantity-field="${field.key}" value="${escapeHtml(String(quantityPlan[field.key] || 0))}">
+          </td>
+        `).join("")}
+      </tr>
+    `;
+  };
+
+  const sectionsHtml = regionSections.map((section) => `
+    <section class="quantity-bulk-section">
+      <div class="quantity-bulk-section-head">
+        <h3>${escapeHtml(section.title)}</h3>
+        <span>${section.stores.length} magasin(s)</span>
+      </div>
+      <div class="quantity-bulk-scroll">
+        <table class="quantity-bulk-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Magasin</th>
+              ${quantityBulkFields.map((field) => `<th>${escapeHtml(field.label)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${section.stores.map(rowHtml).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `).join("");
+
+  projectTableBody.innerHTML = `
+    <tr>
+      <td colspan="9">
+        <div class="quantity-bulk-panel">
+          <div class="quantity-bulk-actions">
+            <div>
+              <h3>Edition massive des quantites</h3>
+              <p>Modifie uniquement les quantites necessaires, puis sauvegarde. Les lignes reseau sont recalculees sans effacer les choix deja encodes.</p>
+            </div>
+            <button type="button" class="secondary-button" data-quantity-bulk-save>Sauvegarder les quantites modifiees</button>
+          </div>
+          <div class="validation-text" data-quantity-bulk-feedback></div>
+          ${sectionsHtml}
+        </div>
+      </td>
+    </tr>
+  `;
+  attachStoreInteractiveHandlers();
+}
+
+async function handleQuantityBulkSave() {
+  if (!canUseQuantityBulk()) {
+    return;
+  }
+  const feedback = projectTableBody.querySelector("[data-quantity-bulk-feedback]");
+  const rows = [...projectTableBody.querySelectorAll("[data-quantity-row]")];
+  const changedStores = [];
+
+  rows.forEach((row) => {
+    const storeId = row.getAttribute("data-quantity-row");
+    const store = state.stores.find((entry) => String(entry.id) === storeId);
+    if (!store) {
+      return;
+    }
+    const currentPlan = getStoreQuantityPlan(store);
+    let changed = false;
+    quantityBulkFields.forEach((field) => {
+      const input = row.querySelector(`[data-quantity-field="${field.key}"]`);
+      const nextValue = Math.max(0, Number(input?.value || 0) || 0);
+      if (nextValue !== currentPlan[field.key]) {
+        store[field.key] = nextValue;
+        changed = true;
+      }
+    });
+    if (changed) {
+      store.updatedAt = new Date().toISOString();
+      reconcileNetworkRowsWithQuantities(store);
+      reconcileGsmRowsWithQuantities(store);
+      changedStores.push(store);
+    }
+  });
+
+  if (!changedStores.length) {
+    if (feedback) {
+      feedback.textContent = "Aucune quantite modifiee.";
+    }
+    return;
+  }
+
+  if (feedback) {
+    feedback.textContent = `Sauvegarde de ${changedStores.length} magasin(s)...`;
+  }
+  saveState();
+
+  const failedStores = [];
+  for (const store of changedStores) {
+    try {
+      await syncStoreToRemote(store, "");
+    } catch (error) {
+      console.error("Erreur sync quantites magasin", store.code, error);
+      failedStores.push(store.code || store.name);
+    }
+  }
+
+  saveState();
+  if (feedback) {
+    feedback.textContent = failedStores.length
+      ? `Sauvegarde locale OK, mais sync Appwrite echouee pour: ${failedStores.join(", ")}.`
+      : `${changedStores.length} magasin(s) sauvegarde(s).`;
+  }
+  renderStores();
+}
+
 function renderStores() {
   const stores = getFilteredStores();
   projectTableBody.innerHTML = "";
@@ -7575,6 +7758,11 @@ function renderStores() {
       projectTable?.classList.add("compact-rows-table");
       setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"]);
       renderStoreOverviewRows(stores, "configuration");
+      return;
+    case "quantity-bulk":
+      projectTable?.classList.add("compact-rows-table");
+      setMainTableHeaders(["Quantites magasins", "", "", "", "", "", "", "", ""]);
+      renderQuantityBulkRows(stores);
       return;
     case "preparation":
       projectTable?.classList.add("compact-rows-table");
