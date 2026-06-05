@@ -14299,19 +14299,29 @@ async function handlePersonEditSubmit(event) {
 
 async function handleRoleSubmit(event) {
   event.preventDefault();
-  const role = roleInput.value.trim().toLowerCase();
+  const role = normalizeRoleKey(roleInput.value || "");
   if (!role || state.roleOptions.includes(role)) {
+    if (roleInput) {
+      roleInput.value = "";
+    }
     return;
   }
 
-  state.roleOptions.push(role);
+  state.roleOptions = normalizedRoleOptions([...state.roleOptions, role]);
+  state.roleVisibilityConfig[role] = defaultVisibilityModesForRole(role);
   roleInput.value = "";
-  if (hasRemoteData()) {
-    await syncSettingsToRemote();
-    await loadRemoteState();
-  }
   saveState();
-  render();
+  syncSelectors();
+  renderRoleList();
+  renderVisibilityEditor();
+  if (hasRemoteData()) {
+    try {
+      await syncSettingsToRemote();
+    } catch (error) {
+      console.error("Erreur sync role", error);
+      window.alert("Role ajoute localement, mais la synchro Appwrite a echoue. Retente apres refresh si besoin.");
+    }
+  }
 }
 
 async function handleRoleEditSubmit(event) {
@@ -14825,11 +14835,16 @@ async function handleIntervenantSubmit(event) {
     person.previousRoleBeforeIntervenant = person.role;
   }
   person.role = nextRole;
-  if (hasRemoteData()) {
-    await syncPersonToRemote(person);
-  }
   saveState();
   render();
+  if (hasRemoteData()) {
+    try {
+      await syncPersonToRemote(person);
+    } catch (error) {
+      console.error("Erreur sync intervenant", error);
+      window.alert("Intervenant modifie localement, mais la synchro Appwrite a echoue. Retente apres refresh si besoin.");
+    }
+  }
   scrollToFocusedUpdate();
 }
 
@@ -14850,13 +14865,20 @@ async function handleIntervenantRoleSubmit(event) {
     intervenantRoleSelect.innerHTML = renderIntervenantRoleOptions(role);
     intervenantRoleSelect.value = role;
   }
+  saveState();
+  syncSelectors();
+  renderIntervenantList();
+  renderRoleList();
+  renderVisibilityEditor();
 
   if (hasRemoteData()) {
-    await syncSettingsToRemote();
-    await loadRemoteState();
+    try {
+      await syncSettingsToRemote();
+    } catch (error) {
+      console.error("Erreur sync sorte intervenant", error);
+      window.alert("Sorte d'intervenant ajoutee localement, mais la synchro Appwrite a echoue. Retente apres refresh si besoin.");
+    }
   }
-  saveState();
-  render();
 }
 
 async function handleIntervenantRemove(event) {
