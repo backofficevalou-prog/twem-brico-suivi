@@ -1599,6 +1599,7 @@ const state = {
   activeAutomationSubtab: "rules",
   launchMailDraft: {},
   focusedUpdate: null,
+  pendingStoreSectionFocus: "",
   storeSaveFeedback: null,
   technicalSheetEditId: "",
   filters: {
@@ -2777,6 +2778,17 @@ function scrollToFocusedUpdate() {
   }
   window.setTimeout(() => {
     document.querySelector("[data-update-focus-banner]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 120);
+}
+
+function scrollToPendingStoreSection() {
+  const section = normalizeImportCell(state.pendingStoreSectionFocus);
+  if (!section) {
+    return;
+  }
+  state.pendingStoreSectionFocus = "";
+  window.setTimeout(() => {
+    document.querySelector(`#section-${CSS.escape(section)}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, 120);
 }
 
@@ -6872,6 +6884,7 @@ function renderSavRows() {
       state.activeAdminTab = "stores";
       state.expandedStoreIds = new Set([storeId]);
       saveState();
+      state.pendingStoreSectionFocus = "sav";
       render();
     });
   });
@@ -11357,6 +11370,7 @@ function render() {
 function finalizeRender() {
   applyReadOnlyRules();
   schedulePostRenderLanguagePass();
+  scrollToPendingStoreSection();
 }
 
 async function importJsonData(payload) {
