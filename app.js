@@ -2131,8 +2131,7 @@ function buildAppwriteSettingsDocument() {
     ]),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
     role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
-    automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
-    extension_catalog_json: JSON.stringify(extensionCatalogRows || [])
+    automations_json: JSON.stringify(normalizedAutomations(state.automations || []))
   };
 }
 
