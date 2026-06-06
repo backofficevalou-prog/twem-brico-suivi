@@ -35,11 +35,17 @@ const extensionReferenceOptions = [
   "923 - safe room",
   "924 - drive in till zone"
 ];
-const groupedCallExtensionNumbers = new Set(["300", "310", "320", "330", "340", "350", "360", "370", "380", "390"]);
 const groupedCallExtensionCategoryLabel = "Extension d'appel groupé";
 
+function normalizeSearchText(value) {
+  return normalizeImportCell(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function extensionCategoryKey(category) {
-  const normalized = normalizeImportCell(category).toLowerCase();
+  const normalized = normalizeSearchText(category);
   if (normalized.includes("appel groupe") || normalized.includes("group")) return "grouped-call";
   if (normalized.includes("panic") || normalized.includes("panique")) return "panic";
   if (normalized.includes("appel") || normalized.includes("call")) return "call";
@@ -50,7 +56,21 @@ function extensionCategoryKey(category) {
 }
 
 function isGroupedCallExtension(row) {
-  return groupedCallExtensionNumbers.has(normalizeExtensionNumber(row?.number));
+  const searchableText = [
+    row?.category,
+    row?.label,
+    row?.labelFr,
+    row?.labelNl,
+    row?.labelEn,
+    row?.item,
+    row?.usage,
+    row?.model
+  ].map(normalizeSearchText).join(" ");
+  return searchableText.includes("appel groupe")
+    || searchableText.includes("grouped call")
+    || searchableText.includes("call group")
+    || searchableText.includes("groepsoproep")
+    || searchableText.includes("groep oproep");
 }
 
 function extensionDisplayCategoryKey(row) {
