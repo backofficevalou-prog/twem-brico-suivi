@@ -1123,6 +1123,22 @@ button {
   background: #fffdf6;
 }
 
+.quantity-bulk-subhead td {
+  padding: 9px 10px;
+  background: #f3f0e6;
+  color: #3f413b;
+  font-weight: 800;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.quantity-bulk-subhead span {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .bulk-store-code {
   width: 88px;
   font-weight: 800;

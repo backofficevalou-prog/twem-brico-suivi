@@ -3092,6 +3092,16 @@ function canUseQuantityBulk(user = currentUser()) {
   );
 }
 
+function canEditExtensionCatalog(user = currentUser()) {
+  const name = normalizeImportCell(user?.name).toLowerCase();
+  const email = normalizeImportCell(user?.email).toLowerCase();
+  return Boolean(
+    isSupAdmin(user)
+    || ["valou", "emir"].includes(name)
+    || ["backoffice@twem.be", "emir.massart@brico.be", "emir@twem.be"].includes(email)
+  );
+}
+
 function isTwemUser() {
   const user = currentUser();
   return Boolean(user && ["supadmin_twem", "admin_twem"].includes(user.role));
@@ -7197,7 +7207,7 @@ function ticketsForStore(storeId) {
 
 async function handleAddExtensionSubmit(event) {
   event.preventDefault();
-  if (!isSupAdmin()) {
+  if (!canEditExtensionCatalog()) {
     return;
   }
   const form = event.currentTarget;
@@ -7285,7 +7295,7 @@ function renderExtensionsRowsV2(stores) {
               <h3>Reference complete des extensions disponibles</h3>
               <span class="cell-note">${filteredExtensions.length} ligne(s) du tableau ConfigVoIPExt</span>
             </div>
-            ${isSupAdmin() ? `
+            ${canEditExtensionCatalog() ? `
               <form class="extensions-add-form" id="extensionsAddForm">
                 <select name="category">
                   <option value="Bouton Appel">Bouton d appel</option>
@@ -7574,8 +7584,43 @@ function sortStoresForQuantityBulk(stores) {
     if (regionOrder !== otherRegionOrder) {
       return regionOrder - otherRegionOrder;
     }
+    const shopTypeOrder = quantityBulkShopTypeOrder(a);
+    const otherShopTypeOrder = quantityBulkShopTypeOrder(b);
+    if (shopTypeOrder !== otherShopTypeOrder) {
+      return shopTypeOrder - otherShopTypeOrder;
+    }
     return normalizeImportStoreCode(a.code).localeCompare(normalizeImportStoreCode(b.code), "fr", { numeric: true });
   });
+}
+
+function quantityBulkShopTypeOrder(store) {
+  const order = { DOS: 0, FOSDOS: 1, FOS: 2 };
+  return order[normalizeShopTypeValue(store.shopType || "")] ?? 9;
+}
+
+function quantityBulkShopTypeLabel(store) {
+  return normalizeShopTypeValue(store.shopType || "") || "Type non renseigne";
+}
+
+function renderQuantityBulkShopTypeGroups(stores, rowHtml) {
+  const groups = stores.reduce((accumulator, store) => {
+    const label = quantityBulkShopTypeLabel(store);
+    if (!accumulator.has(label)) {
+      accumulator.set(label, []);
+    }
+    accumulator.get(label).push(store);
+    return accumulator;
+  }, new Map());
+
+  return [...groups.entries()].map(([label, groupStores]) => `
+    <tr class="quantity-bulk-subhead">
+      <td colspan="${quantityBulkFields.length + 2}">
+        <strong>${escapeHtml(label)}</strong>
+        <span>${groupStores.length} magasin(s)</span>
+      </td>
+    </tr>
+    ${groupStores.map(rowHtml).join("")}
+  `).join("");
 }
 
 function renderQuantityBulkRows(stores) {
@@ -7625,7 +7670,7 @@ function renderQuantityBulkRows(stores) {
             </tr>
           </thead>
           <tbody>
-            ${section.stores.map(rowHtml).join("")}
+            ${renderQuantityBulkShopTypeGroups(section.stores, rowHtml)}
           </tbody>
         </table>
       </div>
