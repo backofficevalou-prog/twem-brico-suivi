@@ -278,6 +278,41 @@ function normalizeExtensionCatalogRow(row, index = 0) {
     )
   };
 }
+
+function extensionCatalogMergeKey(row = {}) {
+  const normalized = normalizeExtensionCatalogRow(row);
+  const category = extensionDisplayCategoryKey(normalized);
+  const number = normalizeExtensionNumber(normalized.number);
+  if (number) {
+    return `${category}:${number}`;
+  }
+  return [
+    category,
+    normalizeImportCell(normalized.labelFr || normalized.label || "").toLowerCase(),
+    normalizeImportCell(normalized.labelNl || "").toLowerCase(),
+    normalizeImportCell(normalized.labelEn || "").toLowerCase(),
+    normalizeImportCell(normalized.item || "").toLowerCase()
+  ].join(":");
+}
+
+function mergeExtensionCatalogRows(localRows = [], remoteRows = []) {
+  const mergedByKey = new Map();
+  const pushRows = (rows, overwrite = true) => {
+    (Array.isArray(rows) ? rows : []).forEach((row, index) => {
+      const normalized = normalizeExtensionCatalogRow(row, index);
+      const key = extensionCatalogMergeKey(normalized);
+      if (overwrite || !mergedByKey.has(key)) {
+        mergedByKey.set(key, normalized);
+      }
+    });
+  };
+
+  pushRows(localRows, true);
+  pushRows(remoteRows, true);
+  pushRows(localRows, false);
+  return [...mergedByKey.values()];
+}
+
 const storeRequestTypeOptions = [
   "SAV",
   "Demande d'info",
@@ -2154,7 +2189,8 @@ function buildAppwriteSettingsDocument() {
     ]),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
     role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
-    automations_json: JSON.stringify(normalizedAutomations(state.automations || []))
+    automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
+    extension_catalog_json: JSON.stringify(extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index)))
   };
 }
 
@@ -7241,6 +7277,7 @@ async function handleAddExtensionSubmit(event) {
   if (hasRemoteData()) {
     try {
       await syncSettingsToRemote();
+      refreshRemoteSyncShadow();
     } catch (error) {
       console.error("Impossible de synchroniser l extension ajoutee.", error);
       window.alert("Extension ajoutee localement, mais la synchronisation distante a echoue.");
@@ -11044,6 +11081,7 @@ async function loadRemoteState() {
     ? stripKnownTestTickets(ticketDocuments.map(normalizeAppwriteTicket))
     : [];
 
+  let shouldResyncSettingsAfterLoad = false;
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
   if (settingsDocument) {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
@@ -11081,7 +11119,10 @@ async function loadRemoteState() {
     ]);
     const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
-      extensionCatalogRows.splice(0, extensionCatalogRows.length, ...remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index)));
+      const normalizedRemoteExtensions = remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index));
+      const mergedExtensions = mergeExtensionCatalogRows(extensionCatalogRows, normalizedRemoteExtensions);
+      shouldResyncSettingsAfterLoad = mergedExtensions.length > normalizedRemoteExtensions.length;
+      extensionCatalogRows.splice(0, extensionCatalogRows.length, ...mergedExtensions);
     }
   } else {
     state.roleOptions = state.roleOptions?.length ? normalizedRoleOptions(state.roleOptions) : [...defaultRoleOptions];
@@ -11099,6 +11140,13 @@ async function loadRemoteState() {
   const legacyWelcomePeople = markLegacyWelcomeMailsSent(state.people);
   ensureAutomationEmailDrafts();
   saveState();
+  if (shouldResyncSettingsAfterLoad && hasAppwriteDataConfig) {
+    try {
+      await syncSettingsToRemote();
+    } catch (error) {
+      console.error("Erreur resync catalogue extensions", error);
+    }
+  }
   refreshRemoteSyncShadow();
   if (legacyWelcomePeople.length && hasAppwriteDataConfig) {
     legacyWelcomePeople.forEach((person) => {
