@@ -575,6 +575,7 @@ const tutorialVideosSettingsItemId = "__tutorial_videos__";
 const technicalSheetsSettingsItemId = "__technical_sheets__";
 const automationEmailsSettingsItemId = "__automation_emails__";
 const mailerStateSettingsItemId = "__mailer_state__";
+const extensionCatalogSettingsItemId = "__extension_catalog__";
 const defaultTutorialVideos = [
   {
     key: "network_info",
@@ -2171,6 +2172,8 @@ function buildAppwriteSettingsDocument() {
     && item?.kind !== "automation_emails"
     && item?.id !== mailerStateSettingsItemId
     && item?.kind !== "mailer_state"
+    && item?.id !== extensionCatalogSettingsItemId
+    && item?.kind !== "extension_catalog"
   );
   return {
     role_options_json: JSON.stringify(state.roleOptions || []),
@@ -2185,12 +2188,16 @@ function buildAppwriteSettingsDocument() {
         id: automationEmailsSettingsItemId,
         kind: "automation_emails",
         emails: state.automationEmails || []
+      },
+      {
+        id: extensionCatalogSettingsItemId,
+        kind: "extension_catalog",
+        extensions: extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index))
       }
     ]),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
     role_visibility_config_json: JSON.stringify(state.roleVisibilityConfig || {}),
-    automations_json: JSON.stringify(normalizedAutomations(state.automations || [])),
-    extension_catalog_json: JSON.stringify(extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index)))
+    automations_json: JSON.stringify(normalizedAutomations(state.automations || []))
   };
 }
 
@@ -10779,6 +10786,8 @@ function renderToolList() {
     && item?.kind !== "automation_emails"
     && item?.id !== mailerStateSettingsItemId
     && item?.kind !== "mailer_state"
+    && item?.id !== extensionCatalogSettingsItemId
+    && item?.kind !== "extension_catalog"
   );
 
   if (!visibleToolItems.length) {
@@ -11089,6 +11098,7 @@ async function loadRemoteState() {
     const tutorialVideosItem = remoteToolItems.find((item) => item?.id === tutorialVideosSettingsItemId || item?.kind === "tutorial_videos");
     const technicalSheetsItem = remoteToolItems.find((item) => item?.id === technicalSheetsSettingsItemId || item?.kind === "technical_sheets");
     const automationEmailsItem = remoteToolItems.find((item) => item?.id === automationEmailsSettingsItemId || item?.kind === "automation_emails");
+    const extensionCatalogItem = remoteToolItems.find((item) => item?.id === extensionCatalogSettingsItemId || item?.kind === "extension_catalog");
     state.toolItems = remoteToolItems.filter((item) =>
       item?.id !== tutorialVideosSettingsItemId
       && item?.kind !== "tutorial_videos"
@@ -11098,6 +11108,8 @@ async function loadRemoteState() {
       && item?.kind !== "automation_emails"
       && item?.id !== mailerStateSettingsItemId
       && item?.kind !== "mailer_state"
+      && item?.id !== extensionCatalogSettingsItemId
+      && item?.kind !== "extension_catalog"
     );
     state.accessOverrides = parseJsonField(settingsDocument.access_overrides_json, []);
     const remoteRoleVisibilityConfig = parseJsonField(settingsDocument.role_visibility_config_json, null);
@@ -11117,7 +11129,9 @@ async function loadRemoteState() {
       ...technicalSheetDocuments,
       ...(technicalSheetsItem?.sheets || state.technicalSheets || [])
     ]);
-    const remoteExtensions = parseJsonField(settingsDocument.extension_catalog_json, []);
+    const remoteExtensions = Array.isArray(extensionCatalogItem?.extensions)
+      ? extensionCatalogItem.extensions
+      : parseJsonField(settingsDocument.extension_catalog_json, []);
     if (Array.isArray(remoteExtensions) && remoteExtensions.length) {
       const normalizedRemoteExtensions = remoteExtensions.map((row, index) => normalizeExtensionCatalogRow(row, index));
       const mergedExtensions = mergeExtensionCatalogRows(extensionCatalogRows, normalizedRemoteExtensions);
