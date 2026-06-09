@@ -3660,8 +3660,7 @@ function applyCancelledInstallCorrections() {
         createdAt: "2026-06-09T00:00:00.000Z"
       });
     }
-    const health = normalizeImportCell(store.health);
-    store.health = health.includes(note) ? store.health : [store.health, note].filter(Boolean).join("\n");
+    store.health = "Installation annulee";
     store.updatedAt = new Date().toISOString();
     changedStores.push(store);
   });
