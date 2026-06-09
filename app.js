@@ -210,6 +210,22 @@ function networkExtensionOptionsForCategory(categoryFilter = "", language = "fr"
   return [...new Set(options)];
 }
 
+function extensionOptionDisplayLabel(option, language = state.language) {
+  const value = normalizeImportCell(option);
+  if (!value || value === notApplicableExtensionOption) {
+    return value;
+  }
+  const valueNumber = normalizeExtensionNumber(value.split(" - ")[0]);
+  const match = extensionCatalogRows.find((row) => {
+    const rowNumber = normalizeExtensionNumber(row.number);
+    if (rowNumber && valueNumber && rowNumber === valueNumber) {
+      return true;
+    }
+    return ["fr", "nl", "en"].some((lang) => normalizeImportCell(extensionReferenceText(row, lang)) === value);
+  });
+  return match ? extensionReferenceText(match, language) : translateUiTextValue(value);
+}
+
 function normalizeExtensionCatalogRow(row, index = 0) {
   const fallbackLabel = normalizeImportCell(
     row.label
@@ -1682,6 +1698,74 @@ Object.assign(nlUiTextMap, {
   "Canal": "Kanaal",
   "Declencheur": "Trigger",
   "DÃ©clencheur": "Trigger"
+});
+
+Object.assign(nlUiTextMap, {
+  "Quantites": "Hoeveelheden",
+  "Quantités": "Hoeveelheden",
+  "Configuration": "Configuratie",
+  "Equipements": "Uitrusting",
+  "Équipements": "Uitrusting",
+  "Imprimer la fiche complete": "Volledige fiche afdrukken",
+  "Imprimer la fiche complète": "Volledige fiche afdrukken",
+  "Fermer fiche": "Fiche sluiten",
+  "Voir fiche": "Fiche bekijken",
+  "Imprimer": "Afdrukken",
+  "Config a faire": "Config te doen",
+  "Config à faire": "Config te doen",
+  "VLAN22 a valider": "VLAN22 te valideren",
+  "VLAN22 à valider": "VLAN22 te valideren",
+  "Pre-visite a faire": "Pre-visit te doen",
+  "Pré-visite à faire": "Pre-visit te doen",
+  "Installation a faire": "Installatie te doen",
+  "Installation à faire": "Installatie te doen",
+  "Quantites magasin": "Winkelhoeveelheden",
+  "Quantités magasin": "Winkelhoeveelheden",
+  "Vue de pilotage rapide des besoins reseau et materiel du magasin.": "Snelle opvolging van netwerk- en materiaalbehoeften van de winkel.",
+  "Vue de pilotage rapide des besoins réseau et matériel du magasin.": "Snelle opvolging van netwerk- en materiaalbehoeften van de winkel.",
+  "Date telephonie actuelle": "Huidige telefoniedatum",
+  "Date téléphonie actuelle": "Huidige telefoniedatum",
+  "Configuration magasin": "Winkelconfiguratie",
+  "Infos reseau, contrat et numeros utiles a la configuration.": "Netwerk-, contract- en nummersinformatie nuttig voor de configuratie.",
+  "Infos réseau, contrat et numéros utiles à la configuration.": "Netwerk-, contract- en nummersinformatie nuttig voor de configuratie.",
+  "N client contrat actuel": "Huidig contractklantnummer",
+  "Numero principal actuel": "Huidig hoofdnummer",
+  "Numéro principal actuel": "Huidig hoofdnummer",
+  "Autres numeros releves": "Andere genoteerde nummers",
+  "Autres numéros relevés": "Andere genoteerde nummers",
+  "Message d accueil / IVR / remarques manager": "Welkomstboodschap / IVR / opmerkingen manager",
+  "Message d'accueil / IVR / remarques manager": "Welkomstboodschap / IVR / opmerkingen manager",
+  "Autres consignes Brico": "Andere Brico-instructies",
+  "Sauvegarder cette configuration": "Deze configuratie opslaan",
+  "Configuration du reseau": "Netwerkconfiguratie",
+  "Configuration du réseau": "Netwerkconfiguratie",
+  "La configuration ci-dessous est differente en quantite. C'est normal : les quantites ont ete revues avec Brico, et certains numeros d'extension ont change afin d'uniformiser la telephonie dans tous les magasins.": "De onderstaande configuratie verschilt in hoeveelheid. Dat is normaal: de hoeveelheden werden samen met Brico herzien en sommige extensienummers werden aangepast om de telefonie in alle winkels te uniformiseren.",
+  "La configuration ci-dessous est différente en quantité. C'est normal : les quantités ont été revues avec Brico, et certains numéros d'extension ont changé afin d'uniformiser la téléphonie dans tous les magasins.": "De onderstaande configuratie verschilt in hoeveelheid. Dat is normaal: de hoeveelheden werden samen met Brico herzien en sommige extensienummers werden aangepast om de telefonie in alle winkels te uniformiseren.",
+  "Poste fixe": "Vast toestel",
+  "Poste fixe big": "Vast toestel big",
+  "Extension + lieu": "Extensie + locatie",
+  "Note": "Opmerking",
+  "ligne(s)": "lijn(en)"
+});
+
+Object.assign(nlUiPhraseMap, {
+  "Poste fixe big": "Vast toestel big",
+  "Poste fixe": "Vast toestel",
+  "Quantites magasin": "Winkelhoeveelheden",
+  "Quantités magasin": "Winkelhoeveelheden",
+  "Date telephonie actuelle": "Huidige telefoniedatum",
+  "Date téléphonie actuelle": "Huidige telefoniedatum",
+  "Numero principal actuel": "Huidig hoofdnummer",
+  "Numéro principal actuel": "Huidig hoofdnummer",
+  "Autres numeros releves": "Andere genoteerde nummers",
+  "Autres numéros relevés": "Andere genoteerde nummers",
+  "Config a faire": "Config te doen",
+  "Config à faire": "Config te doen",
+  "Pre-visite a faire": "Pre-visit te doen",
+  "Pré-visite à faire": "Pre-visit te doen",
+  "Installation a faire": "Installatie te doen",
+  "Installation à faire": "Installatie te doen",
+  "ligne(s)": "lijn(en)"
 });
 
 Object.assign(nlUiPhraseMap, {
@@ -5192,7 +5276,7 @@ function buildStorePilotSkeleton(store) {
     const { showConfirmBar = true } = options;
     const workflow = ensureStoreWorkflowData(store);
     const rows = getNetworkConfigRows(store);
-  const extensionOptionsForCategory = (category, selected = "") => networkExtensionOptionsForCategory(category, store.language || "fr", selected);
+  const extensionOptionsForCategory = (category, selected = "") => networkExtensionOptionsForCategory(category, state.language || store.language || "fr", selected);
   const groupedRows = rows.reduce((accumulator, row) => {
     accumulator[row.category] ||= [];
     accumulator[row.category].push(row);
@@ -5213,7 +5297,7 @@ function buildStorePilotSkeleton(store) {
               <span>Extension + lieu</span>
               <select name="network_extension_${escapeHtml(row.id)}">
                 <option value="">Choisir une extension / un lieu</option>
-                ${extensionOptionsForCategory(category, row.extensionLabel).map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                ${extensionOptionsForCategory(category, row.extensionLabel).map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(extensionOptionDisplayLabel(option, state.language))}</option>`).join("")}
               </select>
             </label>
             <label>
@@ -5878,8 +5962,8 @@ function buildStoreDocumentsCard(store) {
 function buildEquipmentCards(store) {
   const workflow = ensureStoreWorkflowData(store);
   const gsmRows = getGsmRows(store);
-  const extensionOptions = availableExtensionReferenceOptions("", store.language || "fr");
-  const groupedExtensions = groupedCallExtensionList(store.language || "fr");
+  const extensionOptions = availableExtensionReferenceOptions("", state.language || store.language || "fr");
+  const groupedExtensions = groupedCallExtensionList(state.language || store.language || "fr");
   return `
     <div class="editor-grid section-anchor" id="section-equipment">
       <details class="posts-skeleton equipment-collapsible" data-access-zone="store_posts">
@@ -5906,7 +5990,7 @@ function buildEquipmentCards(store) {
                     <span>Extension liee</span>
                     <select name="gsm_extension_${escapeHtml(row.id)}">
                       <option value="">Choisir une extension</option>
-                      ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                      ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLinked === option ? "selected" : ""}>${escapeHtml(extensionOptionDisplayLabel(option, state.language))}</option>`).join("")}
                     </select>
                   </label>
                   <label>
@@ -7888,7 +7972,7 @@ function getFilteredTickets() {
 function buildSavCard(store) {
   const storeTickets = ticketsForStore(store.id);
   const requesterName = currentUser()?.name || state.activeUserName || store.manager || "-";
-  const extensionOptions = availableExtensionReferenceOptions("", store.language || "fr");
+  const extensionOptions = availableExtensionReferenceOptions("", state.language || store.language || "fr");
   return `
     <article class="editor-card full-span-card sav-ticket-card" data-access-zone="sav_ticket">
       <h3>Demande SAV / ticket</h3>
@@ -7942,7 +8026,7 @@ function buildSavCard(store) {
               <span>Extension liee</span>
               <select name="new_ticket_extension">
                 <option value="">Choisir une extension</option>
-                ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}
+                ${extensionOptions.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(extensionOptionDisplayLabel(option, state.language))}</option>`).join("")}
               </select>
             </label>
             <label>
@@ -15511,7 +15595,10 @@ function schedulePostRenderLanguagePass() {
   if (state.language !== "nl" || typeof window === "undefined") {
     return;
   }
+  applyPostRenderLanguagePass();
   window.requestAnimationFrame(applyPostRenderLanguagePass);
+  window.setTimeout(applyPostRenderLanguagePass, 50);
+  window.setTimeout(applyPostRenderLanguagePass, 250);
 }
 
 function normalizeUiTranslationKey(value) {
