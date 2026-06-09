@@ -1748,6 +1748,19 @@ Object.assign(nlUiTextMap, {
   "ligne(s)": "lijn(en)"
 });
 
+Object.assign(nlUiTextMap, {
+  "Type / licence": "Type / licentie",
+  "Responsable / tel": "Verantwoordelijke / tel",
+  "Validations manquantes": "Ontbrekende validaties",
+  "Prochaine action": "Volgende actie",
+  "Quantites magasins": "Winkelhoeveelheden",
+  "Postes magasin": "Winkeltoestellen",
+  "ligne(s) configuree(s)": "lijn(en) geconfigureerd",
+  "Aucune ligne configuree": "Geen lijn geconfigureerd",
+  "Choix telephonie confirmes et visibles ici sans devoir ouvrir l onglet configuration.": "Bevestigde telefoniekeuzes zijn hier zichtbaar zonder de configuratietab te openen.",
+  "Les choix enregistres dans Configuration magasin remonteront ici des qu ils seront completes.": "De keuzes die in Winkelconfiguratie worden opgeslagen, verschijnen hier zodra ze volledig zijn."
+});
+
 Object.assign(nlUiPhraseMap, {
   "Poste fixe big": "Vast toestel big",
   "Poste fixe": "Vast toestel",
@@ -3364,6 +3377,29 @@ function preferredUserFromQuery() {
   return state.people.find((person) => person.name.toLowerCase() === rawUser)?.name || null;
 }
 
+function languageForStore(store) {
+  const language = normalizeLanguageCode(store?.language || "");
+  return language === "nl" ? "nl" : "fr";
+}
+
+function syncEffectiveLanguage() {
+  const expandedStoreId = [...(state.expandedStoreIds || new Set())][0];
+  const expandedStore = expandedStoreId
+    ? state.stores.find((store) => Number(store.id) === Number(expandedStoreId))
+    : null;
+  const user = currentUser();
+  const linkedStore = user?.storeCode
+    ? state.stores.find((store) => normalizeImportCell(store.code).toLowerCase() === normalizeImportCell(user.storeCode).toLowerCase())
+    : null;
+  const nextLanguage = expandedStore
+    ? languageForStore(expandedStore)
+    : linkedStore
+      ? languageForStore(linkedStore)
+      : normalizeLanguageCode(user?.language || "fr");
+  state.language = nextLanguage === "nl" ? "nl" : "fr";
+  document.documentElement.lang = state.language;
+}
+
 function updateFocusFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const rawStore = normalizeImportCell(params.get("store"));
@@ -4610,10 +4646,10 @@ function renderStoreValidationSignals(store, options = {}) {
   const visibleItems = items;
   return `
     <div class="store-validation-signals">
-      ${store.status === "blocked" ? '<span class="validation-signal signal-issue">Blocage</span>' : ""}
+      ${store.status === "blocked" ? `<span class="validation-signal signal-issue">${escapeUi("Blocage")}</span>` : ""}
       ${visibleItems.map((item) => `
         <span class="validation-signal ${item.ok ? "signal-ok" : "signal-issue"}">
-          ${escapeHtml(item.ok ? item.okLabel : item.issueLabel)}
+          ${escapeUi(item.ok ? item.okLabel : item.issueLabel)}
         </span>
       `).join("")}
     </div>
@@ -4891,7 +4927,9 @@ function renderDashboardExtra(mainTab, visibleStores) {
 }
 
 function syncSelectors() {
-  languageSelect.value = state.language;
+  if (languageSelect) {
+    languageSelect.value = state.language;
+  }
   const types = [...new Set(getRoleScopedStores().map((store) => normalizeShopTypeValue(store.shopType)).filter(Boolean))].sort();
   const cities = [...new Set(getRoleScopedStores().map((store) => store.city).filter(Boolean))].sort();
   const stages = [...new Set(getRoleScopedStores().map((store) => currentWorkflowStage(store)).filter(Boolean))].sort();
@@ -5253,16 +5291,16 @@ function buildStorePilotSkeleton(store) {
 
   return `
     <article class="editor-card full-span-card">
-      <h3>Quantites magasin</h3>
-      <p>Vue de pilotage rapide des besoins reseau et materiel du magasin.</p>
+      <h3>${escapeUi("Quantites magasin")}</h3>
+      <p>${escapeUi("Vue de pilotage rapide des besoins reseau et materiel du magasin.")}</p>
       <div class="quantity-meta-row">
-        <div><strong>Date telephonie actuelle</strong> ${escapeHtml(workflow.currentPhoneDate || "-")}</div>
+        <div><strong>${escapeUi("Date telephonie actuelle")}</strong> ${escapeHtml(workflow.currentPhoneDate || "-")}</div>
         <div><strong>IP range</strong> ${escapeHtml(store.ipRange || "-")}</div>
       </div>
       <div class="quantity-grid">
         ${quantityCells.map(([label, fieldName, value]) => `
           <div class="quantity-card">
-            <span class="mini-label">${label}</span>
+            <span class="mini-label">${escapeUi(label)}</span>
             ${isAdminTwem()
               ? `<input type="number" min="0" name="${fieldName}" value="${escapeHtml(String(value))}">`
               : `<strong>${value}</strong>`}
@@ -5287,29 +5325,29 @@ function buildStorePilotSkeleton(store) {
     const editableContent = Object.entries(groupedRows).map(([category, categoryRows]) => `
       <article class="network-category">
         <div class="network-category-head">
-          <h4>${escapeHtml(category)}</h4>
-          <span>${categoryRows.length} ligne(s)</span>
+          <h4>${escapeUi(category)}</h4>
+          <span>${categoryRows.length} ${escapeUi("ligne(s)")}</span>
       </div>
       <div class="network-rows">
         ${categoryRows.map((row, index) => `
           <div class="network-row">
-            <div class="network-slot">${escapeHtml(row.slotLabel || `${category} ${index + 1}`)}</div>
+            <div class="network-slot">${escapeUi(row.slotLabel || `${category} ${index + 1}`)}</div>
             <label>
-              <span>Extension + lieu</span>
+              <span>${escapeUi("Extension + lieu")}</span>
               <select name="network_extension_${escapeHtml(row.id)}">
-                <option value="">Choisir une extension / un lieu</option>
+                <option value="">${escapeUi("Choisir une extension / un lieu")}</option>
                 ${extensionOptionsForCategory(category, row.extensionLabel).map((option) => `<option value="${escapeHtml(option)}" ${row.extensionLabel === option ? "selected" : ""}>${escapeHtml(extensionOptionDisplayLabel(option, state.language))}</option>`).join("")}
               </select>
             </label>
             <label>
-              <span>Note</span>
-              <input type="text" name="network_note_${escapeHtml(row.id)}" value="${escapeHtml(row.note || "")}" placeholder="Ex: personnaliser la touche / commentaire">
+              <span>${escapeUi("Note")}</span>
+              <input type="text" name="network_note_${escapeHtml(row.id)}" value="${escapeHtml(row.note || "")}" placeholder="${escapeUi("Ex: personnaliser la touche / commentaire")}">
             </label>
             </div>
           `).join("")}
         </div>
         <div class="posts-skeleton-actions">
-          <button type="submit" class="mini-button">Sauvegarder ce bloc</button>
+          <button type="submit" class="mini-button">${escapeUi("Sauvegarder ce bloc")}</button>
         </div>
       </article>
     `).join("");
@@ -5323,8 +5361,8 @@ function buildStorePilotSkeleton(store) {
             <tr>
               <th>Type</th>
               <th>Slot</th>
-              <th>Extension + lieu</th>
-              <th>Note</th>
+              <th>${escapeUi("Extension + lieu")}</th>
+              <th>${escapeUi("Note")}</th>
             </tr>
           </thead>
           <tbody>
@@ -5340,16 +5378,16 @@ function buildStorePilotSkeleton(store) {
         </table>
       </div>
     `
-    : '<div class="empty-state">Aucun choix extension confirme pour le moment.</div>';
+    : `<div class="empty-state">${escapeUi("Aucun choix extension confirme pour le moment.")}</div>`;
 
   return `
     <details class="network-skeleton" open data-access-zone="network_config">
       <summary>
-        <span>Configuration du reseau</span>
-        <span>Lignes generees automatiquement par quantite magasin</span>
+        <span>${escapeUi("Configuration du reseau")}</span>
+        <span>${escapeUi("Lignes generees automatiquement par quantite magasin")}</span>
       </summary>
       <div class="network-skeleton-body">
-        <p class="posts-skeleton-intro">La configuration ci-dessous est differente en quantite. C'est normal : les quantites ont ete revues avec Brico, et certains numeros d'extension ont change afin d'uniformiser la telephonie dans tous les magasins.</p>
+        <p class="posts-skeleton-intro">${escapeUi("La configuration ci-dessous est differente en quantite. C'est normal : les quantites ont ete revues avec Brico, et certains numeros d'extension ont change afin d'uniformiser la telephonie dans tous les magasins.")}</p>
         <input type="hidden" name="network_config_confirmed" value="${workflow.networkConfigConfirmed ? "1" : "0"}">
         ${showConfirmBar
           ? (workflow.networkConfigConfirmed && !canEditZone(store, "network_config") ? summaryContent : editableContent)
@@ -5366,18 +5404,18 @@ function buildStorePostsSkeleton(store) {
   return `
     <details class="posts-skeleton" open data-access-zone="store_posts">
       <summary>
-        <span>Postes magasin</span>
-        <span>${rows.length ? `${rows.length} ligne(s) configuree(s)` : "Aucune ligne configuree"}</span>
+        <span>${escapeUi("Postes magasin")}</span>
+        <span>${rows.length ? `${rows.length} ${escapeUi("ligne(s) configuree(s)")}` : escapeUi("Aucune ligne configuree")}</span>
       </summary>
       <div class="posts-skeleton-body">
-        <p class="posts-skeleton-intro">${workflow.networkConfigConfirmed ? "Choix telephonie confirmes et visibles ici sans devoir ouvrir l onglet configuration." : "Les choix enregistres dans Configuration magasin remonteront ici des qu ils seront completes."}</p>
+        <p class="posts-skeleton-intro">${escapeUi(workflow.networkConfigConfirmed ? "Choix telephonie confirmes et visibles ici sans devoir ouvrir l onglet configuration." : "Les choix enregistres dans Configuration magasin remonteront ici des qu ils seront completes.")}</p>
         ${rows.length ? `
           <div class="posts-table-wrap">
             <table class="posts-table">
               <thead>
                 <tr>
                   <th>Type</th>
-                  <th>Poste</th>
+                  <th>${escapeUi("Poste")}</th>
                   <th>Extension + lieu</th>
                   <th>Etat</th>
                   <th>Note</th>
@@ -6664,10 +6702,10 @@ function attachStoreInteractiveHandlers() {
       if (state.expandedStoreIds.has(storeId)) {
         state.expandedStoreIds.delete(storeId);
       } else {
-        state.expandedStoreIds.add(storeId);
+        state.expandedStoreIds = new Set([storeId]);
       }
       saveState();
-      renderStores();
+      render();
     });
   });
 
@@ -6828,8 +6866,8 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td>${renderStoreValidationSignals(store, { showAll: plannedInterventionView })}</td>
         <td>
           <div class="store-row-actions">
-            <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>
-            <button type="button" class="mini-button" data-store-print="${store.id}">Imprimer</button>
+            <button type="button" class="mini-button" data-store-toggle="${store.id}">${escapeUi(isExpanded ? "Fermer fiche" : "Voir fiche")}</button>
+            <button type="button" class="mini-button" data-store-print="${store.id}">${escapeUi("Imprimer")}</button>
           </div>
         </td>
       `;
@@ -6853,8 +6891,8 @@ function renderStoreOverviewRows(stores, mode = "stores") {
         <td>${renderStoreValidationSignals(store)}</td>
         <td>
           <div class="store-row-actions">
-            <button type="button" class="mini-button" data-store-toggle="${store.id}">${isExpanded ? "Fermer fiche" : "Voir fiche"}</button>
-            <button type="button" class="mini-button" data-store-print="${store.id}">Imprimer</button>
+            <button type="button" class="mini-button" data-store-toggle="${store.id}">${escapeUi(isExpanded ? "Fermer fiche" : "Voir fiche")}</button>
+            <button type="button" class="mini-button" data-store-print="${store.id}">${escapeUi("Imprimer")}</button>
           </div>
         </td>
       `;
@@ -8351,7 +8389,7 @@ function renderStores() {
   projectTable?.classList.remove("tuto-table");
 
   if (!stores.length) {
-    projectTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Aucun magasin ne correspond aux filtres.</td></tr>';
+    projectTableBody.innerHTML = `<tr><td colspan="9" class="empty-state">${escapeUi("Aucun magasin ne correspond aux filtres.")}</td></tr>`;
     return;
   }
 
@@ -8382,17 +8420,17 @@ function renderStores() {
       return;
     case "configuration":
       projectTable?.classList.add("compact-rows-table");
-      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"]);
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"].map((label) => ui(label)));
       renderStoreOverviewRows(stores, "configuration");
       return;
     case "quantity-bulk":
       projectTable?.classList.add("compact-rows-table");
-      setMainTableHeaders(["Quantites magasins", "", "", "", "", "", "", "", ""]);
+      setMainTableHeaders([ui("Quantites magasins"), "", "", "", "", "", "", "", ""]);
       renderQuantityBulkRows(stores);
       return;
     case "preparation":
       projectTable?.classList.add("compact-rows-table");
-      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"]);
+      setMainTableHeaders(["Code", "Magasin", "Ville", "Type", "Responsable", "Intervention", "Statut", "Validations", "Actions"].map((label) => ui(label)));
       renderStoreOverviewRows(stores, "preparation");
       return;
       case "stores":
@@ -8400,8 +8438,8 @@ function renderStores() {
         projectTable?.classList.add("compact-rows-table");
         projectTable?.classList.add("store-list-table");
         setMainTableHeaders(isPlannedInterventionListView()
-          ? ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "Intervention", "Statut", "Validations manquantes", "Actions"]
-          : ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"]);
+          ? ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "Intervention", "Statut", "Validations manquantes", "Actions"].map((label) => ui(label))
+          : ["Code", "Magasin", "Type / licence", "PO / PM", "Responsable / tel", "", "Statut", "Prochaine action", "Actions"].map((label) => ui(label)));
         renderStoreOverviewRows(stores, "stores");
     }
   }
@@ -12309,6 +12347,7 @@ function setupAppwritePolling() {
 }
 
 function render() {
+  syncEffectiveLanguage();
   ensureValidActiveTab();
   applyStaticTranslations();
   renderConnectionStatus();
@@ -15333,11 +15372,6 @@ async function handlePinSubmit(event) {
   }];
 
   state.activeUserName = matchedPerson.name;
-  if (!state.languageLocked) {
-    state.language = normalizeLanguageCode(matchedPerson.language) === "nl" ? "nl" : "fr";
-    state.languageLocked = true;
-  }
-  document.documentElement.lang = state.language;
   state.pinValidated = true;
   if (shouldOpenTutorialOnLogin(matchedPerson)) {
     state.activeAdminTab = "tuto";
@@ -15444,14 +15478,6 @@ function handleResetUserView() {
   state.roleViewUnlocked = false;
   state.pinValidated = true;
   ensureValidActiveTab();
-  saveState();
-  render();
-}
-
-function handleLanguageChange(event) {
-  state.language = event.target.value;
-  state.languageLocked = true;
-  document.documentElement.lang = state.language;
   saveState();
   render();
 }
@@ -15591,10 +15617,7 @@ function applyStaticTranslations() {
 }
 
 function schedulePostRenderLanguagePass() {
-  if (state.language !== "nl" || typeof window === "undefined") {
-    return;
-  }
-  window.requestAnimationFrame(applyPostRenderLanguagePass);
+  return;
 }
 
 function normalizeUiTranslationKey(value) {
@@ -15641,6 +15664,14 @@ function translateUiTextValue(value) {
       }
     });
   return next;
+}
+
+function ui(value, language = state.language) {
+  return normalizeLanguageCode(language) === "nl" ? translateUiTextValue(value) : value;
+}
+
+function escapeUi(value, language = state.language) {
+  return escapeHtml(ui(value, language));
 }
 
 function applyPostRenderLanguagePass() {
@@ -16033,7 +16064,6 @@ pinAccessForm?.addEventListener("submit", handlePinAccessSubmit);
 authForm.addEventListener("submit", handleAuthSubmit);
 logoutButton.addEventListener("click", handleLogout);
 activeUserSelect.addEventListener("change", handleActiveUserChange);
-languageSelect.addEventListener("change", handleLanguageChange);
 visibilityRoleSelect?.addEventListener("change", (event) => {
   state.visibilityEditorRole = event.target.value;
   saveState();
