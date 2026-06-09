@@ -3627,63 +3627,41 @@ function resetImportedStoresForKickoff(stores = []) {
   });
 }
 
-const plannedInstallDatesRestore20260522 = {
-  "BRI-4213": "2026-06-01",
-  "BRI-4214": "2026-06-01",
-  "BRI-3311": "2026-06-04",
+const cancelledInstallCorrections20260609 = {
   "BRI-3621": "2026-06-09",
   "BRI-5430": "2026-06-09",
-  "BRI-3597": "2026-06-16",
-  "BRI-3315": "2026-06-19",
-  "BRI-3603": "2026-06-22",
-  "BRI-3660": "2026-06-22",
-  "BRI-3678": "2026-06-22",
-  "BRI-3305": "2026-06-29",
-  "BRI-3320": "2026-06-29",
-  "BRI-3625": "2026-06-29",
-  "BRI-3612": "2026-07-06",
-  "BRI-3667": "2026-07-06",
-  "BRI-4203": "2026-07-06",
-  "BRI-3669": "2026-07-13",
-  "BRI-4204": "2026-07-13",
-  "BRI-3319": "2026-07-20",
-  "BRI-3582": "2026-07-20",
-  "BRI-3632": "2026-07-20",
-  "BRI-3617": "2026-07-27",
-  "BRI-3694": "2026-07-27",
-  "BRI-4215": "2026-07-27",
-  "BRI-3322": "2026-08-03",
-  "BRI-3645": "2026-08-03",
-  "BRI-4212": "2026-08-03",
-  "BRI-3431": "2026-08-10",
-  "BRI-3443": "2026-08-10",
-  "BRI-3675": "2026-08-10",
-  "BRI-3400": "2026-08-17",
-  "BRI-3637": "2026-08-17"
+  "BRI-3597": "2026-06-16"
 };
 
-function restorePlanningInstallDatesFromSnapshot() {
-  const existingPlannedDateCount = (state.stores || []).filter((store) => {
-    if (!plannedInstallDatesRestore20260522[store.code]) {
-      return false;
-    }
-    return Boolean(ensureStoreWorkflowData(store).destinyInstallDate);
-  }).length;
-  if (existingPlannedDateCount >= 10) {
-    return [];
-  }
-
+function applyCancelledInstallCorrections() {
+  const note = "Installation annulee - une nouvelle date sera transmise ulterieurement.";
   const changedStores = [];
   (state.stores || []).forEach((store) => {
-    const expectedDate = plannedInstallDatesRestore20260522[store.code];
-    if (!expectedDate) {
+    const cancelledDate = cancelledInstallCorrections20260609[store.code];
+    if (!cancelledDate) {
       return;
     }
     const workflow = ensureStoreWorkflowData(store);
-    if (workflow.destinyInstallDate === expectedDate) {
+    if (normalizeDateOnly(workflow.destinyInstallDate) !== cancelledDate) {
       return;
     }
-    workflow.destinyInstallDate = expectedDate;
+    workflow.destinyInstallDate = "";
+    workflow.destinyInstallDone = "Non";
+    workflow.destinyInstallRemark = note;
+    if (!Array.isArray(workflow.installationRemarks)) {
+      workflow.installationRemarks = [];
+    }
+    const hasNote = workflow.installationRemarks.some((remark) => normalizeImportCell(remark?.text) === note);
+    if (!hasNote) {
+      workflow.installationRemarks.push({
+        id: `remark-cancel-20260609-${store.code}`,
+        text: note,
+        author: "Valou / TWEM",
+        createdAt: "2026-06-09T00:00:00.000Z"
+      });
+    }
+    const health = normalizeImportCell(store.health);
+    store.health = health.includes(note) ? store.health : [store.health, note].filter(Boolean).join("\n");
     store.updatedAt = new Date().toISOString();
     changedStores.push(store);
   });
@@ -16271,10 +16249,10 @@ async function init() {
       if (hasAppwriteDataConfig) {
         await loadRemoteState();
         await migrateEditableLocalExtensionCatalogToRemote(stored.extensionCatalogRows);
-        const restoredInstallDateStores = restorePlanningInstallDatesFromSnapshot();
-        if (restoredInstallDateStores.length) {
+        const cancelledInstallStores = applyCancelledInstallCorrections();
+        if (cancelledInstallStores.length) {
           saveState();
-          for (const store of restoredInstallDateStores) {
+          for (const store of cancelledInstallStores) {
             await syncStoreToRemote(store);
           }
           refreshRemoteSyncShadow();
