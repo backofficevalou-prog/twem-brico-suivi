@@ -2085,6 +2085,7 @@ const state = {
   mode: "demo",
   connectionState: "offline",
   language: "fr",
+  languageLocked: false,
   activeAdminTab: "dashboard",
   stores: [],
   activities: [],
@@ -2897,6 +2898,7 @@ function localUiState() {
     people: state.people,
     activeUserName: state.activeUserName,
     language: state.language,
+    languageLocked: state.languageLocked,
     activeAdminTab: state.activeAdminTab,
     activeAutomationSubtab: state.activeAutomationSubtab,
     tutorialSeenByUser: state.tutorialSeenByUser,
@@ -2929,6 +2931,7 @@ function loadState() {
       people: demoPinPeople(),
       activeUserName: "",
       language: "fr",
+      languageLocked: false,
       activeAdminTab: "dashboard",
       tutorialSeenByUser: {},
         toolItems: [],
@@ -2967,6 +2970,7 @@ function loadState() {
       }))),
       activeUserName: shouldResetRememberedNonBypassUser ? "" : (parsed.activeUserName || ""),
       language: parsed.language || "fr",
+      languageLocked: Boolean(parsed.languageLocked),
       activeAdminTab: parsed.activeAdminTab || "dashboard",
       activeAutomationSubtab: parsed.activeAutomationSubtab || "rules",
       tutorialSeenByUser: parsed.tutorialSeenByUser || {},
@@ -2994,6 +2998,7 @@ function loadState() {
       people: demoPinPeople(),
       activeUserName: "",
       language: "fr",
+      languageLocked: false,
       activeAdminTab: "dashboard",
       tutorialSeenByUser: {},
         toolItems: [],
@@ -15241,7 +15246,9 @@ async function handlePinSubmit(event) {
   }];
 
   state.activeUserName = matchedPerson.name;
-  state.language = normalizeLanguageCode(matchedPerson.language) === "nl" ? "nl" : "fr";
+  if (!state.languageLocked) {
+    state.language = normalizeLanguageCode(matchedPerson.language) === "nl" ? "nl" : "fr";
+  }
   document.documentElement.lang = state.language;
   state.pinValidated = true;
   if (shouldOpenTutorialOnLogin(matchedPerson)) {
@@ -15338,7 +15345,7 @@ async function handlePinAccessSubmit(event) {
 function handleActiveUserChange(event) {
   state.activeUserName = event.target.value;
   const selectedPerson = state.people.find((person) => person.name === state.activeUserName);
-  if (selectedPerson) {
+  if (selectedPerson && !state.languageLocked) {
     state.language = normalizeLanguageCode(selectedPerson.language) === "nl" ? "nl" : "fr";
     document.documentElement.lang = state.language;
   }
@@ -15360,6 +15367,7 @@ function handleResetUserView() {
 
 function handleLanguageChange(event) {
   state.language = event.target.value;
+  state.languageLocked = true;
   document.documentElement.lang = state.language;
   saveState();
   render();
@@ -16007,6 +16015,7 @@ async function init() {
   state.people = normalizeSpecialPeople(stored.people);
   state.activeUserName = stored.activeUserName;
   state.language = stored.language || "fr";
+  state.languageLocked = Boolean(stored.languageLocked);
   state.activeAdminTab = stored.activeAdminTab || "dashboard";
   state.activeAutomationSubtab = stored.activeAutomationSubtab || "rules";
   state.pinValidated = false;
