@@ -2315,6 +2315,7 @@ const automationFutureList = document.querySelector("#automationFutureList");
 const twemWorkspace = document.querySelector("#twemWorkspace");
 const workspaceSidebar = document.querySelector("#workspaceSidebar");
 const workspaceShell = document.querySelector(".workspace-shell");
+const workspaceContent = document.querySelector(".workspace-content");
 const peopleList = document.querySelector("#peopleList");
 const personForm = document.querySelector("#personForm");
 const personNameInput = document.querySelector("#personNameInput");
@@ -15590,7 +15591,10 @@ function applyStaticTranslations() {
 }
 
 function schedulePostRenderLanguagePass() {
-  return;
+  if (state.language !== "nl" || typeof window === "undefined") {
+    return;
+  }
+  window.requestAnimationFrame(applyPostRenderLanguagePass);
 }
 
 function normalizeUiTranslationKey(value) {
@@ -15643,7 +15647,7 @@ function applyPostRenderLanguagePass() {
   if (state.language !== "nl") {
     return;
   }
-  const root = document.body;
+  const root = workspaceContent || projectTableBody || document.body;
   if (!root) {
     return;
   }
@@ -15670,19 +15674,19 @@ function applyPostRenderLanguagePass() {
       node.nodeValue = next;
     }
   });
-  document.querySelectorAll("[placeholder]").forEach((node) => {
+  root.querySelectorAll("[placeholder]").forEach((node) => {
     const next = translateExactText(node.getAttribute("placeholder"), nlUiPlaceholderMap);
     if (next !== node.getAttribute("placeholder")) {
       node.setAttribute("placeholder", next);
     }
   });
-  document.querySelectorAll("[title]").forEach((node) => {
+  root.querySelectorAll("[title]").forEach((node) => {
     const next = translateExactText(node.getAttribute("title"), nlUiTextMap);
     if (next !== node.getAttribute("title")) {
       node.setAttribute("title", next);
     }
   });
-  document.querySelectorAll("[aria-label]").forEach((node) => {
+  root.querySelectorAll("[aria-label]").forEach((node) => {
     const next = translateExactText(node.getAttribute("aria-label"), nlUiTextMap);
     if (next !== node.getAttribute("aria-label")) {
       node.setAttribute("aria-label", next);
