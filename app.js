@@ -149,6 +149,19 @@ function extensionReferenceText(row, language = "fr") {
   return label ? `${number} - ${label}` : number;
 }
 
+function extensionReferenceMultilingualText(row) {
+  const number = normalizeImportCell(row?.number);
+  const labels = ["fr", "nl", "en"]
+    .map((language) => getExtensionPreferredLabel(row, language))
+    .filter(Boolean);
+  const uniqueLabels = [...new Set(labels)];
+  if (!number && !uniqueLabels.length) {
+    return "";
+  }
+  const label = uniqueLabels.join(" / ");
+  return label ? `${number} - ${label}` : number;
+}
+
 function availableExtensionReferenceOptions(categoryFilter = "", language = "fr") {
   const targetKey = extensionCategoryKey(categoryFilter);
   const importedOptions = extensionRowsForCategory(categoryFilter)
@@ -166,7 +179,7 @@ function availableExtensionReferenceOptions(categoryFilter = "", language = "fr"
       return leftNumber.localeCompare(rightNumber, "fr", { numeric: true, sensitivity: "base" })
         || leftLabel.localeCompare(rightLabel, "fr", { sensitivity: "base" });
     })
-    .map((row) => extensionReferenceText(row, language))
+    .map((row) => extensionReferenceMultilingualText(row))
     .filter(Boolean);
 
   return importedOptions.length ? importedOptions : extensionReferenceOptions;
@@ -221,9 +234,10 @@ function extensionOptionDisplayLabel(option, language = state.language) {
     if (rowNumber && valueNumber && rowNumber === valueNumber) {
       return true;
     }
-    return ["fr", "nl", "en"].some((lang) => normalizeImportCell(extensionReferenceText(row, lang)) === value);
+    return normalizeImportCell(extensionReferenceMultilingualText(row)) === value
+      || ["fr", "nl", "en"].some((lang) => normalizeImportCell(extensionReferenceText(row, lang)) === value);
   });
-  return match ? extensionReferenceText(match, language) : translateUiTextValue(value);
+  return match ? extensionReferenceMultilingualText(match) : translateUiTextValue(value);
 }
 
 function normalizeExtensionCatalogRow(row, index = 0) {
@@ -612,6 +626,7 @@ const technicalSheetsSettingsItemId = "__technical_sheets__";
 const automationEmailsSettingsItemId = "__automation_emails__";
 const mailerStateSettingsItemId = "__mailer_state__";
 const extensionCatalogSettingsItemId = "__extension_catalog__";
+const extensionCatalogSettingsDocumentId = "extension-catalog";
 const defaultTutorialVideos = [
   {
     key: "network_info",
@@ -2732,11 +2747,6 @@ function buildAppwriteSettingsDocument() {
         id: automationEmailsSettingsItemId,
         kind: "automation_emails",
         emails: state.automationEmails || []
-      },
-      {
-        id: extensionCatalogSettingsItemId,
-        kind: "extension_catalog",
-        extensions: extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index))
       }
     ]),
     access_overrides_json: JSON.stringify(state.accessOverrides || []),
@@ -3166,6 +3176,18 @@ function activityRemoteSyncKey(activity) {
 
 function settingsRemoteSyncSnapshot() {
   return stableSerialize(buildAppwriteSettingsDocument());
+}
+
+function buildExtensionCatalogSettingsDocument(rows = extensionCatalogRows) {
+  return {
+    tool_items_json: JSON.stringify([
+      {
+        id: extensionCatalogSettingsItemId,
+        kind: "extension_catalog",
+        extensions: rows.map((row, index) => normalizeExtensionCatalogRow(row, index))
+      }
+    ])
+  };
 }
 
 function refreshRemoteSyncShadow() {
@@ -7840,7 +7862,9 @@ async function handleAddExtensionSubmit(event) {
     window.alert("La categorie et le numero sont obligatoires.");
     return;
   }
-  extensionCatalogRows.push({
+  const nextRows = [
+    ...extensionCatalogRows,
+    normalizeExtensionCatalogRow({
     category,
     model,
     number,
@@ -7853,18 +7877,25 @@ async function handleAddExtensionSubmit(event) {
     item,
     activation: "",
     usage: ""
-  });
-  saveState();
-  render();
+    }, extensionCatalogRows.length)
+  ];
   if (hasRemoteData()) {
     try {
-      await syncSettingsToRemote();
+      await syncExtensionCatalogToRemote(nextRows);
+      extensionCatalogRows.splice(0, extensionCatalogRows.length, ...nextRows);
+      saveState();
+      await loadRemoteState();
       refreshRemoteSyncShadow();
     } catch (error) {
       console.error("Impossible de synchroniser l extension ajoutee.", error);
-      window.alert("Extension ajoutee localement, mais la synchronisation distante a echoue.");
+      window.alert("Extension non ajoutee : la synchronisation Appwrite a echoue. Rien n'a ete garde seulement en local.");
+      return;
     }
+  } else {
+    extensionCatalogRows.splice(0, extensionCatalogRows.length, ...nextRows);
+    saveState();
   }
+  render();
 }
 
 function renderExtensionsRowsV2(stores) {
@@ -11667,13 +11698,14 @@ async function loadRemoteState() {
 
   let shouldResyncSettingsAfterLoad = false;
   const settingsDocument = settingsDocuments.find((document) => document.$id === "global-state") || settingsDocuments[0];
+  const allRemoteToolItems = settingsDocuments.flatMap((document) => parseJsonField(document.tool_items_json, []));
   if (settingsDocument) {
     state.roleOptions = normalizedRoleOptions(parseJsonField(settingsDocument.role_options_json, []));
     const remoteToolItems = parseJsonField(settingsDocument.tool_items_json, []);
-    const tutorialVideosItem = remoteToolItems.find((item) => item?.id === tutorialVideosSettingsItemId || item?.kind === "tutorial_videos");
-    const technicalSheetsItem = remoteToolItems.find((item) => item?.id === technicalSheetsSettingsItemId || item?.kind === "technical_sheets");
-    const automationEmailsItem = remoteToolItems.find((item) => item?.id === automationEmailsSettingsItemId || item?.kind === "automation_emails");
-    const extensionCatalogItem = remoteToolItems.find((item) => item?.id === extensionCatalogSettingsItemId || item?.kind === "extension_catalog");
+    const tutorialVideosItem = allRemoteToolItems.find((item) => item?.id === tutorialVideosSettingsItemId || item?.kind === "tutorial_videos");
+    const technicalSheetsItem = allRemoteToolItems.find((item) => item?.id === technicalSheetsSettingsItemId || item?.kind === "technical_sheets");
+    const automationEmailsItem = allRemoteToolItems.find((item) => item?.id === automationEmailsSettingsItemId || item?.kind === "automation_emails");
+    const extensionCatalogItem = allRemoteToolItems.find((item) => item?.id === extensionCatalogSettingsItemId || item?.kind === "extension_catalog");
     state.toolItems = remoteToolItems.filter((item) =>
       item?.id !== tutorialVideosSettingsItemId
       && item?.kind !== "tutorial_videos"
@@ -11731,7 +11763,7 @@ async function loadRemoteState() {
   saveState();
   if (shouldResyncSettingsAfterLoad && hasAppwriteDataConfig) {
     try {
-      await syncSettingsToRemote();
+      await syncExtensionCatalogToRemote();
     } catch (error) {
       console.error("Erreur resync catalogue extensions", error);
     }
@@ -11975,6 +12007,33 @@ async function syncSettingsToRemote() {
     "global-state",
     buildAppwriteSettingsDocument()
   );
+}
+
+async function syncExtensionCatalogToRemote(rows = extensionCatalogRows) {
+  if (!hasAppwriteDataConfig) {
+    return;
+  }
+
+  await upsertAppwriteDocument(
+    appwriteSettingsCollectionId,
+    extensionCatalogSettingsDocumentId,
+    buildExtensionCatalogSettingsDocument(rows)
+  );
+}
+
+async function migrateEditableLocalExtensionCatalogToRemote(storedRows = []) {
+  if (!hasRemoteData() || !canEditExtensionCatalog() || !Array.isArray(storedRows) || !storedRows.length) {
+    return;
+  }
+  const normalizedLocalRows = storedRows.map((row, index) => normalizeExtensionCatalogRow(row, index));
+  const mergedRows = mergeExtensionCatalogRows(normalizedLocalRows, extensionCatalogRows);
+  if (mergedRows.length <= extensionCatalogRows.length) {
+    return;
+  }
+  await syncExtensionCatalogToRemote(mergedRows);
+  extensionCatalogRows.splice(0, extensionCatalogRows.length, ...mergedRows);
+  saveState();
+  refreshRemoteSyncShadow();
 }
 
 async function syncRoleSettingsToRemote() {
@@ -13540,6 +13599,7 @@ function handleImportInputChange(event) {
     try {
       const fileName = file.name.toLowerCase();
       if (state.importMode === "extensions") {
+        const previousExtensionRows = extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index));
         if (fileName.endsWith(".json")) {
           const payload = JSON.parse(String(reader.result));
           const rows = Array.isArray(payload) ? payload : (payload.extensions || payload.rows || []);
@@ -13550,6 +13610,17 @@ function handleImportInputChange(event) {
           importExtensionRows(parseDelimitedText(reader.result));
         } else {
           throw new Error("Format extension non supporte. Utilise XLS/XLSX, CSV ou JSON.");
+        }
+        if (hasRemoteData()) {
+          try {
+            await syncExtensionCatalogToRemote(extensionCatalogRows);
+            await loadRemoteState();
+            refreshRemoteSyncShadow();
+          } catch (error) {
+            extensionCatalogRows.splice(0, extensionCatalogRows.length, ...previousExtensionRows);
+            saveState();
+            throw new Error(`Import extensions annule : Appwrite a refuse la synchronisation (${syncErrorLabel(error)}).`);
+          }
         }
         recordImportExportHistory("import", "Import extensions", file.name);
         saveState();
@@ -16150,7 +16221,7 @@ async function init() {
   state.contactSearch = stored.contactSearch || "";
   state.importExportHistory = cleanImportHistory(stored.importExportHistory || []);
   state.automationEmails = Array.isArray(stored.automationEmails) ? stored.automationEmails : [];
-  if (Array.isArray(stored.extensionCatalogRows) && stored.extensionCatalogRows.length) {
+  if (!hasRemoteData() && Array.isArray(stored.extensionCatalogRows) && stored.extensionCatalogRows.length) {
     extensionCatalogRows.splice(0, extensionCatalogRows.length, ...stored.extensionCatalogRows.map((row, index) => normalizeExtensionCatalogRow(row, index)));
   }
   state.people = normalizeSpecialPeople(stripKnownTestPeople(state.people));
@@ -16199,6 +16270,7 @@ async function init() {
       await loadAppwriteSessionUser();
       if (hasAppwriteDataConfig) {
         await loadRemoteState();
+        await migrateEditableLocalExtensionCatalogToRemote(stored.extensionCatalogRows);
         const restoredInstallDateStores = restorePlanningInstallDatesFromSnapshot();
         if (restoredInstallDateStores.length) {
           saveState();
