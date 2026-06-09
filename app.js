@@ -3397,6 +3397,20 @@ function updateFocusFromQuery() {
   state.activeAdminTab = canAccessTab("stores") ? "stores" : "dashboard";
   state.filters = { search: "", status: "all", owner: "all", stage: "all", type: "all", city: "all", date: "all", invoice: "all", configStatus: "all" };
   state.expandedStoreIds = new Set([store.id]);
+  applyStoreLanguage(store);
+  return true;
+}
+
+function applyStoreLanguage(store) {
+  const nextLanguage = normalizeLanguageCode(store?.language || "");
+  if (!["fr", "nl"].includes(nextLanguage) || state.language === nextLanguage) {
+    return false;
+  }
+  state.language = nextLanguage;
+  document.documentElement.lang = state.language;
+  if (languageSelect) {
+    languageSelect.value = state.language;
+  }
   return true;
 }
 
@@ -6664,7 +6678,14 @@ function attachStoreInteractiveHandlers() {
         state.expandedStoreIds.delete(storeId);
       } else {
         state.expandedStoreIds.add(storeId);
+        const languageChanged = applyStoreLanguage(state.stores.find((store) => Number(store.id) === storeId));
+        saveState();
+        if (languageChanged) {
+          render();
+          return;
+        }
       }
+      saveState();
       renderStores();
     });
   });
@@ -6711,6 +6732,7 @@ function attachStoreInteractiveHandlers() {
       const storeId = Number(button.getAttribute("data-open-config-store"));
       state.activeAdminTab = "configuration";
       state.expandedStoreIds = new Set([storeId]);
+      applyStoreLanguage(state.stores.find((store) => Number(store.id) === storeId));
       saveState();
       render();
       window.location.hash = "#section-configuration";
@@ -7034,6 +7056,8 @@ function renderTimelineRows(stores) {
       const storeId = Number(button.getAttribute("data-timeline-open"));
       state.activeAdminTab = "stores";
       state.expandedStoreIds = new Set([storeId]);
+      applyStoreLanguage(state.stores.find((store) => Number(store.id) === storeId));
+      saveState();
       render();
     });
   });
@@ -7638,6 +7662,7 @@ function renderSavRows() {
       const storeId = Number(button.getAttribute("data-sav-open-store"));
       state.activeAdminTab = "stores";
       state.expandedStoreIds = new Set([storeId]);
+      applyStoreLanguage(state.stores.find((store) => Number(store.id) === storeId));
       saveState();
       state.pendingStoreSectionFocus = "sav";
       render();
@@ -15595,10 +15620,7 @@ function schedulePostRenderLanguagePass() {
   if (state.language !== "nl" || typeof window === "undefined") {
     return;
   }
-  applyPostRenderLanguagePass();
   window.requestAnimationFrame(applyPostRenderLanguagePass);
-  window.setTimeout(applyPostRenderLanguagePass, 50);
-  window.setTimeout(applyPostRenderLanguagePass, 250);
 }
 
 function normalizeUiTranslationKey(value) {
