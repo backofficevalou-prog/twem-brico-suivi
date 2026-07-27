@@ -16274,3 +16274,37 @@ async function init() {
 }
 
 init();
+// Anonymous daily activity signal used only for CBO hosting-cost allocation.
+(() => {
+  const userKey = "cbo-activity-anonymous-user-v1";
+  const sentKey = "cbo-activity-heartbeat-twem-brico";
+  const day = 86400000;
+  const userId = () => {
+    let value = localStorage.getItem(userKey);
+    if (!value) {
+      value = crypto.randomUUID?.() || `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(userKey, value);
+    }
+    return value;
+  };
+  const send = async () => {
+    if (document.visibilityState === "hidden" || Date.now() - Number(localStorage.getItem(sentKey) || 0) < day) return;
+    try {
+      const response = await fetch(techSupportGatewayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Appwrite-Project": appwriteProjectId || "69eb57e00020de70ed30", "X-Appwrite-Response-Format": "1.9.5" },
+        body: JSON.stringify({ async: false, body: JSON.stringify({
+          action: "activity_heartbeat",
+          appId: techSupportAppId,
+          appName: techSupportAppName,
+          clientName: techSupportClientName,
+          anonymousUserId: userId()
+        }) })
+      });
+      if (response.ok) localStorage.setItem(sentKey, String(Date.now()));
+    } catch {}
+  };
+  document.addEventListener("visibilitychange", send);
+  window.addEventListener("online", send);
+  setTimeout(send, 1800);
+})();
