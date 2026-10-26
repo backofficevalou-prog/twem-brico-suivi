@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffdf38">
+  <title>TWEM · Clôture Roll Out Brico</title>
+  <link rel="icon" href="assets/logo-appli.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="cloture-rollout.css?v=20261026-1">
+</head>
+<body>
+  <div id="accessGate" class="gate">
+    <div class="gate-card">
+      <img src="assets/logo-appli.png" alt="TWEM">
+      <h1>Clôture Roll Out Brico</h1>
+      <p id="gateMessage">Vérification de ta session sécurisée…</p>
+      <a id="backToApp" class="button secondary hidden" href="./">Retour à l’application</a>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/logo-appli.png" alt="TWEM">
+        <div><span>TWEM × BRICO</span><h1>Clôture GO Roll Out</h1></div>
+      </div>
+      <div class="top-actions">
+        <span id="saveState" class="save-state">À jour</span>
+        <a class="button secondary" href="./">Retour</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">SOURCE UNIQUE DE PILOTAGE</p>
+          <h2>Finalisation Dstny + Brico</h2>
+          <p>Les couleurs découlent uniquement des statuts. Les documents d’origine restent dans Drive ou Appwrite Storage.</p>
+        </div>
+        <button id="refreshButton" class="button secondary" type="button">Actualiser les données</button>
+      </section>
+
+      <section id="summary" class="summary" aria-label="Récapitulatif"></section>
+
+      <nav class="tabs" aria-label="Dossiers">
+        <button class="tab active" data-tab="dstny" type="button">DSTNY · 30 octobre</button>
+        <button class="tab" data-tab="brico" type="button">BRICO · 16 novembre</button>
+      </nav>
+
+      <section id="dstnyPanel" class="panel active" data-panel="dstny">
+        <div class="panel-head">
+          <div><h2>Feuille DSTNY</h2><p>Demandes générales et problèmes magasin, triés automatiquement. Les éléments résolus sont verts et descendent en bas.</p></div>
+          <div class="actions"><button id="addDstnyButton" class="button secondary" type="button">Ajouter un point</button><button id="printDstnyButton" class="button" type="button">Rapport réunion</button></div>
+        </div>
+        <div class="filters">
+          <label>Recherche<input id="dstnySearch" type="search" placeholder="Magasin, ticket, demande…"></label>
+          <label>Statut<select id="dstnyStatusFilter"><option value="">Tous</option><option>À demander</option><option>En attente</option><option>Répondu</option><option>Résolu</option></select></label>
+        </div>
+        <div id="dstnyList" class="record-list"></div>
+      </section>
+
+      <section id="bricoPanel" class="panel" data-panel="brico">
+        <div class="panel-head">
+          <div><h2>Feuille BRICO</h2><p>Exactement 33 magasins installés. Blankenberge est exclu. L’Algo est suivi séparément des pièces de clôture.</p></div>
+          <div class="scope-note"><strong>Algo confirmé globalement : 18</strong><span>dont 10 dans ce périmètre, tant qu’une source réelle ne prouve pas autre chose.</span></div>
+        </div>
+        <div class="filters">
+          <label>Recherche<input id="bricoSearch" type="search" placeholder="Numéro ou magasin…"></label>
+          <label>Statut<select id="bricoStatusFilter"><option value="">Tous</option><option>Incomplet</option><option>À contrôler</option><option>Prêt pour clôture</option><option>Clôturé</option></select></label>
+        </div>
+        <div id="bricoList" class="record-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="editorDialog" class="dialog"><form id="editorForm" method="dialog"><div id="editorContent"></div></form></dialog>
+  <dialog id="closureDialog" class="dialog closure-dialog"><form id="closureForm" method="dialog"><div id="closureContent"></div></form></dialog>
+  <dialog id="emailDialog" class="dialog"><form method="dialog"><div id="emailContent"></div></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js?v=20261026-1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
+  <script src="cloture-rollout-core.js?v=20261026-1"></script>
+  <script src="cloture-rollout.js?v=20261026-1"></script>
+</body>
+</html>
