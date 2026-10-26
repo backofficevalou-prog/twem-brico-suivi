@@ -55,6 +55,21 @@
   }
   const APP_STORAGE_KEY = "twem-brico-dashboard-v6";
   const TOKEN_STORAGE_KEY = "twem-brico-closure-rollout-token";
+  function consumeHandoffToken() {
+    const params = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+    const token = String(params.get("handoff") || "");
+    if (!token) return "";
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    return token;
+  }
+  function tokenExpiresAt(accessToken) {
+    try {
+      const encoded = String(accessToken || "").split(".")[0];
+      const payload = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/")));
+      return payload.exp ? new Date(payload.exp).toISOString() : "";
+    } catch { return ""; }
+  }
   function storedAccessToken() {
     if (window.sessionStorage.getItem(TOKEN_STORAGE_KEY)) return window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
     try { return JSON.parse(window.localStorage.getItem(APP_STORAGE_KEY) || "{}").pinSession?.closureAccessToken || ""; } catch { return ""; }
@@ -108,6 +123,8 @@
 
   async function verifyAccess() {
     if (!functions) throw new Error("Le service TWEM Brico est momentanément indisponible.");
+    const handoffToken = consumeHandoffToken();
+    if (handoffToken) persistAccessToken(handoffToken, tokenExpiresAt(handoffToken));
     const profile = twemSessionProfile();
     if (!profile || !ALLOWED_EMAILS.has(profile.email)) throw new Error("Ta session TWEM Brico n’est plus active. Retourne à l’application et reconnecte-toi avec ton PIN habituel.");
     state.user = profile;

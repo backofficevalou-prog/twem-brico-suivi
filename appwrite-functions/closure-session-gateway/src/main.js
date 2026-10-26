@@ -17,6 +17,6 @@ export default async ({req,res,error}) => {
     const profile=people.documents.map(profileFromPeopleDocument).find((entry)=>entry.name===name);
     if(!profile||!validPinProfile(profile,input.pin))return failure(res,403,"MODULE_FORBIDDEN","Cette session TWEM Brico ne donne pas accès à la clôture.");
     const actor={userId:profile.id,name:profile.name,email:profile.email,role:profile.role,sessionVersion:profile.pinCreatedAt||""};
-    return res.json({ok:true,accessToken:issueAccessToken(actor,process.env.TWEM_APPWRITE_API_KEY),expiresAt:new Date(Date.now()+24*60*60*1000).toISOString(),actor:{name:actor.name,email:actor.email,role:actor.role}});
+    return res.json({ok:true,accessToken:issueAccessToken(actor,process.env.TWEM_APPWRITE_API_KEY),expiresAt:new Date(Date.now()+2*60*60*1000).toISOString(),actor:{name:actor.name,email:actor.email,role:actor.role}});
   } catch(cause){error(cause?.stack||String(cause));return failure(res,500,"SESSION_GATEWAY_ERROR","La session sécurisée n’a pas pu être créée.")}
 };

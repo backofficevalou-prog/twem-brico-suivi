@@ -38,7 +38,7 @@ function tokenSignature(encoded, secret) {
 
 export function issueAccessToken(actor = {}, secret = "", now = Date.now()) {
   if (!secret) throw new Error("TOKEN_SECRET_MISSING");
-  const encoded = Buffer.from(JSON.stringify({ sub: actor.userId || actor.id || "", name: actor.name, email: actor.email, role: actor.role, sessionVersion: actor.sessionVersion || "", iat: now, exp: now + 24 * 60 * 60 * 1000 }), "utf8").toString("base64url");
+  const encoded = Buffer.from(JSON.stringify({ sub: actor.userId || actor.id || "", name: actor.name, email: actor.email, role: actor.role, sessionVersion: actor.sessionVersion || "", iat: now, exp: now + 2 * 60 * 60 * 1000 }), "utf8").toString("base64url");
   return `${encoded}.${tokenSignature(encoded, secret)}`;
 }
 
