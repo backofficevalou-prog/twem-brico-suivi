@@ -53,14 +53,28 @@
     if (doc.fileId && doc.bucketId) return `${cfg.appwriteEndpoint}/storage/buckets/${encodeURIComponent(doc.bucketId)}/files/${encodeURIComponent(doc.fileId)}/${mode === "download" ? "download" : "view"}?project=${encodeURIComponent(cfg.appwriteProjectId)}`;
     return doc.url || "";
   }
-  async function gateway(action, input = {}) {
-    const execution = await functions.createExecution(GATEWAY_FUNCTION, JSON.stringify({ action, ...input }), false, "/", "POST");
+  const APP_STORAGE_KEY = "twem-brico-dashboard-v6";
+  const TOKEN_STORAGE_KEY = "twem-brico-closure-rollout-token";
+  async function gateway(action, input = {}, accessToken = window.sessionStorage.getItem(TOKEN_STORAGE_KEY) || "") {
+    const execution = await functions.createExecution(GATEWAY_FUNCTION, JSON.stringify({ action, ...input, ...(accessToken ? { accessToken } : {}) }), false, "/", "POST");
     let result = {};
     try { result = JSON.parse(execution.responseBody || "{}"); } catch {}
     if (Number(execution.responseStatusCode || 500) >= 400 || !result.ok) {
       const failure = new Error(result.message || "Accès au module refusé."); failure.code = result.code || "GATEWAY_ERROR"; throw failure;
     }
     return result;
+  }
+  function twemSessionProfile() {
+    let stored = {};
+    try { stored = JSON.parse(window.localStorage.getItem(APP_STORAGE_KEY) || "{}"); } catch {}
+    const session = stored.pinSession || {};
+    const startedAt = session.at ? new Date(session.at).getTime() : 0;
+    if (!startedAt || Date.now() - startedAt > 24 * 60 * 60 * 1000) return null;
+    const people = Array.isArray(stored.people) ? stored.people : [];
+    const normalizedEmail = String(session.email || "").trim().toLowerCase();
+    const person = people.find((entry) => (session.id && String(entry.id) === String(session.id)) || (session.name && entry.name === session.name) || (normalizedEmail && String(entry.email || "").trim().toLowerCase() === normalizedEmail));
+    if (!person || !["Valou", "Emir"].includes(person.name) || !["supadmin_twem", "admin_twem"].includes(person.role)) return null;
+    return { id: person.id || "", name: person.name, email: String(person.email || "").trim().toLowerCase(), role: person.role, pin: String(person.pin || "").replace(/\D/g, "") };
   }
   function normalizedDocs(payload) {
     const labels = { installationZip: "ZIP / dossier complet d’installation", fnp: "FNP signé", installationReport: "Rapport d’installation", callflow: "Callflow", simStatement: "Relevé SIM", signedClosure: "Rapport de clôture signé" };
@@ -76,11 +90,25 @@
   }
 
   async function verifyAccess() {
-    if (!account || !functions) throw new Error("Appwrite indisponible.");
-    const user = await account.get();
-    if (!ALLOWED_EMAILS.has(String(user.email || "").toLowerCase())) throw new Error("Cet outil est réservé à Valou et Emir.");
-    state.user = user;
-    const verified = await gateway("ping");
+    if (!account || !functions) throw new Error("Le service TWEM Brico est momentanément indisponible.");
+    const profile = twemSessionProfile();
+    if (!profile || !ALLOWED_EMAILS.has(profile.email)) throw new Error("Ta session TWEM Brico n’est plus active. Retourne à l’application et reconnecte-toi avec ton PIN habituel.");
+    state.user = profile;
+    try { await account.get(); }
+    catch {
+      try { await account.createAnonymousSession(); }
+      catch { throw new Error("La session technique TWEM Brico n’a pas pu être ouverte. Retourne à l’application puis réessaie."); }
+    }
+    let verified;
+    try { verified = await gateway("ping"); }
+    catch {
+      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      if (!profile.pin) throw new Error("Ta session TWEM Brico doit être renouvelée. Retourne à l’application et reconnecte-toi avec ton PIN habituel.");
+      const exchanged = await gateway("exchangePin", { name: profile.name, pin: profile.pin }, "");
+      if (!exchanged.accessToken) throw new Error("La session sécurisée n’a pas pu être transmise.");
+      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, exchanged.accessToken);
+      verified = await gateway("ping");
+    }
     state.actor = verified.actor;
   }
   async function loadRecords() {

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Client, Databases, Query } from "node-appwrite";
-import { actorPolicy, sanitizedDocumentData } from "./policy.js";
+import { actorPolicy, issueAccessToken, profileFromPeopleDocument, sanitizedDocumentData, validPinProfile, verifyAccessToken } from "./policy.js";
 
 const DATABASE = process.env.APPWRITE_DATABASE_ID || "twem_brico";
 const COLLECTION = process.env.APPWRITE_CLOSURE_COLLECTION_ID || "closure_rollout_tool";
@@ -9,9 +9,9 @@ const STORES = process.env.APPWRITE_STORES_COLLECTION_ID || "stores";
 
 function services() {
   const client = new Client()
-    .setEndpoint(process.env.APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT || "https://fra.cloud.appwrite.io/v1")
-    .setProject(process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY || process.env.APPWRITE_FUNCTION_API_KEY);
+    .setEndpoint(process.env.TWEM_APPWRITE_ENDPOINT || process.env.APPWRITE_FUNCTION_API_ENDPOINT || "https://fra.cloud.appwrite.io/v1")
+    .setProject(process.env.TWEM_APPWRITE_PROJECT_ID || process.env.APPWRITE_FUNCTION_PROJECT_ID)
+    .setKey(process.env.TWEM_APPWRITE_API_KEY || process.env.APPWRITE_FUNCTION_API_KEY);
   return { databases: new Databases(client) };
 }
 
@@ -24,7 +24,13 @@ function failure(res, status, code, message) {
   return res.json({ ok: false, code, message }, status);
 }
 
-async function requireActor(req, res, databases) {
+function tokenSecret() {
+  return process.env.CLOSURE_HANDOFF_SECRET || process.env.TWEM_APPWRITE_API_KEY || process.env.APPWRITE_FUNCTION_API_KEY || "";
+}
+
+async function requireActor(req, res, databases, input = {}) {
+  const tokenActor = verifyAccessToken(input.accessToken, tokenSecret());
+  if (tokenActor) return tokenActor;
   const userId = String(req.headers["x-appwrite-user-id"] || "");
   const email = String(req.headers["x-appwrite-user-email"] || "").trim().toLowerCase();
   if (!userId || !email) return { response: failure(res, 401, "AUTH_REQUIRED", "Connexion Appwrite requise.") };
@@ -36,13 +42,23 @@ async function requireActor(req, res, databases) {
   return { userId, email, name: expected.name, role: expected.role };
 }
 
+async function exchangePin(input, res, databases) {
+  const name = String(input.name || "").trim();
+  const people = await databases.listDocuments(DATABASE, PEOPLE, [Query.limit(500)]);
+  const profile = people.documents.map(profileFromPeopleDocument).find((entry) => entry.name === name);
+  if (!profile || !validPinProfile(profile, input.pin)) return failure(res, 403, "MODULE_FORBIDDEN", "Cette session TWEM Brico ne donne pas accès à la clôture.");
+  const actor = { userId: profile.id, name: profile.name, email: profile.email, role: profile.role };
+  return res.json({ ok: true, accessToken: issueAccessToken(actor, tokenSecret()), actor: { name: actor.name, email: actor.email, role: actor.role } });
+}
+
 export default async ({ req, res, error }) => {
   try {
     const { databases } = services();
-    const actor = await requireActor(req, res, databases);
-    if (actor.response) return actor.response;
     const input = body(req);
     const action = String(input.action || "list");
+    if (action === "exchangePin") return exchangePin(input, res, databases);
+    const actor = await requireActor(req, res, databases, input);
+    if (actor.response) return actor.response;
     if (action === "ping") return res.json({ ok: true, actor: { name: actor.name, email: actor.email, role: actor.role } });
     if (action === "list") {
       const [result, stores] = await Promise.all([
