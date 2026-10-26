@@ -19,7 +19,8 @@ export function profileFromPeopleDocument(entry = {}) {
     role: String(entry.role || payload.role || ""),
     pin: String(entry.pin || payload.pin || "").replace(/\D/g, ""),
     pinStatus: String(entry.pinStatus || payload.pinStatus || "active"),
-    pinExpiresAt: String(entry.pinExpiresAt || payload.pinExpiresAt || "")
+    pinExpiresAt: String(entry.pinExpiresAt || payload.pinExpiresAt || ""),
+    pinCreatedAt: String(entry.pinCreatedAt || payload.pinCreatedAt || "")
   };
 }
 
@@ -37,7 +38,7 @@ function tokenSignature(encoded, secret) {
 
 export function issueAccessToken(actor = {}, secret = "", now = Date.now()) {
   if (!secret) throw new Error("TOKEN_SECRET_MISSING");
-  const encoded = Buffer.from(JSON.stringify({ sub: actor.userId || actor.id || "", name: actor.name, email: actor.email, role: actor.role, iat: now, exp: now + 12 * 60 * 60 * 1000 }), "utf8").toString("base64url");
+  const encoded = Buffer.from(JSON.stringify({ sub: actor.userId || actor.id || "", name: actor.name, email: actor.email, role: actor.role, sessionVersion: actor.sessionVersion || "", iat: now, exp: now + 24 * 60 * 60 * 1000 }), "utf8").toString("base64url");
   return `${encoded}.${tokenSignature(encoded, secret)}`;
 }
 
@@ -50,7 +51,7 @@ export function verifyAccessToken(token = "", secret = "", now = Date.now()) {
   try {
     const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
     if (!payload.exp || payload.exp < now || !actorPolicy(payload.email)) return null;
-    return { userId: payload.sub, name: payload.name, email: payload.email, role: payload.role };
+    return { userId: payload.sub, name: payload.name, email: payload.email, role: payload.role, sessionVersion: payload.sessionVersion || "", expiresAt: payload.exp };
   } catch { return null; }
 }
 

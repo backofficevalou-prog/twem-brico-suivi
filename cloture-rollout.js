@@ -4,10 +4,10 @@
   const cfg = window.APP_CONFIG || {};
   const COLLECTION = "closure_rollout_tool";
   const GATEWAY_FUNCTION = "twem_brico_closure_rollout_gateway";
+  const SESSION_GATEWAY_FUNCTION = "twem_brico_closure_session_gateway";
   const ALLOWED_EMAILS = new Set(["backoffice@twem.be", "emir@twem.be"]);
   const DATABASE = cfg.appwriteDatabaseId || "twem_brico";
   const client = window.Appwrite?.Client ? new window.Appwrite.Client().setEndpoint(cfg.appwriteEndpoint).setProject(cfg.appwriteProjectId) : null;
-  const account = client ? new window.Appwrite.Account(client) : null;
   const functions = client ? new window.Appwrite.Functions(client) : null;
   const Query = window.Appwrite?.Query;
   const state = { user: null, records: [], activeTab: "dstny", drawing: false, signatureDirty: false };
@@ -55,7 +55,11 @@
   }
   const APP_STORAGE_KEY = "twem-brico-dashboard-v6";
   const TOKEN_STORAGE_KEY = "twem-brico-closure-rollout-token";
-  async function gateway(action, input = {}, accessToken = window.sessionStorage.getItem(TOKEN_STORAGE_KEY) || "") {
+  function storedAccessToken() {
+    if (window.sessionStorage.getItem(TOKEN_STORAGE_KEY)) return window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    try { return JSON.parse(window.localStorage.getItem(APP_STORAGE_KEY) || "{}").pinSession?.closureAccessToken || ""; } catch { return ""; }
+  }
+  async function gateway(action, input = {}, accessToken = storedAccessToken()) {
     const execution = await functions.createExecution(GATEWAY_FUNCTION, JSON.stringify({ action, ...input, ...(accessToken ? { accessToken } : {}) }), false, "/", "POST");
     let result = {};
     try { result = JSON.parse(execution.responseBody || "{}"); } catch {}
@@ -63,6 +67,19 @@
       const failure = new Error(result.message || "Accès au module refusé."); failure.code = result.code || "GATEWAY_ERROR"; throw failure;
     }
     return result;
+  }
+  async function exchangePin(profile) {
+    const execution = await functions.createExecution(SESSION_GATEWAY_FUNCTION, JSON.stringify({ action:"exchangePin", name:profile.name, pin:profile.pin }), false, "/", "POST");
+    let result={};try{result=JSON.parse(execution.responseBody||"{}")}catch{}
+    if(Number(execution.responseStatusCode||500)>=400||!result.ok||!result.accessToken)throw new Error(result.message||"La session sécurisée n’a pas pu être créée.");
+    return result;
+  }
+  function persistAccessToken(accessToken, expiresAt) {
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    let stored={};try{stored=JSON.parse(window.localStorage.getItem(APP_STORAGE_KEY)||"{}")}catch{}
+    stored.pinSession={...(stored.pinSession||{}),closureAccessToken:accessToken,closureTokenExpiresAt:expiresAt||""};
+    if(Array.isArray(stored.people))stored.people=stored.people.map(({pin,...person})=>person);
+    window.localStorage.setItem(APP_STORAGE_KEY,JSON.stringify(stored));
   }
   function twemSessionProfile() {
     let stored = {};
@@ -74,7 +91,7 @@
     const normalizedEmail = String(session.email || "").trim().toLowerCase();
     const person = people.find((entry) => (session.id && String(entry.id) === String(session.id)) || (session.name && entry.name === session.name) || (normalizedEmail && String(entry.email || "").trim().toLowerCase() === normalizedEmail));
     if (!person || !["Valou", "Emir"].includes(person.name) || !["supadmin_twem", "admin_twem"].includes(person.role)) return null;
-    return { id: person.id || "", name: person.name, email: String(person.email || "").trim().toLowerCase(), role: person.role, pin: String(person.pin || "").replace(/\D/g, "") };
+    return { id: person.id || "", name: person.name, email: String(person.email || "").trim().toLowerCase(), role: person.role, pin: String(person.pin || "").replace(/\D/g, ""), accessToken:session.closureAccessToken||"", tokenExpiresAt:session.closureTokenExpiresAt||"" };
   }
   function normalizedDocs(payload) {
     const labels = { installationZip: "ZIP / dossier complet d’installation", fnp: "FNP signé", installationReport: "Rapport d’installation", callflow: "Callflow", simStatement: "Relevé SIM", signedClosure: "Rapport de clôture signé" };
@@ -90,23 +107,17 @@
   }
 
   async function verifyAccess() {
-    if (!account || !functions) throw new Error("Le service TWEM Brico est momentanément indisponible.");
+    if (!functions) throw new Error("Le service TWEM Brico est momentanément indisponible.");
     const profile = twemSessionProfile();
     if (!profile || !ALLOWED_EMAILS.has(profile.email)) throw new Error("Ta session TWEM Brico n’est plus active. Retourne à l’application et reconnecte-toi avec ton PIN habituel.");
     state.user = profile;
-    try { await account.get(); }
-    catch {
-      try { await account.createAnonymousSession(); }
-      catch { throw new Error("La session technique TWEM Brico n’a pas pu être ouverte. Retourne à l’application puis réessaie."); }
-    }
     let verified;
     try { verified = await gateway("ping"); }
     catch {
       window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
       if (!profile.pin) throw new Error("Ta session TWEM Brico doit être renouvelée. Retourne à l’application et reconnecte-toi avec ton PIN habituel.");
-      const exchanged = await gateway("exchangePin", { name: profile.name, pin: profile.pin }, "");
-      if (!exchanged.accessToken) throw new Error("La session sécurisée n’a pas pu être transmise.");
-      window.sessionStorage.setItem(TOKEN_STORAGE_KEY, exchanged.accessToken);
+      const exchanged = await exchangePin(profile);
+      persistAccessToken(exchanged.accessToken, exchanged.expiresAt);
       verified = await gateway("ping");
     }
     state.actor = verified.actor;

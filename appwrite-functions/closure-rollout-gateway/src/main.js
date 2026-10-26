@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Client, Databases, Query } from "node-appwrite";
-import { actorPolicy, issueAccessToken, profileFromPeopleDocument, sanitizedDocumentData, validPinProfile, verifyAccessToken } from "./policy.js";
+import { profileFromPeopleDocument, sanitizedDocumentData, verifyAccessToken } from "./policy.js";
 
 const DATABASE = process.env.APPWRITE_DATABASE_ID || "twem_brico";
 const COLLECTION = process.env.APPWRITE_CLOSURE_COLLECTION_ID || "closure_rollout_tool";
@@ -30,25 +30,11 @@ function tokenSecret() {
 
 async function requireActor(req, res, databases, input = {}) {
   const tokenActor = verifyAccessToken(input.accessToken, tokenSecret());
-  if (tokenActor) return tokenActor;
-  const userId = String(req.headers["x-appwrite-user-id"] || "");
-  const email = String(req.headers["x-appwrite-user-email"] || "").trim().toLowerCase();
-  if (!userId || !email) return { response: failure(res, 401, "AUTH_REQUIRED", "Connexion Appwrite requise.") };
-  const expected = actorPolicy(email);
-  if (!expected) return { response: failure(res, 403, "MODULE_FORBIDDEN", "Module réservé à Valou et Emir.") };
+  if (!tokenActor) return { response: failure(res, 401, "SIGNED_SESSION_REQUIRED", "Session TWEM Brico sécurisée requise.") };
   const people = await databases.listDocuments(DATABASE, PEOPLE, [Query.limit(500)]);
-  const person = people.documents.find((entry) => String(entry.email || "").trim().toLowerCase() === email && String(entry.name || "").trim() === expected.name && String(entry.role || "") === expected.role);
-  if (!person) return { response: failure(res, 403, "PROFILE_MISMATCH", "Le profil TWEM lié à ce compte ne correspond pas au rôle attendu.") };
-  return { userId, email, name: expected.name, role: expected.role };
-}
-
-async function exchangePin(input, res, databases) {
-  const name = String(input.name || "").trim();
-  const people = await databases.listDocuments(DATABASE, PEOPLE, [Query.limit(500)]);
-  const profile = people.documents.map(profileFromPeopleDocument).find((entry) => entry.name === name);
-  if (!profile || !validPinProfile(profile, input.pin)) return failure(res, 403, "MODULE_FORBIDDEN", "Cette session TWEM Brico ne donne pas accès à la clôture.");
-  const actor = { userId: profile.id, name: profile.name, email: profile.email, role: profile.role };
-  return res.json({ ok: true, accessToken: issueAccessToken(actor, tokenSecret()), actor: { name: actor.name, email: actor.email, role: actor.role } });
+  const profile = people.documents.map(profileFromPeopleDocument).find((entry) => entry.id === tokenActor.userId && entry.email === tokenActor.email && entry.name === tokenActor.name && entry.role === tokenActor.role);
+  if (!profile || profile.pinStatus !== "active" || String(profile.pinCreatedAt || "") !== String(tokenActor.sessionVersion || "")) return { response: failure(res, 403, "SESSION_REVOKED", "Cette session TWEM Brico a été révoquée.") };
+  return tokenActor;
 }
 
 export default async ({ req, res, error }) => {
@@ -56,7 +42,6 @@ export default async ({ req, res, error }) => {
     const { databases } = services();
     const input = body(req);
     const action = String(input.action || "list");
-    if (action === "exchangePin") return exchangePin(input, res, databases);
     const actor = await requireActor(req, res, databases, input);
     if (actor.response) return actor.response;
     if (action === "ping") return res.json({ ok: true, actor: { name: actor.name, email: actor.email, role: actor.role } });
