@@ -37,13 +37,19 @@ async function requireActor(req, res, databases, input = {}) {
   return tokenActor;
 }
 
-export default async ({ req, res, error }) => {
+export default async ({ req, res, error, log }) => {
+  const requestContext = { action: "unknown", actor: "unknown", tokenPresent: false, documentId: "" };
   try {
     const { databases } = services();
     const input = body(req);
     const action = String(input.action || "list");
+    requestContext.action = action;
+    requestContext.tokenPresent = Boolean(input.accessToken);
+    requestContext.documentId = String(input.documentId || "");
     const actor = await requireActor(req, res, databases, input);
     if (actor.response) return actor.response;
+    requestContext.actor = `${actor.name || "unknown"}/${actor.role || "unknown"}`;
+    log?.(JSON.stringify({ event: "closure_gateway_request", ...requestContext }));
     if (action === "ping") return res.json({ ok: true, actor: { name: actor.name, email: actor.email, role: actor.role } });
     if (action === "list") {
       const [result, stores] = await Promise.all([
@@ -57,8 +63,8 @@ export default async ({ req, res, error }) => {
         const source=storesByCode.get(document.store_code),workflow=source?.workflow||{};
         const remarks=(workflow.closureReportRemarks||[]).map((item) => ({ id:item.id||"", label:item.label||"", category:item.category||item.label||"Rapport de clôture", text:item.comment||item.text||item.label||"", response:item.response||"", decision:item.decision||"", owner:item.owner||"Valou / Emir", nextAction:item.nextAction||"", dueDate:item.dueDate||"", status:item.status||(!item.response&&!item.decision?"Réponse requise":"Répondu"), responseAt:item.responseAt||item.updatedAt||"", responseBy:item.responseBy||item.updatedBy||"" }));
         const secureDocument=(item,kind) => { const value=typeof item==="string"?{name:item}:item||{};return { ...value, kind, source:value.externalUrl?.includes("drive.google.com")?"Google Drive":value.fileId?"Appwrite sécurisé":"TWEM Brico", documentDate:value.receivedAt||value.createdAt||value.updatedAt||"", matchMethod:"Numéro magasin", matchStatus:"Validé", validated:true } };
-        const installationDocuments=(workflow.installationDocuments||[]).filter((item) => item.installationKind === "installation_zip" || /\.zip$/i.test(item.name||"")).map((item) => secureDocument(item,"installationZip"));
-        const installationReports=[...(workflow.installationReports||[]),...(workflow.installationDocuments||[]).filter((item) => item.installationKind === "installation_report")].map((item) => secureDocument(item,"installationReport"));
+        const installationDocuments=(workflow.installationDocuments||[]).filter((item) => item && (item.installationKind === "installation_zip" || /\.zip$/i.test(item.name||""))).map((item) => secureDocument(item,"installationZip"));
+        const installationReports=[...(workflow.installationReports||[]).filter(Boolean),...(workflow.installationDocuments||[]).filter((item) => item?.installationKind === "installation_report")].map((item) => secureDocument(item,"installationReport"));
         const fnpDocuments=(workflow.signedFnpDocuments||[]).map((item) => secureDocument(item,"fnp"));
         const signedReports=(workflow.signedClosureDocuments||[]).map((item) => secureDocument(item,"signedClosure"));
         const callflows=(workflow.callflowDocuments||[]).map((item) => secureDocument(item,"callflow"));
@@ -86,9 +92,20 @@ export default async ({ req, res, error }) => {
       const created = await databases.createDocument(DATABASE, COLLECTION, documentId, data, []);
       return res.json({ ok: true, document: created, actor: { name: actor.name, email: actor.email } });
     }
+    if (action === "delete") {
+      const documentId = String(input.documentId || "");
+      if (!documentId) return failure(res, 400, "DOCUMENT_REQUIRED", "Identifiant obligatoire.");
+      const current = await databases.getDocument(DATABASE, COLLECTION, documentId);
+      if (current.record_type !== "dstny") return failure(res, 400, "DELETE_DSTNY_ONLY", "Seules les lignes DSTNY peuvent être supprimées ici.");
+      if (Number(input.expectedVersion || 0) !== Number(current.version || 0)) return failure(res, 409, "VERSION_CONFLICT", "La ligne a été modifiée. Recharge avant de la supprimer.");
+      await databases.deleteDocument(DATABASE, COLLECTION, documentId);
+      log?.(JSON.stringify({ event: "closure_dstny_deleted", documentId, actor: actor.email, title: current.title || "" }));
+      return res.json({ ok: true, deletedId: documentId, actor: { name: actor.name, email: actor.email } });
+    }
     return failure(res, 400, "ACTION_UNKNOWN", "Action inconnue.");
   } catch (cause) {
-    error(cause?.stack || String(cause));
-    return failure(res, 500, "GATEWAY_ERROR", "L’action n’a pas pu être exécutée.");
+    const errorId = `CL-${crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
+    error(JSON.stringify({ errorId, ...requestContext, message: cause?.message || String(cause), stack: cause?.stack || "" }));
+    return res.json({ ok: false, code: "GATEWAY_ERROR", errorId, message: `L’action n’a pas pu être exécutée. Réf. ${errorId}` }, 500);
   }
 };

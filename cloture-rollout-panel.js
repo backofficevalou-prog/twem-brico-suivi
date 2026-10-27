@@ -123,7 +123,7 @@
           <button class="dstny-status-button active-work ${statusKey === "active" ? "active" : ""}" data-inline-status="En attente" type="button">En cours</button>
           <button class="dstny-status-button resolved ${statusKey === "resolved" ? "active" : ""}" data-inline-status="Résolu" type="button">Résolu</button>
         </div>
-        <button class="icon-button dstny-detail-button" data-edit="${r.$id}" type="button">Détail</button>
+        <div class="dstny-row-actions"><button class="icon-button dstny-detail-button" data-edit="${r.$id}" type="button">Détail</button><button class="icon-button dstny-delete-button" data-delete-dstny="${r.$id}" type="button">Supprimer</button></div>
       </article>`;
     }).join("") : `<div class="record"><div class="record-main">Aucun point ne correspond aux filtres.</div></div>`;
     $("#dstnyList").innerHTML = rows.length ? header + body : body;
@@ -132,6 +132,7 @@
       $$('[data-inline-status]', row).forEach((button) => button.addEventListener("click", () => saveDstnyInline(row.dataset.inlineRow, { status: button.dataset.inlineStatus }, row)));
     });
     $$('[data-edit]', $("#dstnyList")).forEach((b) => b.addEventListener("click", () => openDstnyEditor(b.dataset.edit)));
+    $$('[data-delete-dstny]', $("#dstnyList")).forEach((b) => b.addEventListener("click", () => deleteDstnyRecord(b.dataset.deleteDstny, b.closest("[data-inline-row]"))));
   }
 
   async function saveDstnyInline(id, changes, row) {
@@ -157,6 +158,21 @@
     row?.classList.add("is-saving");
     try { await saveRecord(record, next, nextStatus); }
     catch (error) { row?.classList.remove("is-saving"); toast(error.message || "La modification n’a pas pu être enregistrée."); }
+  }
+
+  async function deleteDstnyRecord(id, row) {
+    const record = findRecord(id);
+    if (!record || record.record_type !== "dstny") return;
+    if (!window.confirm(`Supprimer définitivement la ligne « ${record.title} » ?`)) return;
+    row?.classList.add("is-saving");
+    setSaving("Suppression…");
+    try {
+      await gateway("delete", { documentId: record.$id, expectedVersion: Number(record.version || 0) });
+      state.records = state.records.filter((item) => item.$id !== record.$id);
+      render(); setSaving("À jour"); toast("Ligne DSTNY supprimée.");
+    } catch (error) {
+      row?.classList.remove("is-saving"); setSaving("Erreur"); toast(error.message || "La ligne n’a pas pu être supprimée.");
+    }
   }
   function renderBrico() {
     const term = $("#bricoSearch").value.trim().toLowerCase();
@@ -355,7 +371,7 @@
 
   function panelMarkup() {
     return `
-      <link rel="stylesheet" href="cloture-rollout-panel.css?v=20261027-6">
+      <link rel="stylesheet" href="cloture-rollout-panel.css?v=20261027-7">
       <div class="closure-panel-shell">
         <div id="closurePanelError" class="panel-error hidden" role="alert"></div>
         <div id="app" class="app">
