@@ -106,16 +106,57 @@
     let rows = state.records.filter((r) => r.record_type === "dstny");
     rows = rows.filter((r) => !filter || r.status === filter).filter((r) => !term || `${r.store_code} ${r.title} ${r.ticket} ${r.payload_json}`.toLowerCase().includes(term));
     rows = Core.sortRecords(rows, "dstny");
-    $("#dstnyList").innerHTML = rows.length ? rows.map((r) => {
+    const header = `<div class="dstny-table-head" aria-hidden="true"><span>Magasin / demande</span><span>Date de création</span><span>Demandé à</span><span>N° dossier</span><span>Date de relance</span><span>Statut</span><span></span></div>`;
+    const body = rows.length ? rows.map((r) => {
       const p = payloadOf(r);
-      return `<article class="record" data-status="${escapeHtml(r.status)}"><div class="record-main">
-        <div class="record-title"><strong>${escapeHtml(r.title)}</strong><small>${escapeHtml(p.scope === "outside_rollout" ? `${p.storeName || "Magasin"} · Hors roll-out — DSTNY uniquement` : r.store_code || "Général · partagé avec BRICO")}${r.ticket ? ` · Ticket ${escapeHtml(r.ticket)}` : ""}</small></div>
-        <div><span class="status">${escapeHtml(r.status)}</span><div class="record-meta">${escapeHtml(p.owner || "Responsable non attribué")}</div></div>
-        <div class="record-snippet">${escapeHtml(p.request || p.problem || "")}</div>
-        <div class="record-actions"><button class="icon-button" data-edit="${r.$id}" type="button">Ouvrir</button></div>
-      </div></article>`;
+      const scopeLabel = p.scope === "outside_rollout" ? `${p.storeName || "Magasin"} · hors roll-out` : r.store_code || "Général";
+      const createdDate = p.firstRequestDate || String(r.$createdAt || "").slice(0, 10);
+      const statusKey = r.status === "Résolu" ? "resolved" : r.status === "À demander" ? "todo" : "active";
+      return `<article class="dstny-row" data-status="${escapeHtml(r.status)}" data-inline-row="${r.$id}">
+        <div class="dstny-request"><strong>${escapeHtml(scopeLabel)}</strong><span>${escapeHtml(r.title)}</span><small>${escapeHtml(p.request || p.problem || "")}</small></div>
+        <label><span>Date de création</span><input data-inline-field="firstRequestDate" type="date" value="${escapeHtml(createdDate)}"></label>
+        <label><span>Demandé à</span><input data-inline-field="recipient" value="${escapeHtml(p.recipient || "Dstny")}" placeholder="Nom ou service"></label>
+        <label><span>N° dossier</span><input data-inline-field="ticket" value="${escapeHtml(r.ticket || "")}" placeholder="Facultatif"></label>
+        <label><span>Date de relance</span><input data-inline-field="lastReminderDate" type="date" value="${escapeHtml(p.lastReminderDate || "")}"></label>
+        <div class="dstny-status-buttons" role="group" aria-label="Statut de ${escapeHtml(r.title)}">
+          <button class="dstny-status-button todo ${statusKey === "todo" ? "active" : ""}" data-inline-status="À demander" type="button">À demander</button>
+          <button class="dstny-status-button active-work ${statusKey === "active" ? "active" : ""}" data-inline-status="En attente" type="button">En cours</button>
+          <button class="dstny-status-button resolved ${statusKey === "resolved" ? "active" : ""}" data-inline-status="Résolu" type="button">Résolu</button>
+        </div>
+        <button class="icon-button dstny-detail-button" data-edit="${r.$id}" type="button">Détail</button>
+      </article>`;
     }).join("") : `<div class="record"><div class="record-main">Aucun point ne correspond aux filtres.</div></div>`;
+    $("#dstnyList").innerHTML = rows.length ? header + body : body;
+    $$('[data-inline-row]', $("#dstnyList")).forEach((row) => {
+      $$('[data-inline-field]', row).forEach((input) => input.addEventListener("change", () => saveDstnyInline(row.dataset.inlineRow, { [input.dataset.inlineField]: input.value }, row)));
+      $$('[data-inline-status]', row).forEach((button) => button.addEventListener("click", () => saveDstnyInline(row.dataset.inlineRow, { status: button.dataset.inlineStatus }, row)));
+    });
     $$('[data-edit]', $("#dstnyList")).forEach((b) => b.addEventListener("click", () => openDstnyEditor(b.dataset.edit)));
+  }
+
+  async function saveDstnyInline(id, changes, row) {
+    const record = findRecord(id);
+    if (!record || row?.classList.contains("is-saving")) return;
+    const payload = payloadOf(record);
+    const now = new Date().toISOString();
+    const next = { ...payload };
+    let nextStatus = record.status;
+    if (Object.prototype.hasOwnProperty.call(changes, "firstRequestDate")) next.firstRequestDate = changes.firstRequestDate;
+    if (Object.prototype.hasOwnProperty.call(changes, "recipient")) next.recipient = String(changes.recipient || "").trim();
+    if (Object.prototype.hasOwnProperty.call(changes, "lastReminderDate")) {
+      next.lastReminderDate = changes.lastReminderDate;
+      if (next.lastReminderDate !== (payload.lastReminderDate || "")) next.history = [...(payload.history || []), { at: now, type: "reminder", date: next.lastReminderDate, by: state.user.email }];
+    }
+    if (Object.prototype.hasOwnProperty.call(changes, "ticket")) record.ticket = String(changes.ticket || "").trim();
+    if (Object.prototype.hasOwnProperty.call(changes, "status")) {
+      nextStatus = changes.status;
+      if (nextStatus !== record.status) next.history = [...(next.history || payload.history || []), { at: now, from: record.status, to: nextStatus, by: state.user.email }];
+      if (nextStatus === "Résolu") next.resolvedAt = payload.resolvedAt || now;
+      else if (record.status === "Résolu") { next.reopenedAt = now; next.resolvedAt = ""; }
+    }
+    row?.classList.add("is-saving");
+    try { await saveRecord(record, next, nextStatus); }
+    catch (error) { row?.classList.remove("is-saving"); toast(error.message || "La modification n’a pas pu être enregistrée."); }
   }
   function renderBrico() {
     const term = $("#bricoSearch").value.trim().toLowerCase();
@@ -314,7 +355,7 @@
 
   function panelMarkup() {
     return `
-      <link rel="stylesheet" href="cloture-rollout-panel.css?v=20261027-5">
+      <link rel="stylesheet" href="cloture-rollout-panel.css?v=20261027-6">
       <div class="closure-panel-shell">
         <div id="closurePanelError" class="panel-error hidden" role="alert"></div>
         <div id="app" class="app">
@@ -328,7 +369,7 @@
             <nav class="tabs" aria-label="Dossiers"><button class="tab active" data-tab="dstny" type="button">DSTNY · 30 octobre</button><button class="tab" data-tab="brico" type="button">BRICO · 16 novembre</button></nav>
             <section id="dstnyPanel" class="panel active" data-panel="dstny">
               <div class="panel-head"><div><h2>Feuille DSTNY</h2><p>Demandes générales et problèmes magasin, triés automatiquement. Les éléments résolus sont verts et descendent en bas.</p></div><div class="actions"><button id="addDstnyButton" class="button secondary" type="button">Ajouter un point</button><button id="printDstnyButton" class="button" type="button">Rapport réunion</button></div></div>
-              <div class="filters"><label>Recherche<input id="dstnySearch" type="search" placeholder="Magasin, ticket, demande…"></label><label>Statut<select id="dstnyStatusFilter"><option value="">Tous</option><option>À demander</option><option>En attente</option><option>Répondu</option><option>Résolu</option></select></label></div>
+              <div class="filters"><label>Recherche<input id="dstnySearch" type="search" placeholder="Magasin, dossier, demande…"></label><label>Statut<select id="dstnyStatusFilter"><option value="">Tous</option><option>À demander</option><option value="En attente">En cours</option><option>Résolu</option></select></label></div>
               <div id="dstnyList" class="record-list"></div>
             </section>
             <section id="bricoPanel" class="panel" data-panel="brico">
