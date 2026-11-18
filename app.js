@@ -3787,6 +3787,7 @@ Object.assign(nlUiTextMap, {
   "Nouveau magasin": "Nieuwe winkel",
   "Nom magasin affiche dans les listes": "Winkelnaam in lijsten",
   "Numero magasin": "Winkelnummer",
+  "N° CNS Dstny": "Dstny CNS-nummer",
   "NumÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ro magasin": "Winkelnummer",
   "Adresse": "Adres",
   "Taille magasin": "Winkelgrootte",
@@ -4865,6 +4866,7 @@ const storeNameInput = document.querySelector("#storeNameInput");
 const storeCityInput = document.querySelector("#storeCityInput");
 const storeCodeInput = document.querySelector("#storeCodeInput");
 const storeShopNumberInput = document.querySelector("#storeShopNumberInput");
+const storeCnsNumberInput = document.querySelector("#storeCnsNumberInput");
 const storeAddressInput = document.querySelector("#storeAddressInput");
 const storeShopTypeSelect = document.querySelector("#storeShopTypeSelect");
 const storeShopSizeInput = document.querySelector("#storeShopSizeInput");
@@ -9136,7 +9138,7 @@ function getFilteredStores() {
         invoiceOrderDeliveredDate(ticket)
       ].join(" "))
     ].join(" ");
-    const haystack = `${store.code} ${store.shopNumber || ""} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords} ${interventionKeywords} ${savKeywords} ${invoiceHaystack}`.toLowerCase();
+    const haystack = `${store.code} ${store.shopNumber || ""} ${store.cnsNumber || ""} ${store.name} ${store.city} ${store.manager} ${store.shopType || ""} ${store.status} ${store.owner} ${nextAction} ${stage} ${appointmentHaystack} ${workflow.destinyInstallDate || ""} ${workflow.currentPhoneDate || ""} ${plannedInstallKeywords} ${interventionKeywords} ${savKeywords} ${invoiceHaystack}`.toLowerCase();
     const matchesSearch = haystack.includes(searchTerm);
     const classification = normalizeRoleKey(workflow.dstnyDoneClassification || "");
     const normalizedType = normalizeShopTypeValue(store.shopType);
@@ -13359,6 +13361,7 @@ function buildStoreIdentityMeta(store) {
         <span class="mini-label">Magasin</span>
         <strong>${escapeHtml(store.shopNumber || store.code)}</strong>
         <span class="cell-note">${escapeHtml(displayShopTypeValue(store.shopType))} - ${escapeHtml(store.shopSize || "-")}</span>
+        <span class="cell-note">${escapeUi("N° CNS Dstny")} : <strong>${escapeHtml(store.cnsNumber || "-")}</strong></span>
       </div>
       <div class="store-meta-card">
         <span class="mini-label">Adresse</span>
@@ -14789,6 +14792,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
           <strong>${escapeHtml(store.code)}</strong>
           ${storeSituationCapsule(store)}
           <div class="cell-note">${escapeHtml(store.shopSize || store.shopType2 || "-")}</div>
+          ${store.cnsNumber ? `<div class="cell-note">CNS ${escapeHtml(store.cnsNumber)}</div>` : ""}
         </td>
         <td>
           <strong>${escapeHtml(store.name)}</strong>
@@ -14818,7 +14822,7 @@ function renderStoreOverviewRows(stores, mode = "stores") {
     } else {
       const addressBits = [store.address, store.city, store.country].filter(Boolean).join(" - ") || store.city || "-";
       row.innerHTML = `
-        <td>${escapeHtml(store.code)}</td>
+        <td>${escapeHtml(store.code)}${store.cnsNumber ? `<div class="cell-note">CNS ${escapeHtml(store.cnsNumber)}</div>` : ""}</td>
         <td>
           <strong>${escapeHtml(store.name)}</strong>
           <div class="cell-note">${escapeHtml(addressBits)}</div>
@@ -29953,6 +29957,7 @@ function buildPrintableStoreHtml(store) {
           <div><strong>Societe</strong> ${escapeHtml(printableValue(store.companyName))}</div>
           <div><strong>N TVA</strong> ${escapeHtml(printableValue(store.vatNumber))}</div>
           <div><strong>${escapeHtml(labels.twemOwner)}</strong> ${escapeHtml(printableValue(store.owner))}</div>
+          <div><strong>${escapeUi("N° CNS Dstny")}</strong> ${escapeHtml(printableValue(store.cnsNumber))}</div>
           <div><strong>${escapeHtml(labels.provenance)}</strong> ${escapeHtml(storeProvenance(store))}</div>
           <div><strong>${escapeHtml(labels.currentPhoneDate)}</strong> ${escapeHtml(printableValue(workflow.currentPhoneDate))}</div>
           <div><strong>${escapeHtml(labels.ipRange)}</strong> ${escapeHtml(printableValue(store.ipRange))}</div>
@@ -32660,6 +32665,7 @@ async function handleStoreSubmit(event) {
   Object.assign(store, {
     code,
     shopNumber,
+    cnsNumber: storeCnsNumberInput?.value.trim().toLowerCase() || "",
     name,
     city,
     address: storeAddressInput?.value.trim() || targetStore?.address || "",
@@ -32754,6 +32760,7 @@ function fillStoreContactForm(store) {
   storeCodeInput.value = store.code || "";
   storeCodeInput.readOnly = true;
   if (storeShopNumberInput) storeShopNumberInput.value = store.shopNumber || String(store.code || "").replace(/^BRI-/i, "");
+  if (storeCnsNumberInput) storeCnsNumberInput.value = store.cnsNumber || "";
   storeCityInput.value = store.city || "";
   if (storeAddressInput) storeAddressInput.value = store.address || "";
   if (storeShopTypeSelect) storeShopTypeSelect.value = normalizeShopTypeValue(store.shopType || "");
