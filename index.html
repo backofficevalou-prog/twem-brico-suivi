@@ -3,34 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>TWEM | Suivi chantier Brico</title>
   <meta name="theme-color" content="#ffde3b">
+  <link rel="manifest" href="manifest.webmanifest?v=20260722-cache246">
   <link rel="icon" type="image/png" href="assets/logo-appli.png">
   <link rel="apple-touch-icon" href="assets/logo-appli.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260601h">
+  <link rel="stylesheet" href="styles.css?v=20260825-installation-zip-tablet1">
+  <script>
+    window.addEventListener("error", function(event) {
+      var feedback = document.getElementById("pinFeedback");
+      if (feedback && !feedback.textContent) {
+        feedback.textContent = "Erreur chargement app: " + (event.message || "script bloque");
+      }
+    });
+    window.addEventListener("unhandledrejection", function(event) {
+      var feedback = document.getElementById("pinFeedback");
+      var reason = event && event.reason ? (event.reason.message || String(event.reason)) : "promesse rejetee";
+      if (feedback && !feedback.textContent) {
+        feedback.textContent = "Erreur chargement app: " + reason;
+      }
+    });
+    (function clearBadPwaCache(){
+      if (!('serviceWorker' in navigator)) return;
+      navigator.serviceWorker.getRegistrations().then(function(registrations){
+        return Promise.all(registrations.map(function(registration){
+          return registration.scope && registration.scope.indexOf('/previsite/') !== -1 ? true : registration.unregister();
+        }));
+      }).then(function(){
+        if (!window.caches) return null;
+        return caches.keys().then(function(keys){
+          return Promise.all(keys.map(function(key){
+            return key.indexOf('twem-previsite-') === 0 ? true : caches.delete(key);
+          }));
+        });
+      }).catch(function(){});
+    })();
+  </script>
 </head>
 <body>
   <div class="pin-gate" id="pinGate">
     <div class="pin-gate-card">
       <img src="assets/logo-appli.png" alt="Suivi Brico TWEM" class="pin-gate-logo">
-      <p class="eyebrow">TWEM x Brico</p>
-      <h1>Acces securise par PIN</h1>
-      <p class="intro">Saisis ton code PIN a 6 chiffres pour charger tes droits, tes magasins et tes blocs accessibles.</p>
+      <h1>Acces securise</h1>
       <form id="pinForm" class="pin-form">
         <label>
           <span>Code PIN</span>
-          <input type="password" id="pinInput" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+          <input type="password" id="pinInput" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Code PIN">
         </label>
         <button type="submit" id="pinSubmitButton">Entrer</button>
       </form>
       <p class="pin-feedback" id="pinFeedback"></p>
+      <p class="pin-powered">Powered by TWEM &amp; Creative Back Office</p>
+      <p class="app-version-mark">v20261027-remove-closure-rollout-v9</p>
     </div>
   </div>
 
   <div class="page-shell">
+    <div class="app-version-floating">v20261027-remove-closure-rollout-v9</div>
     <header class="topbar">
       <div>
         <p class="eyebrow" id="brandEyebrow">Twem x Brico</p>
@@ -46,9 +81,48 @@
           <span class="mini-label" id="connectionLabel">Connexion</span>
           <strong id="connectionBadge">Initialisation</strong>
         </div>
+        <label class="language-switch hidden-panel" id="languageSwitch">
+          <span class="mini-label" id="languageLabel">Langue</span>
+          <select id="languageSelect">
+            <option value="fr">FR</option>
+            <option value="nl">NL</option>
+          </select>
+        </label>
+        <button type="button" class="mini-button hidden-panel" id="techSupportButton">Appeler le service technique</button>
         <button type="button" class="mini-button hidden-panel" id="quickReturnViewButton">Revenir a ma vue</button>
       </div>
     </header>
+
+    <section class="tech-support-panel hidden-panel" id="techSupportPanel" aria-live="polite">
+      <form class="tech-support-form" id="techSupportForm">
+        <div class="tech-support-head">
+          <div>
+            <strong>Appeler le service technique</strong>
+            <span>Creative Back Office</span>
+          </div>
+          <button type="button" class="mini-button" id="techSupportCloseButton">Fermer</button>
+        </div>
+        <label>
+          <span>Sujet</span>
+          <input type="text" name="subject" maxlength="120" required>
+        </label>
+        <label>
+          <span>Priorite</span>
+          <select name="priority">
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </label>
+        <label>
+          <span>Message</span>
+          <textarea name="message" rows="4" required></textarea>
+        </label>
+        <div class="tech-support-actions">
+          <span class="validation-text" id="techSupportFeedback"></span>
+          <button type="submit" class="mini-button">Envoyer</button>
+        </div>
+      </form>
+    </section>
 
     <section class="workspace-shell">
       <aside class="workspace-sidebar hidden-panel" id="workspaceSidebar">
@@ -57,22 +131,17 @@
           <h2 class="sidebar-title" id="sidebarTitle">Navigation</h2>
           <div class="admin-tabs" id="adminTabs">
             <button type="button" class="admin-tab is-active" id="adminPlanningButton" data-admin-tab="dashboard">Dashboard</button>
-            <button type="button" class="admin-tab" data-admin-tab="timeline">Timeline / Planning</button>
             <button type="button" class="admin-tab" data-admin-tab="stores">Magasins</button>
-            <button type="button" class="admin-tab" data-admin-tab="configuration">Configuration magasin</button>
-            <button type="button" class="admin-tab" data-admin-tab="quantity-bulk">Quantites</button>
-            <button type="button" class="admin-tab" data-admin-tab="preparation">Préparation chantier</button>
+            <button type="button" class="admin-tab" data-admin-tab="configuration">Préparation pour installation</button>
             <button type="button" class="admin-tab" data-admin-tab="sav">SAV / Tickets</button>
             <button type="button" class="admin-tab" data-admin-tab="extensions">Extensions</button>
             <button type="button" class="admin-tab" data-admin-tab="invoice">Invoice</button>
             <button type="button" class="admin-tab" data-admin-tab="tuto">TUTO</button>
-            <button type="button" class="admin-tab" data-admin-tab="contacts">Contacts</button>
+            <button type="button" class="admin-tab" data-admin-tab="legal-documents">Documents legaux</button>
+            <button type="button" class="admin-tab" data-admin-tab="legal-acceptances">Acceptations legales</button>
             <button type="button" class="admin-tab" data-admin-tab="reports">Rapports</button>
             <button type="button" class="admin-tab" data-admin-tab="automations">Automatisations</button>
             <button type="button" class="admin-tab" data-admin-tab="tools">Tools TWEM</button>
-            <button type="button" class="admin-tab" data-admin-tab="pin-access">PIN / Acces</button>
-            <button type="button" class="admin-tab" data-admin-tab="import-export">Import / Export</button>
-            <button type="button" class="admin-tab" data-admin-tab="visibility">Qui voit quoi</button>
           </div>
         </div>
       </aside>
@@ -136,6 +205,7 @@
           </section>
 
           <section class="summary-grid" id="summaryGrid"></section>
+          <section class="panel action-center-panel hidden-panel" id="actionCenterPanel"></section>
           <section class="panel dashboard-extra hidden-panel" id="dashboardExtra"></section>
 
           <section class="panel table-panel">
@@ -145,6 +215,17 @@
                 <p id="syncMessage">Clique sur `+` pour ouvrir la fiche du magasin.</p>
               </div>
               <div class="table-actions">
+                <label class="store-category-tools hidden-panel" id="storeCategoryTools">
+                  <span>Catégorie</span>
+                  <select id="storeCategoryFilter">
+                    <option value="all">Toutes les catégories</option>
+                    <option value="rollout">ROLLOUT</option>
+                    <option value="finishing">INSTALLÉS AVEC FINITION</option>
+                    <option value="migration">MIGRATION APRÈS ROLL-OUT</option>
+                    <option value="finished">FINIS</option>
+                    <option value="non-rollout">NON ROLL-OUT</option>
+                  </select>
+                </label>
                 <button type="button" class="secondary-button" id="printCurrentListButton">Imprimer la liste affichee</button>
               </div>
             </div>
@@ -179,9 +260,9 @@
           </div>
 
           <div class="admin-content">
-            <section class="admin-panel is-active" data-admin-panel="contacts">
+            <section class="admin-panel is-active" data-admin-panel="pin-access">
               <div class="admin-grid contacts-grid">
-                <article class="admin-card person-admin-card">
+                <article class="admin-card person-admin-card section-anchor" id="pin-section-new-contact">
                   <h3 id="peopleTitle">Nouveau contact</h3>
                   <form id="personForm" class="auth-form">
                     <div class="contacts-form-grid">
@@ -261,7 +342,7 @@
                   </details>
                 </article>
 
-                <article class="admin-card store-admin-card">
+                <article class="admin-card store-admin-card" id="pin-section-store-admin">
                   <h3 id="storeTitle">Ajouter / modifier un magasin</h3>
                   <form id="storeForm" class="auth-form">
                     <label>
@@ -293,7 +374,7 @@
                     <label>
                       <span>Type magasin</span>
                       <select id="storeShopTypeSelect">
-                        <option value="">A definir</option>
+                        <option value="TO_DEFINE">A definir</option>
                         <option value="DOS">DOS</option>
                         <option value="FOS">FOS</option>
                         <option value="FOSDOS">FOSDOS</option>
@@ -310,6 +391,14 @@
                     <label>
                       <span id="storeManagerLabel">Contact magasin</span>
                       <input type="text" id="storeManagerInput" placeholder="Ex: Mme Leroy">
+                    </label>
+                    <label>
+                      <span>Nom de societe</span>
+                      <input type="text" id="storeCompanyNameInput" placeholder="Ex: Brico Belgium">
+                    </label>
+                    <label>
+                      <span>N TVA</span>
+                      <input type="text" id="storeVatNumberInput" placeholder="Ex: BE0123.456.789">
                     </label>
                     <label>
                       <span>PO licences</span>
@@ -361,14 +450,6 @@
                       <input type="text" id="storeHealthInput" placeholder="Blocage, remarque, action attendue">
                     </label>
                     <label>
-                      <span>Plateforme actuelle</span>
-                      <input type="text" id="storeCurrentPlatformInput" placeholder="Destiny">
-                    </label>
-                    <label>
-                      <span>Plateforme cible</span>
-                      <input type="text" id="storeTargetPlatformInput" placeholder="TELEPO">
-                    </label>
-                    <label>
                       <span>Date telephonie actuelle</span>
                       <input type="date" id="storeCurrentPhoneDateInput">
                     </label>
@@ -383,7 +464,7 @@
                   </form>
                 </article>
 
-                <article class="admin-card contact-directory-card">
+                <article class="admin-card contact-directory-card section-anchor" id="pin-section-contact-list">
                   <div class="contact-directory-head">
                     <div>
                       <h3 id="contactListTitle">Liste des contacts</h3>
@@ -402,7 +483,7 @@
             <section class="admin-panel workspace-view" data-admin-panel="visibility">
               <article class="admin-card">
                 <h3>Qui voit quoi</h3>
-                <p>Reglage en cascade: Cacher = invisible. Consulter = visible avec recherche et filtres limites aux magasins autorises. Encoder / modifier = droit d enregistrer dans les blocs cochés.</p>
+                <p>Reglage en cascade : cacher = invisible, consulter = visible sans modification, encoder / modifier = droit d enregistrer dans les blocs coches.</p>
                 <div class="visibility-editor-shell">
                   <div class="visibility-role-head">
                     <label class="visibility-role-picker">
@@ -502,6 +583,20 @@
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="reports">
+              <article class="admin-card quantity-report-card">
+                <div class="quantity-report-head">
+                  <div>
+                    <h3>Rapport quantites par type magasin</h3>
+                    <p>Totaux DOS, FOS, FOSDOS et A definir, puis detail magasin par magasin.</p>
+                  </div>
+                  <div class="quantity-report-actions">
+                    <button type="button" class="secondary-button" id="quantityReportPrintButton">Imprimer le tableau</button>
+                    <button type="button" class="mini-button" id="quantityReportExportButton">Exporter XLSX</button>
+                  </div>
+                </div>
+                <div id="quantityReportTable" class="quantity-report-table"></div>
+              </article>
+
               <div class="admin-grid">
               <article class="admin-card full-span-report-card hidden-panel">
                 <h3 id="recentUpdatesTitle">Remontees du jour</h3>
@@ -522,7 +617,7 @@
                 <div class="automation-intro">
                   <div>
                     <h3>Automatisations</h3>
-                    <p>Déclencheurs, relances et notifications automatiques du chantier. La V1 se concentre sur les actions vraiment utiles au terrain.</p>
+                    <p>Suivi des envois automatiques et des messages generes par l application.</p>
                   </div>
                   <div id="automationOverview" class="automation-overview"></div>
                 </div>
@@ -552,26 +647,229 @@
                   <div id="automationEmailQueue" class="automation-email-queue"></div>
                 </div>
                 <div class="automation-future-shell" data-automation-subpanel="rules">
-                  <h4>A prévoir ensuite</h4>
+                  <h4>A prevoir ensuite</h4>
                   <div id="automationFutureList" class="automation-future-list"></div>
                 </div>
               </article>
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="tools">
-              <article class="admin-card">
-                <h3>Tools / programmation</h3>
-                <p>Petit espace pour noter une idee, un point a corriger, puis le cocher quand c est fait.</p>
-                <form id="toolForm" class="tool-form">
-                  <input type="text" id="toolInput" placeholder="Ex: lier les notifications par magasin">
-                  <button type="submit">Ajouter</button>
-                </form>
-                <div id="toolList" class="simple-list"></div>
-              </article>
+              <div class="tools-card-grid">
+                <details class="tool-launch-card tool-group-technical" id="simHammerToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">SIM</span>
+                    <span><strong>Programmation SIM Hammer</strong><small>Kits Windows et Android</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content">
+                    <p>Zone reservee a Emir et Valou. Telecharge le kit logiciel a transmettre aux personnes qui programment les cartes SIM.</p>
+                    <p><strong>PC Windows :</strong> application Windows, mode d'emploi et fichier contacts d'exemple.</p>
+                    <button type="button" id="simHammerToolDownloadButton">Telecharger l'application PC Windows</button>
+                    <div class="form-status" id="simHammerToolDownloadStatus" aria-live="polite"></div>
+                    <p><strong>Android :</strong> version 2.2 Multi-SIM pour tablette ou GSM Android. Lecteur compatible et valide : <strong>ACS ACR40T-A7 USB-C</strong>. Elle charge le CSV, programme les contacts sur plusieurs SIM et les verifie.</p>
+                    <button type="button" id="simHammerAndroidDownloadButton">Telecharger l'application Android 2.2 Multi-SIM</button>
+                    <div class="form-status" id="simHammerAndroidDownloadStatus" aria-live="polite"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-group-technical" id="closureReportToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">FIN</span>
+                    <span><strong>Rapports de clôture signés</strong><small>Archive privée et suivi des retours</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <p>Zone réservée à Emir et Valou. Le PDF reçu passe automatiquement le rapport de clôture au vert dans le dashboard privé.</p>
+                    <label><span>Magasin</span><select id="closureReportStoreSelect"></select></label>
+                    <button type="button" id="closureReportUploadButton">Ajouter le rapport signé</button>
+                    <input type="file" class="hidden-file-input" id="closureReportFileInput" accept="application/pdf,.pdf">
+                    <div class="form-status" id="closureReportUploadStatus" aria-live="polite"></div>
+                    <div id="closureReportDocumentList" class="signed-fnp-list"></div>
+                    <div class="closure-review-head">
+                      <h4>Clôtures à contrôler par Valou</h4>
+                      <p id="closureReviewSummary">Aucun dossier en attente.</p>
+                    </div>
+                    <div id="closureReviewList" class="closure-review-list"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-group-technical" id="hammerRedReportToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">HAM</span>
+                    <span><strong>Rapport Hammer - écrans rouges</strong><small>État cumulé et retours des magasins</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <p>Zone réservée à Emir et Valou. Le rapport reprend les quantités, proportions, appareils, numéros communiqués, commentaires et magasins sans réponse.</p>
+                    <div class="button-row">
+                      <button type="button" id="hammerRedReportXlsxButton">Exporter Excel</button>
+                      <button type="button" class="secondary-button" id="hammerRedReportPdfButton">Exporter PDF</button>
+                    </div>
+                    <div id="hammerRedReportSummary" class="form-status" aria-live="polite"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-quantity-card tool-group-store" id="quantityToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">QTY</span>
+                    <span><strong>Quantités magasins</strong><small>Édition massive par région et type</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="quantityToolContent"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-visibility-card tool-group-permissions" id="visibilityRolesToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">ACCÈS</span>
+                    <span><strong>Qui voit quoi</strong><small>Rôles, onglets et droits</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="visibilityRolesToolContent" class="visibility-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-visibility-card tool-group-technical" id="visibilityOverridesToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">EXC.</span>
+                    <span><strong>Dérogations chantier</strong><small>Exceptions temporaires par magasin</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="visibilityOverridesToolContent" class="visibility-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-contact-card tool-group-access" id="contactsToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">CONTACT</span>
+                    <span><strong>Nouveau contact &amp; contacts</strong><small>Contacts, intervenants et rôles</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="contactsToolContent" class="contact-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-contact-card tool-group-store" id="storesAdminToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">MAG.</span>
+                    <span><strong>Ajouter / modifier un magasin</strong><small>Fiche et données du magasin</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="storesAdminToolContent" class="contact-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-contact-card tool-group-access" id="pinAccessToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">PIN</span>
+                    <span><strong>PIN et accès</strong><small>Connexion, création et affectation</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="pinAccessToolContent" class="contact-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-contact-card tool-group-access" id="pinHistoryToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">HIST.</span>
+                    <span><strong>Historique des accès</strong><small>Journal et recherche des accès PIN</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="pinHistoryToolContent" class="contact-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-group-daily" id="dailyTodoToolCard">
+                  <summary>
+                    <span class="tool-card-icon">TODO</span>
+                    <span><strong>Todo quotidienne</strong><small>Checklist Emir et Valou</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content">
+                    <div class="daily-todo-date" id="dailyTodoDateLabel"></div>
+                    <form id="dailyTodoForm" class="tool-form daily-todo-form">
+                      <input type="text" id="dailyTodoInput" placeholder="Ex: verifier les SAV ouverts du jour">
+                      <button type="submit">Ajouter</button>
+                    </form>
+                    <div id="dailyTodoList" class="daily-todo-list"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-group-daily" id="appNotesToolCard">
+                  <summary>
+                    <span class="tool-card-icon">IDÉE</span>
+                    <span><strong>Notes / idées app</strong><small>Points à garder et à traiter</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content">
+                    <form id="toolForm" class="tool-form">
+                      <input type="text" id="toolInput" placeholder="Ex: lier les notifications par magasin">
+                      <button type="submit">Ajouter</button>
+                    </form>
+                    <div id="toolList" class="simple-list"></div>
+                  </div>
+                </details>
+
+                <div class="tools-group-heading tool-group-import-heading" id="importExportToolsHeading" hidden>
+                  <h3>Imports &amp; exports</h3>
+                  <p>Sauvegardes, imports contrôlés et exports de l’application.</p>
+                </div>
+
+                <details class="tool-launch-card tool-import-card" id="importSafetyToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">SAFE</span>
+                    <span><strong>Sauvegarde et suivi</strong><small>JSON complet et historique</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="importSafetyToolContent" class="import-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-import-card" id="generalImportsToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">IMPORT</span>
+                    <span><strong>Imports généraux</strong><small>Magasins, téléphonie, SAV et extensions</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="generalImportsToolContent" class="import-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-import-card" id="fieldImportsToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">DSTNY</span>
+                    <span><strong>Imports chantier / Dstny</strong><small>Planning, Done, users, rapports et plans</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="fieldImportsToolContent" class="import-tool-content"></div>
+                  </div>
+                </details>
+
+                <details class="tool-launch-card tool-import-card" id="exportsToolCard" hidden>
+                  <summary>
+                    <span class="tool-card-icon">EXPORT</span>
+                    <span><strong>Exports</strong><small>Magasins, fiches et extensions</small></span>
+                    <span class="tool-card-chevron" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="tool-card-content tool-card-content-wide">
+                    <div id="exportsToolContent" class="import-tool-content"></div>
+                  </div>
+                </details>
+              </div>
             </section>
 
             <section class="admin-panel workspace-view" data-admin-panel="pin-access">
-              <article class="admin-card">
+              <article class="admin-card section-anchor" id="pin-section-login-links">
                 <h3 id="accessTitle">Liens de connexion</h3>
                 <p id="accessIntro">Zone Twem pour envoyer un lien magique de connexion.</p>
                 <div id="authState" class="auth-state">Session locale</div>
@@ -585,36 +883,9 @@
                 <button type="button" id="logoutButton" class="secondary-button">Reinitialiser la session locale</button>
               </article>
 
-              <article class="admin-card">
-                <h3>Diffusion progressive</h3>
-                <p>Choisir les personnes a qui l'application est ouverte. Les personnes ouvertes passent en actif et un mail d'accueil est prepare.</p>
-                <div class="pin-rollout-toolbar">
-                  <label>
-                    <span>Recherche</span>
-                    <input type="text" id="pinRolloutSearchInput" placeholder="Nom, mail, magasin, role">
-                  </label>
-                  <label>
-                    <span>Statut</span>
-                    <select id="pinRolloutStatusFilter">
-                      <option value="all">Tous</option>
-                      <option value="closed">Acces ferme</option>
-                      <option value="open">Acces ouvert</option>
-                    </select>
-                  </label>
-                </div>
-                <div id="pinRolloutSummary" class="override-meta"></div>
-                <div id="pinRolloutList" class="simple-list pin-rollout-list"></div>
-                <div class="pin-rollout-actions">
-                  <button type="button" id="pinRolloutOpenButton">Ouvrir aux personnes cochees</button>
-                  <button type="button" id="pinRolloutOpenAllButton">Ouvrir tous les acces fermes</button>
-                  <button type="button" id="pinMarkAllMailSentButton">Marquer tous les mails recus au 02/06/2026</button>
-                  <button type="button" id="pinRolloutCloseButton" class="secondary-button">Fermer aux personnes cochees</button>
-                </div>
-              </article>
-
-              <article class="admin-card">
+              <article class="admin-card section-anchor" id="pin-section-pin-form">
                 <h3>PIN / Acces</h3>
-                <p>Visible uniquement SupAdmin et Admin TWEM. Creation, expiration, affectation et suivi des connexions PIN.</p>
+                <p>Visible uniquement pour Emir et Valou. Creation, expiration, affectation et suivi des connexions PIN.</p>
                 <form id="pinAccessForm" class="auth-form">
                   <label>
                     <span>Nom</span>
@@ -654,7 +925,7 @@
                 </form>
               </article>
 
-              <article class="admin-card">
+              <article class="admin-card section-anchor" id="pin-section-pin-history">
                 <h3>Historique des acces PIN</h3>
                 <div class="pin-rollout-toolbar">
                   <label>
@@ -668,45 +939,169 @@
 
             <section class="admin-panel workspace-view" data-admin-panel="import-export">
               <article class="admin-card import-export-shell">
-                <h3>Import / Export</h3>
-                <p>Base de travail centralisee pour injecter les donnees utiles, sortir des exports propres et garder une trace des operations.</p>
+                <h3>Import terrain</h3>
+                <p>Outils reserves a Emir et Valou pour injecter des rapports, users telephonie et plans magasins avec controle avant ecriture.</p>
                 <div class="import-export-grid">
-                  <article class="import-card">
+                  <article class="import-card field-import-card field-installation-zip-card" id="field-import-installation-zip">
+                    <h4>Dossier ZIP complet d'installation</h4>
+                    <p>Ajoute un ZIP de fin d'installation. L'app reconnait le magasin et prepare le rapport, le Call Flow, les utilisateurs et les SIM sans remplacer les donnees existantes.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldInstallationZipImportButton">Choisir le ZIP complet</button>
+                      <button type="button" id="fieldInstallationZipApplyButton" class="secondary-button" disabled>Appliquer l'import controle</button>
+                      <input type="file" id="fieldInstallationZipFileInput" accept=".zip,application/zip" hidden>
+                    </div>
+                    <div id="fieldInstallationZipPreview" class="field-import-preview empty-state">Aucun dossier ZIP charge.</div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-survey-zip">
+                    <h4>Dossier ZIP Survey / pre-visite</h4>
+                    <p>Reprend la repartition utilisee pour Vilvoorde : rapport de pre-visite dans Particularites magasin, plan technique complet dans les sections techniques, et report-1 uniquement pour la couverture mobile. Aucun fichier existant n'est remplace.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldSurveyZipImportButton">Choisir le ZIP Survey</button>
+                      <button type="button" id="fieldSurveyZipApplyButton" class="secondary-button" disabled>Appliquer la repartition controlee</button>
+                      <input type="file" id="fieldSurveyZipFileInput" accept=".zip,application/zip" hidden>
+                    </div>
+                    <div id="fieldSurveyZipPreview" class="field-import-preview empty-state">Aucun dossier Survey charge.</div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-report">
+                    <h4>Rapport installation</h4>
+                    <p>Coller le texte recu et l'enregistrer dans la fiche du magasin.</p>
+                    <label>
+                      <span>Magasin</span>
+                      <input type="search" id="fieldReportStoreSearchInput" list="fieldReportStoreOptions" placeholder="Rechercher par nom, code, ville...">
+                      <datalist id="fieldReportStoreOptions"></datalist>
+                      <select id="fieldReportStoreSelect"></select>
+                    </label>
+                    <label>
+                      <span>Texte du rapport</span>
+                      <textarea id="fieldReportTextInput" rows="8" placeholder="Colle ici le rapport installation..."></textarea>
+                    </label>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldReportSaveButton">Enregistrer le rapport</button>
+                    </div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-planning">
+                    <h4>Planning installations Dstny</h4>
+                    <p>Coller le listing recu par mail. L'app reconnait les dates puis les magasins sous chaque date.</p>
+                    <label>
+                      <span>Texte du mail</span>
+                      <textarea id="fieldDstnyPlanningTextInput" rows="8" placeholder="Ex: 04/06/2026&#10;Brico Kapellen&#10;02/07/2026&#10;Briko Depot Fontaine-l'Eveque..."></textarea>
+                    </label>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldDstnyPlanningPreviewButton">Previsualiser</button>
+                      <button type="button" id="fieldDstnyPlanningApplyButton" class="secondary-button">Appliquer les dates</button>
+                    </div>
+                    <div id="fieldDstnyPlanningPreview" class="field-import-preview empty-state">Aucun planning colle.</div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-classification">
+                    <h4>Classement Done Dstny</h4>
+                    <p>Importer uniquement l'onglet Done. La colonne H doit contenir magasin fini ou migration.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldDstnyClassificationImportButton">Importer XLSX Done</button>
+                      <button type="button" id="fieldDstnyClassificationApplyButton" class="secondary-button">Appliquer le classement</button>
+                      <input type="file" id="fieldDstnyClassificationFileInput" accept=".xlsx,.xls" hidden>
+                    </div>
+                    <div id="fieldDstnyClassificationPreview" class="field-import-preview empty-state">Aucun fichier charge.</div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-post-install">
+                    <h4>Sheet complet post-installation</h4>
+                    <p>Importer Cost Center, First Name, Extension, TEL, Sim carte, PIN, PUK et PUK2. L'app ajoute toutes les lignes dans la configuration reseau sans remplacer les informations deja presentes.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldSimImportButton">Importer le sheet complet</button>
+                      <button type="button" id="fieldSimApplyButton" class="secondary-button">Appliquer les donnees</button>
+                      <input type="file" id="fieldSimFileInput" accept=".xlsx,.xls,.csv" hidden>
+                    </div>
+                    <div id="fieldSimPreview" class="field-import-preview empty-state">Aucun fichier charge.</div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-users">
+                    <h4>Users telephonie CSV</h4>
+                    <p>Injecter les users dans Configuration reseau. Les 3 derniers chiffres de Primary Short Alias sont utilises comme extension.</p>
+                    <label>
+                      <span>Magasin</span>
+                      <input type="search" id="fieldUsersStoreSearchInput" list="fieldUsersStoreOptions" placeholder="Rechercher par nom, code, ville...">
+                      <datalist id="fieldUsersStoreOptions"></datalist>
+                      <select id="fieldUsersStoreSelect"></select>
+                    </label>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldUsersImportButton">Importer CSV users</button>
+                      <button type="button" id="fieldUsersRemoveButton" class="secondary-button">Retirer CSV users</button>
+                      <input type="file" id="fieldUsersFileInput" accept=".csv" hidden>
+                      <input type="file" id="fieldUsersRemoveFileInput" accept=".csv" hidden>
+                    </div>
+                    <div id="fieldUsersPreview" class="field-import-preview empty-state">Aucun CSV charge.</div>
+                  </article>
+
+                  <article class="import-card field-import-card" id="field-import-plans">
+                    <h4>Plans magasins ZIP</h4>
+                    <p>Deposer un ZIP de plans. L'app associe les fichiers par code magasin ou nom magasin.</p>
+                    <div class="import-export-actions">
+                      <button type="button" id="fieldPlansImportButton">Importer ZIP plans</button>
+                      <input type="file" id="fieldPlansFileInput" accept=".zip" hidden>
+                    </div>
+                    <div id="fieldPlansPreview" class="field-import-preview empty-state">Aucun ZIP charge.</div>
+                  </article>
+                </div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="legal-documents">
+              <article class="admin-card legal-documents-shell">
+                <div id="legalDocumentsView"></div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="legal-acceptances">
+              <article class="admin-card legal-acceptances-shell">
+                <div id="legalAcceptancesView"></div>
+              </article>
+            </section>
+
+            <section class="admin-panel workspace-view" data-admin-panel="import-export">
+              <article class="admin-card import-export-shell">
+                <h3>Import / Export</h3>
+                <p>Outils reserves a Emir et Valou pour injecter les donnees utiles, sortir des exports propres et garder une trace des operations.</p>
+                <div class="import-export-grid">
+                  <article class="import-card" id="general-import-stores">
                     <h4>Importer des magasins</h4>
                     <p>Charger la base magasins: identite, manager, adresse, type, facturation.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportStoresButton">Importer magasins</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="general-import-telephony">
                     <h4>Importer la telephonie</h4>
                     <p>Charger les quantites et les donnees telephonie par <code>Store NR</code>.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportTelephonyButton">Importer telephonie</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="general-import-sav">
                     <h4>Importer historique SAV</h4>
                     <p>Charger l historique SAV depuis un sheet avec statut, date, heure, code magasin, references et resume.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportSavHistoryButton">Importer historique SAV</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="general-import-extensions">
                     <h4>Importer des extensions</h4>
                     <p>Charger un catalogue d extensions en XLS / XLSX, CSV ou JSON.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabImportExtensionsButton">Importer extensions</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="technical-backup">
                     <h4>Sauvegarde technique</h4>
                     <p>Garder un export JSON complet en secours technique.</p>
                     <div class="import-export-actions">
                       <button type="button" id="tabExportButton" class="secondary-button">Exporter JSON</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="export-stores">
                     <h4>Exporter les magasins</h4>
                     <p>Sortir un tableau lisible des magasins en XLSX ou en PDF.</p>
                     <div class="import-export-actions">
@@ -715,7 +1110,7 @@
                       <button type="button" id="tabExportStoresPdfButton" class="secondary-button">Exporter magasins PDF</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="export-store-sheets">
                     <h4>Exporter les fiches magasin</h4>
                     <p>Generer un ZIP avec une fiche imprimable par magasin selon le filtre choisi.</p>
                     <div class="import-export-actions stacked-actions">
@@ -734,7 +1129,7 @@
                       <button type="button" id="tabBulkStorePrintZipButton" class="secondary-button">Exporter fiches ZIP</button>
                     </div>
                   </article>
-                  <article class="import-card">
+                  <article class="import-card" id="export-extensions">
                     <h4>Exporter les extensions</h4>
                     <p>Sortir le catalogue complet des extensions en XLSX ou en PDF.</p>
                     <div class="import-export-actions">
@@ -742,7 +1137,7 @@
                       <button type="button" id="tabExportExtensionsPdfButton" class="secondary-button">Exporter liste responsable PDF</button>
                     </div>
                   </article>
-                  <article class="import-card import-help-card">
+                  <article class="import-card import-help-card" id="import-format-help">
                     <h4>Format attendu</h4>
                     <ul class="import-help-list">
                       <li>Magasins: fichier liste magasin avec <code>Store NR</code>, nom, manager, adresse, type, PO...</li>
@@ -753,7 +1148,7 @@
                     </ul>
                   </article>
                 </div>
-                <article class="admin-card import-history-card">
+                <article class="admin-card import-history-card" id="import-history-card">
                   <div class="import-history-head">
                     <h4>Historique import / export</h4>
                     <span id="importExportHistoryMeta" class="cell-note">Aucune operation pour le moment.</span>
@@ -772,6 +1167,19 @@
   </div>
 
   <script>
+    window.addEventListener("error", function(event) {
+      var feedback = document.getElementById("pinFeedback");
+      if (feedback && !feedback.textContent) {
+        feedback.textContent = "Erreur chargement app: " + (event.message || "script bloque");
+      }
+    });
+    window.addEventListener("unhandledrejection", function(event) {
+      var feedback = document.getElementById("pinFeedback");
+      var reason = event && event.reason ? (event.reason.message || String(event.reason)) : "promesse rejetee";
+      if (feedback && !feedback.textContent) {
+        feedback.textContent = "Erreur chargement app: " + reason;
+      }
+    });
     window.APP_CONFIG = Object.assign(
       {
         mode: "demo",
@@ -788,13 +1196,45 @@
       window.APP_CONFIG || {}
     );
   </script>
-  <script src="config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="config.js?v=local-snapshot-61"></script>
   <script src="https://cdn.jsdelivr.net/npm/appwrite@23.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260601h"></script>
+  <script src="assets/vendor/jspdf.umd.min.js?v=2.5.1-local"></script>
+  <script src="assets/vendor/jszip.min.js?v=3.10.1-local"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js"></script>
+  <script src="app.js?v=20261027-remove-closure-rollout-v9"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
