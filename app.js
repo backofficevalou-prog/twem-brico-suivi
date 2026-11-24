@@ -1,5 +1,5 @@
 const twemOptions = ["Emir", "Valou"];
-const appBuildVersion = "20261027-closure-livefix-v6";
+const appBuildVersion = "20261124-invoice-xlsx-v1";
 window.__twemAppStarted = appBuildVersion;
 document.querySelectorAll(".app-version-mark, .app-version-floating").forEach((element) => {
   element.textContent = `v${appBuildVersion}`;
@@ -4747,6 +4747,7 @@ const importButton = document.querySelector("#importButton");
 const importInput = document.querySelector("#importInput");
 const reportButton = document.querySelector("#reportButton");
 const printCurrentListButton = document.querySelector("#printCurrentListButton");
+const invoiceExportXlsxButton = document.querySelector("#invoiceExportXlsxButton");
 const tabImportButton = document.querySelector("#tabImportButton");
 const tabImportStoresButton = document.querySelector("#tabImportStoresButton");
 const tabImportTelephonyButton = document.querySelector("#tabImportTelephonyButton");
@@ -18008,7 +18009,9 @@ async function handleQuantityBulkSave(event) {
 function renderStores() {
   const stores = getFilteredStores();
   const unifiedStoresView = activeMainWorkspaceTab() === "stores";
+  const invoiceView = activeMainWorkspaceTab() === "invoice";
   storeCategoryTools?.classList.toggle("hidden-panel", !unifiedStoresView);
+  invoiceExportXlsxButton?.classList.toggle("hidden-panel", !invoiceView);
   if (storeCategoryFilter) {
     storeCategoryFilter.value = state.storeCategoryFilter || "all";
   }
@@ -28524,6 +28527,125 @@ function invoicePoGroups(stores = []) {
     .sort((left, right) => left.po.localeCompare(right.po, "fr", { numeric: true }));
 }
 
+function invoiceExportStores() {
+  return getFilteredStores()
+    .filter(matchesInvoiceSearch)
+    .slice()
+    .sort((left, right) => String(left.code || left.name || "").localeCompare(String(right.code || right.name || ""), "fr", { numeric: true }));
+}
+
+function invoicePoExportRows(stores = []) {
+  const rows = [[
+    "N magasin",
+    "Code magasin",
+    "Magasin",
+    "Ville",
+    "Type magasin",
+    "Responsable",
+    "Type de PO",
+    "N PO",
+    "PO manquant"
+  ]];
+  stores.forEach((store) => {
+    const entries = invoicePoEntriesForStore(store);
+    const base = [
+      store.shopNumber || String(store.code || "").replace(/^BRI-/i, ""),
+      store.code || "",
+      store.name || "",
+      store.city || "",
+      displayShopTypeValue(store.shopType, ""),
+      store.manager || store.owner || ""
+    ];
+    if (!entries.length) {
+      rows.push([...base, "", "", "Oui"]);
+      return;
+    }
+    entries.forEach((entry) => rows.push([...base, entry.type, entry.value, "Non"]));
+  });
+  return rows;
+}
+
+function invoiceOrderExportRows(stores = []) {
+  const rows = [[
+    "N magasin",
+    "Code magasin",
+    "Magasin",
+    "Ville",
+    "Type magasin",
+    "Responsable",
+    "Type facturation",
+    "Detail commande",
+    "Quantite",
+    "Statut commande",
+    "Commande approuvee",
+    "N commande",
+    "Date livraison"
+  ]];
+  stores.forEach((store) => {
+    const base = [
+      store.shopNumber || String(store.code || "").replace(/^BRI-/i, ""),
+      store.code || "",
+      store.name || "",
+      store.city || "",
+      displayShopTypeValue(store.shopType, ""),
+      store.manager || store.owner || ""
+    ];
+    invoiceTicketsForStore(store).forEach((ticket) => {
+      rows.push([
+        ...base,
+        invoiceBillingTypeValue(ticket),
+        normalizeImportCell(ticket.materialLabel) || normalizeImportCell(ticket.concern) || "",
+        Math.max(1, Number(ticket.quantityRequested) || 1),
+        invoiceOrderStatus(ticket),
+        invoiceOrderApprovedValue(ticket),
+        invoiceOrderReference(ticket),
+        normalizeDateOnly(invoiceOrderDeliveredDate(ticket)) || ""
+      ]);
+    });
+  });
+  return rows;
+}
+
+function configureInvoiceExportSheet(worksheet, columnWidths, dateColumnIndex = -1) {
+  if (!worksheet?.["!ref"]) return;
+  worksheet["!cols"] = columnWidths.map((width) => ({ wch: width }));
+  worksheet["!autofilter"] = { ref: worksheet["!ref"] };
+  worksheet["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" };
+  const range = window.XLSX.utils.decode_range(worksheet["!ref"]);
+  for (let column = range.s.c; column <= range.e.c; column += 1) {
+    const headerCell = worksheet[window.XLSX.utils.encode_cell({ r: 0, c: column })];
+    if (!headerCell) continue;
+    headerCell.s = {
+      fill: { fgColor: { rgb: "FFDE3B" } },
+      font: { bold: true, color: { rgb: "1F2937" } },
+      alignment: { horizontal: "center", vertical: "center" }
+    };
+  }
+  if (dateColumnIndex >= 0) {
+    for (let row = 1; row <= range.e.r; row += 1) {
+      const cell = worksheet[window.XLSX.utils.encode_cell({ r: row, c: dateColumnIndex })];
+      if (cell?.v instanceof Date) cell.z = "dd/mm/yyyy";
+    }
+  }
+}
+
+function exportInvoiceXlsx() {
+  if (!xlsxAvailable()) throw new Error("Bibliotheque XLSX indisponible.");
+  const stores = invoiceExportStores();
+  const poRows = invoicePoExportRows(stores);
+  const orderRows = invoiceOrderExportRows(stores);
+  const poSheet = window.XLSX.utils.aoa_to_sheet(poRows, { cellDates: true });
+  const orderSheet = window.XLSX.utils.aoa_to_sheet(orderRows, { cellDates: true });
+  configureInvoiceExportSheet(poSheet, [12, 16, 28, 20, 18, 24, 20, 22, 14]);
+  configureInvoiceExportSheet(orderSheet, [12, 16, 28, 20, 18, 24, 20, 34, 10, 20, 20, 20, 16], 12);
+  const workbook = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(workbook, poSheet, "PO magasins");
+  window.XLSX.utils.book_append_sheet(workbook, orderSheet, "Commandes");
+  const fileName = `twem-brico-invoice-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  window.XLSX.writeFile(workbook, fileName, { cellStyles: true });
+  recordImportExportHistory("export", "Export Invoice XLSX", `${stores.length} magasin(s), ${Math.max(0, poRows.length - 1)} ligne(s) PO et ${Math.max(0, orderRows.length - 1)} commande(s) exporte(s).`);
+}
+
 function buildPrintableInvoiceByPoHtml() {
   const stores = getFilteredStores()
     .filter(matchesInvoiceSearch)
@@ -32350,7 +32472,7 @@ function applyStaticTranslations() {
   set("addStoreButton", t("addStore"));
   set("importButton", t("importFile"));
   set("reportButton", t("printReport"));
-  set("printCurrentListButton", activeMainWorkspaceTab() === "invoice" ? "Imprimer par PO" : ui("Imprimer la liste affichee"));
+  set("printCurrentListButton", activeMainWorkspaceTab() === "invoice" ? "Exporter PDF par PO" : ui("Imprimer la liste affichee"));
 
   searchInput.placeholder = state.language === "nl" ? "Bv: Anderlecht" : "Ex: Anderlecht";
   emailInput.placeholder = state.language === "nl" ? "naam@twem.be" : "nom@twem.be";
@@ -33002,6 +33124,7 @@ importButton.addEventListener("click", handleImportButtonClick);
 importInput.addEventListener("change", handleImportInputChange);
 reportButton.addEventListener("click", handleReportButtonClick);
 printCurrentListButton?.addEventListener("click", handlePrintCurrentListClick);
+invoiceExportXlsxButton?.addEventListener("click", () => safeRunExport(exportInvoiceXlsx));
 storeCategoryFilter?.addEventListener("change", () => {
   state.storeCategoryFilter = storeCategoryFilter.value || "all";
   state.expandedStoreIds = new Set();
