@@ -1,5 +1,5 @@
 const twemOptions = ["Emir", "Valou"];
-const appBuildVersion = "20261124-invoice-xlsx-v3";
+const appBuildVersion = "20261124-hammer-cumulative-v4";
 window.__twemAppStarted = appBuildVersion;
 document.querySelectorAll(".app-version-mark, .app-version-floating").forEach((element) => {
   element.textContent = `v${appBuildVersion}`;
@@ -14167,18 +14167,18 @@ async function handleHammerRedScreenCounter(event) {
   const total = Math.max(0, Number(getStoreQuantityPlan(store).mobileCount) || 0);
   const responses = Array.isArray(workflow.hammerRedScreenResponses) ? workflow.hammerRedScreenResponses : [];
   const archive = responses.length ? responses.map((item) => `${formatDateTime(item.receivedAt)} - ${item.result || "Retour reçu"}${item.devices ? ` - ${item.devices}` : ""}${item.comment ? ` - ${item.comment}` : ""}`).join("\n") : "Aucun retour magasin archivé.";
-  const answer = window.prompt(`Nombre cumulé de Hammer dont l'écran est devenu rouge pour ${store.code} — ${store.name}\n\nTotal Hammer du magasin : ${total || "non renseigné"}\n\nRetours archivés :\n${archive}\n\nSaisis le nouveau total cumulé :`, String(currentCount));
+  const answer = window.prompt(`Nouveaux Hammer dont l'écran est devenu rouge pour ${store.code} — ${store.name}\n\nCompteur cumulé actuel : ${currentCount}\nTotal Hammer du magasin : ${total || "non renseigné"}\n\nRetours archivés :\n${archive}\n\nSaisis uniquement le nombre de nouveaux Hammer à ajouter au cumul :`, "0");
   if (answer === null) return;
-  const nextCount = Number.parseInt(String(answer).trim(), 10);
-  if (!Number.isInteger(nextCount) || nextCount < 0) {
+  const addedCount = Number.parseInt(String(answer).trim(), 10);
+  if (!Number.isInteger(addedCount) || addedCount < 0) {
     window.alert("Introduis un nombre entier positif ou zéro.");
     return;
   }
-  if (nextCount === currentCount) return;
-  const delta = nextCount - currentCount;
+  if (addedCount === 0) return;
+  const nextCount = currentCount + addedCount;
   const changeRemark = window.prompt(
-    `Remarque liée à cette modification pour ${store.code} — ${store.name}\n\n` +
-    `Compteur : ${currentCount} -> ${nextCount}\n\n` +
+    `Remarque liée à cet ajout pour ${store.code} — ${store.name}\n\n` +
+    `Nouveaux Hammer rouges : ${addedCount}\nCompteur cumulé : ${currentCount} -> ${nextCount}\n\n` +
     "Indique le poste, le numéro de série ou toute information utile. Cette remarque et la date seront reprises dans le rapport :",
     ""
   );
@@ -14189,22 +14189,20 @@ async function handleHammerRedScreenCounter(event) {
     id: `hammer-red-${Date.now()}`,
     previousCount: currentCount,
     count: nextCount,
-    delta,
+    delta: addedCount,
     at,
     by: currentUser()?.name || state.activeUserName || "TWEM",
-    note: normalizeImportCell(changeRemark) || `Mise à jour manuelle du compteur : ${currentCount} -> ${nextCount}`
+    note: normalizeImportCell(changeRemark) || `Ajout cumulatif : +${addedCount} (${currentCount} -> ${nextCount})`
   }];
   workflow.hammerRedScreenResponses = [...responses, {
     id: `hammer-red-response-${Date.now()}`,
     receivedAt: at,
     sender: currentUser()?.name || state.activeUserName || "TWEM",
-    result: delta > 0
-      ? `${delta} appareil${delta > 1 ? "s" : ""} supplémentaire${delta > 1 ? "s" : ""}`
-      : `Correction du compteur : ${currentCount} -> ${nextCount}`,
+    result: `${addedCount} appareil${addedCount > 1 ? "s" : ""} supplémentaire${addedCount > 1 ? "s" : ""}`,
     count: nextCount,
     devices: normalizeImportCell(changeRemark),
     serialNumbers: "",
-    comment: `Compteur mis à jour de ${currentCount} à ${nextCount}`
+    comment: `Compteur cumulé augmenté de ${addedCount} : ${currentCount} -> ${nextCount}`
   }];
   store.updatedAt = at;
   saveState();
