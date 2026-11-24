@@ -1,5 +1,5 @@
 const twemOptions = ["Emir", "Valou"];
-const appBuildVersion = "20261124-invoice-xlsx-v1";
+const appBuildVersion = "20261124-invoice-xlsx-v3";
 window.__twemAppStarted = appBuildVersion;
 document.querySelectorAll(".app-version-mark, .app-version-floating").forEach((element) => {
   element.textContent = `v${appBuildVersion}`;
