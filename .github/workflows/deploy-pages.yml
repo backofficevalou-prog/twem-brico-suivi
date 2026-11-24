@@ -34,6 +34,7 @@ jobs:
           cp index.html public/index.html
           cp styles.css public/styles.css
           cp app.js public/app.js
+          cp app-version.json public/app-version.json
           cp config.js public/config.js
           cp config.example.js public/config.example.js
           cp README.md public/README.md
